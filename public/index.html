@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Fijos y Picas</title>
+<meta name="description" content="El juego de adivinar el número de 4 dígitos, para jugar con amigos desde un link." />
+<meta name="theme-color" content="#0f1117" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ------------------------------------------------------------ INICIO -->
+  <section id="screen-home" class="screen">
+    <header class="hero">
+      <h1>Fijos <span class="amp">y</span> Picas</h1>
+      <p class="sub">Cada uno anota un número de 4 dígitos. Adivinale el suyo al de al lado antes de que te lo adivinen a vos.</p>
+    </header>
+
+    <div class="card">
+      <label class="field">
+        <span>Tu nombre</span>
+        <input id="home-name" type="text" maxlength="16" placeholder="Lucas" autocomplete="nickname" />
+      </label>
+
+      <div class="field">
+        <span>Modo de juego</span>
+        <div class="modes">
+          <label class="mode">
+            <input type="radio" name="mode" value="sim" checked />
+            <div>
+              <strong>Ronda simultánea</strong>
+              <small>Todos mandan su intento cuando pueden y se revela junto. Sirve para jugar en vivo o a lo largo del día.</small>
+            </div>
+          </label>
+          <label class="mode">
+            <input type="radio" name="mode" value="strict" />
+            <div>
+              <strong>Por turnos</strong>
+              <small>Uno a la vez, en orden, como en papel. Requiere que estén todos conectados.</small>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <button id="btn-create" class="btn primary big">Crear sala</button>
+    </div>
+
+    <div class="card">
+      <label class="field">
+        <span>¿Te pasaron un código?</span>
+        <div class="row">
+          <input id="home-code" type="text" maxlength="8" placeholder="ABC12" autocapitalize="characters" spellcheck="false" />
+          <button id="btn-join" class="btn">Entrar</button>
+        </div>
+      </label>
+    </div>
+
+    <details class="card rules">
+      <summary>Cómo se juega</summary>
+      <ol>
+        <li>Cada jugador elige un número secreto de <b>4 dígitos del 1 al 9</b>, sin repetir ninguno.</li>
+        <li>Se arma un círculo: a cada uno le toca adivinarle el número al siguiente, y el último al primero.</li>
+        <li>En tu turno arriesgás un número (también 4 dígitos sin repetir) y te responden dos cifras:
+          <ul>
+            <li><b class="fijo">Fijos</b> — dígitos que acertaste <i>en su posición</i>.</li>
+            <li><b class="pica">Picas</b> — dígitos que están en el número, pero <i>en otro lugar</i>.</li>
+          </ul>
+          Nunca se dice <i>cuáles</i>: solo cuántos.
+        </li>
+        <li>4 fijos y ganaste. La ronda se termina igual, así que puede haber empate.</li>
+        <li>Después, el que quiera puede seguir jugando hasta encontrar su número.</li>
+      </ol>
+    </details>
+
+    <p id="home-error" class="error hidden"></p>
+  </section>
+
+  <!-- -------------------------------------------------------------- SALA -->
+  <section id="screen-room" class="screen hidden">
+    <header class="topbar">
+      <div class="code-block">
+        <span class="code-label">Sala</span>
+        <b id="room-code">—</b>
+      </div>
+      <button id="btn-copy" class="btn ghost small">Copiar link</button>
+      <span id="conn" class="conn"></span>
+      <span id="conn-text" class="conn-text hidden">reconectando…</span>
+      <button id="btn-leave" class="btn ghost small">Salir</button>
+    </header>
+
+    <p id="room-error" class="error hidden"></p>
+
+    <!-- Lobby -->
+    <div id="view-lobby" class="view hidden">
+      <div class="card">
+        <h2>Sala de espera</h2>
+        <p class="hint">Pasales el link a tus amigos. Arrancan cuando estén todos. El que cierre la página y no vuelva en un minuto y medio sale solo de la lista.</p>
+        <div id="lobby-players" class="players"></div>
+        <p class="hint circle-hint">El círculo: <span id="lobby-circle"></span></p>
+        <p id="lobby-order-hint" class="hint hidden">Con ▲▼ acomodás el orden a gusto y con 👑 le dejás la sala a otro. El orden se congela al empezar.</p>
+        <div id="lobby-host" class="host-controls hidden">
+          <div class="field">
+            <span>Modo</span>
+            <div class="modes compact">
+              <label class="mode"><input type="radio" name="rmode" value="sim" /><div><strong>Ronda simultánea</strong></div></label>
+              <label class="mode"><input type="radio" name="rmode" value="strict" /><div><strong>Por turnos</strong></div></label>
+            </div>
+          </div>
+          <div class="row">
+            <button id="btn-shuffle" class="btn">Mezclar orden</button>
+            <button id="btn-start" class="btn primary">Empezar</button>
+          </div>
+        </div>
+        <p id="lobby-wait" class="hint hidden">Esperando a que el anfitrión arranque la partida…</p>
+      </div>
+    </div>
+
+    <!-- Elegir el secreto -->
+    <div id="view-secret" class="view hidden">
+      <div class="card">
+        <h2>Tu número secreto</h2>
+        <p class="hint">4 dígitos del 1 al 9, sin repetir. Es el que tus rivales van a tener que adivinar.</p>
+        <div id="secret-pad" class="pad"></div>
+        <p id="secret-error" class="error hidden"></p>
+        <div class="row">
+          <button id="btn-secret" class="btn primary">Listo</button>
+          <button id="btn-secret-random" class="btn ghost">Al azar</button>
+          <button id="btn-secret-edit" class="btn ghost hidden">Cambiarlo</button>
+        </div>
+        <div id="secret-players" class="players"></div>
+      </div>
+    </div>
+
+    <!-- Partida -->
+    <div id="view-playing" class="view hidden">
+      <div class="card">
+        <div id="turn-banner" class="banner"></div>
+        <p class="target-line">Le adivinás a <b id="target-name">—</b></p>
+
+        <!-- El pad es la fila siguiente del tablero: se compara con la de arriba
+             y ya está donde va a caer el resultado. -->
+        <div id="my-board" class="board"></div>
+        <div id="guess-row" class="try guess-row">
+          <span id="guess-idx" class="idx"></span>
+          <div id="guess-pad" class="pad inline"></div>
+          <span id="guess-slot" class="marks pending">?</span>
+        </div>
+
+        <p id="guess-error" class="error hidden"></p>
+        <button id="btn-guess" class="btn primary big">Arriesgar</button>
+        <p id="guess-note" class="hint"></p>
+        <p class="hint">Tocá cada dígito de tus intentos para marcarlo: <b class="k-no">✕ no está</b> · <b class="k-pica">pica</b> · <b class="k-fijo">fijo</b>. Son anotaciones tuyas, nadie más las ve.</p>
+      </div>
+
+      <div class="card">
+        <h2>Tu número</h2>
+        <div id="my-secret" class="secret-num">····</div>
+        <p id="against-hint" class="hint"></p>
+        <div id="against-me" class="board"></div>
+      </div>
+
+      <div class="card">
+        <h2>La mesa</h2>
+        <div id="scoreboard" class="players"></div>
+        <div id="feed" class="feed"></div>
+      </div>
+    </div>
+
+    <!-- Entre rondas: alguien ganó -->
+    <div id="view-intermission" class="view hidden">
+      <div class="card">
+        <h2>¡Alguien lo sacó!</h2>
+        <div id="inter-winners" class="winners"></div>
+        <div id="inter-choice" class="hidden">
+          <p class="hint">Vos todavía no acertaste. ¿Seguís jugando hasta encontrarlo?</p>
+          <div class="row">
+            <button id="btn-continue" class="btn primary">Seguir jugando</button>
+            <button id="btn-quit" class="btn">Hasta acá</button>
+          </div>
+        </div>
+        <p id="inter-wait" class="hint hidden">Esperando a que el resto decida…</p>
+        <div id="inter-board" class="board"></div>
+      </div>
+    </div>
+
+    <!-- Final -->
+    <div id="view-finished" class="view hidden">
+      <div class="card">
+        <h2>Se terminó</h2>
+        <div id="final-podium" class="winners"></div>
+        <h3>Los números eran</h3>
+        <div id="final-secrets" class="players"></div>
+        <div class="row">
+          <button id="btn-rematch" class="btn primary hidden">Revancha</button>
+        </div>
+        <p id="final-wait" class="hint hidden">Esperando al anfitrión para la revancha…</p>
+      </div>
+      <div class="card">
+        <h2>Tu tablero</h2>
+        <p id="final-target-line" class="hint"></p>
+        <div id="final-board" class="board"></div>
+      </div>
+
+      <div class="card">
+        <h2>Historial</h2>
+        <div id="final-feed" class="feed"></div>
+      </div>
+    </div>
+
+    <div id="host-tools" class="card tools hidden">
+      <button id="btn-skip" class="btn ghost small hidden">Saltear turno</button>
+      <button id="btn-end" class="btn ghost small hidden">Terminar partida</button>
+    </div>
+  </section>
+
+  <footer class="foot">Fijos y Picas · las salas se borran solas a las 24 h sin uso</footer>
+</div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

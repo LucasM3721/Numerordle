@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+.dev.vars
+*.log
+
+# Permisos y ajustes propios de cada máquina (launch.json sí se comparte)
+.claude/settings.local.json

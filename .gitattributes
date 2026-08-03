@@ -1,0 +1,2 @@
+# Normalizar a LF dentro del repo: evita diffs falsos al cambiar de máquina.
+* text=auto eol=lf
