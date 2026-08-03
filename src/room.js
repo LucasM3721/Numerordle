@@ -237,10 +237,39 @@ function startRound(state) {
 }
 
 function finishGame(state) {
+  const yaTerminada = state.phase === 'finished';
   state.phase = 'finished';
   state.roundQueue = [];
   state.pending = {};
   state.revealed = state.players.map((p) => p.pub); // se destapa todo
+  // `finishGame` se llama desde varios lados y puede repetirse; el registro no.
+  if (!yaTerminada) registrarPartida(state);
+}
+
+/**
+ * Una línea por partida terminada, para poder mirar después cómo se juega de
+ * verdad: cuántos intentos tarda la gente, cuánto duran las partidas, si el
+ * modo simultáneo se usa. Sirve, entre otras cosas, para calibrar al rival de
+ * la máquina contra jugadores reales en vez de contra una intuición.
+ *
+ * **No va nada que identifique a nadie**: ni nombres, ni números secretos, ni
+ * ids, ni el código de la sala, ni de dónde se conectó cada uno. Solo la forma
+ * de la partida. Si algún día hace falta agregar un campo, que pase por acá.
+ */
+function registrarPartida(state) {
+  const intentos = state.players.map((p) => ({
+    n: state.log.filter((e) => e.playerId === p.pub && !e.skipped).length,
+    gano: p.status === 'won',
+    ronda: p.wonRound ?? null,
+  }));
+  console.log(JSON.stringify({
+    evento: 'partida',
+    modo: state.mode,
+    jugadores: state.players.length,
+    rondas: state.round,
+    descuento: state.overtime,
+    intentos,
+  }));
 }
 
 function resolveGuess(state, playerId, guess) {
