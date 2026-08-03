@@ -19,24 +19,54 @@ Abre en `http://localhost:8787`. Para jugar de a varios en la misma máquina us�
 ventanas de incógnito distintas: la identidad del jugador vive en `localStorage`,
 así que dos pestañas normales son el *mismo* jugador.
 
+## Verificar los cambios
+
+```bash
+npm run check   # sintaxis de src/ y public/
+npm test        # juega dos partidas de prueba (necesita npm run dev en otra terminal)
+```
+
+`npm test` verifica los invariantes del juego, no solo que el código compile: el
+círculo de objetivos, que los secretos no salgan del servidor, que los intentos
+pendientes no se filtren y que fijos y picas den los números exactos.
+
 ## Subirlo
 
-Necesitás una cuenta de Cloudflare (el plan gratis alcanza: los Durable Objects
-con SQLite entran ahí, por eso la migración usa `new_sqlite_classes`).
+Está publicado en **https://numerordle.lucasm3721.workers.dev** — ese es el link
+que pasás; el de una sala concreta es `.../r/ABC12`.
+
+**Cada push a `main` despliega solo**, siempre que pasen las verificaciones
+(`.github/workflows/deploy.yml`). Para trabajar sin publicar, usá una rama y abrí
+un pull request: ahí corren los chequeos sin tocar producción.
+
+A mano, desde cualquier máquina:
 
 ```bash
 npx wrangler login
 npm run deploy
 ```
 
-Está publicado en **https://numerordle.lucasm3721.workers.dev** — ese es el link
-que pasás; el de una sala concreta es `.../r/ABC12`.
+El plan gratis alcanza: los Durable Objects con SQLite entran ahí, por eso la
+migración usa `new_sqlite_classes`.
 
-> La primera vez, Cloudflare tarda un rato en emitir el certificado TLS del
-> subdominio nuevo. Mientras tanto el sitio da `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`
-> aunque el Worker ya esté andando. Es esperar, no hay nada que configurar.
+Para ver errores en vivo: `npm run tail`. Para volver atrás: `npx wrangler rollback`.
 
-Para ver errores en vivo: `npm run tail`.
+### Configurar el deploy automático (una sola vez)
+
+1. En Cloudflare: **My Profile → API Tokens → Create Token**, plantilla
+   **"Edit Cloudflare Workers"**. Copiá el token, se muestra una única vez.
+2. En GitHub: **Settings → Secrets and variables → Actions → New repository
+   secret**, con nombre `CLOUDFLARE_API_TOKEN`.
+
+El token no va nunca al repo ni se le pasa a nadie. Si se pierde o se filtra, se
+revoca desde el mismo panel de Cloudflare y se crea otro.
+
+Si el deploy se queja de no poder resolver la cuenta, agregá un segundo secreto
+`CLOUDFLARE_ACCOUNT_ID` (lo ves con `npx wrangler whoami`).
+
+> Al crear un subdominio `workers.dev` por primera vez, Cloudflare tarda en emitir
+> el certificado TLS. Mientras tanto el sitio da `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`
+> aunque el Worker ya esté sirviendo. Es esperar, no hay nada que configurar.
 
 ## Documentación
 

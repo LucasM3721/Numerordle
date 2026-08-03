@@ -1,5 +1,25 @@
 # Fijos y Picas — guía del repo
 
+> **Dónde quedamos** (última sesión: agosto 2026)
+>
+> El juego está terminado y en vivo, jugado y probado con gente real. Lo que
+> quedó a medio hacer:
+>
+> 1. **Falta cargar el secreto `CLOUDFLARE_API_TOKEN` en GitHub.** Sin eso, el
+>    trabajo *Desplegar* del workflow falla y hay que publicar con
+>    `npm run deploy`. Los pasos están en el README, sección "Configurar el
+>    deploy automático". Una vez cargado: pestaña **Actions** → última ejecución
+>    → **Re-run failed jobs**.
+> 2. **Sin confirmar**: nadie miró todavía si la primera ejecución del workflow
+>    pasó el trabajo *Verificar* en CI. Localmente pasa 20/20.
+> 3. **Pendiente menor**: las *preview URLs* quedaron activadas por defecto en el
+>    deploy. Cada versión publicada queda accesible en una URL pública aparte.
+>    Para este juego es inofensivo; se apaga con `"preview_urls": false` en
+>    `wrangler.jsonc` y un deploy.
+>
+> Ideas que se evaluaron y se descartaron (con el porqué) están al final de
+> [docs/DECISIONES.md](docs/DECISIONES.md).
+
 Juego de adivinar números de 4 dígitos, multijugador por link. Corre en Cloudflare
 Workers: cada sala es un Durable Object con su propio estado y sus websockets.
 

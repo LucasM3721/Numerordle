@@ -134,6 +134,25 @@ gratis. Las salas inactivas hibernan y no cuestan nada.
   `curl.exe` fallan contra Cloudflare. Para probar, usar `node -e "fetch(...)"`.
 - **Node 20 necesita `--experimental-websocket`** para tener `WebSocket` global.
 
+## Por qué GitHub Actions y no Workers Builds
+
+Cloudflare puede desplegar solo al conectar el repo desde su panel (Workers
+Builds), y tiene una ventaja concreta: no hace falta ningún token. Se descartó
+igual, por dos motivos.
+
+El primero: **el "build" de este proyecto no valida casi nada.** No hay paso de
+compilación; `wrangler deploy` solo empaqueta los tres archivos de `src/`.
+`public/` se sube tal cual, sin que nadie lo parsee. Un error de sintaxis en
+`public/app.js` —donde vive casi toda la interfaz— pasa cualquier "build check" y
+llega roto a producción. Frenar ante un build fallido suena a red de seguridad y
+acá es casi decorativo.
+
+El segundo: lo que sí protege es correr una partida de prueba de verdad antes de
+publicar, y eso conviene tenerlo **versionado en el repo** y no en la
+configuración de un panel, que no viaja con el código ni se ve en un diff.
+
+El precio es un token de API guardado como secreto del repo. Vale la pena.
+
 ## Cómo se prueba
 
 No hay framework de tests. Lo que funcionó todo el desarrollo: un script de Node
