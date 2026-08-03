@@ -40,24 +40,28 @@ function percentil(ordenados, p) {
 }
 
 console.log(`${PARTIDAS} partidas por nivel\n`);
-console.log('nivel     media  mediana   p90   p99   máx   >15   colgadas');
-console.log('-'.repeat(62));
+console.log('nivel     media  mediana   mín   máx   p10   p90   p99   ≤6    >15');
+console.log('-'.repeat(72));
 
 for (const nivel of Object.keys(NIVELES)) {
   const r = [];
   for (let i = 0; i < PARTIDAS; i++) r.push(jugar(nivel));
   r.sort((a, b) => a - b);
   const media = r.reduce((a, b) => a + b, 0) / r.length;
+  const rapidas = r.filter((x) => x <= 6).length / r.length;
   const largas = r.filter((x) => x > 15).length / r.length;
-  const colgadas = r.filter((x) => x >= TOPE).length;
   console.log(
     nivel.padEnd(10) +
     media.toFixed(1).padStart(5) +
     String(percentil(r, 0.5)).padStart(9) +
+    String(r[0]).padStart(6) +
+    String(r.at(-1)).padStart(6) +
+    String(percentil(r, 0.1)).padStart(6) +
     String(percentil(r, 0.9)).padStart(6) +
     String(percentil(r, 0.99)).padStart(6) +
-    String(r.at(-1)).padStart(6) +
-    `${(largas * 100).toFixed(1)}%`.padStart(7) +
-    String(colgadas).padStart(11),
+    `${(rapidas * 100).toFixed(1)}%`.padStart(7) +
+    `${(largas * 100).toFixed(1)}%`.padStart(7),
   );
+  const colgadas = r.filter((x) => x >= TOPE).length;
+  if (colgadas > 0) console.log(`${' '.repeat(10)}⚠ ${colgadas} partidas llegaron al tope de ${TOPE}`);
 }

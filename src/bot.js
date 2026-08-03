@@ -22,22 +22,45 @@
  * Encima se olvida: `olvido` es la probabilidad de no usar algo que sabía.
  */
 
-import { SECRET_LEN } from './game.js';
+import { SECRET_LEN, scoreGuess } from './game.js';
 
 const DIGITOS = '123456789'.split('');
 
 /**
- * `deduceCambio` es la técnica de cambiar de a un dígito y mirar el total: la
- * que más acelera y la que menos gente aplica sola. `repasa` es enumerar las
- * 24 combinaciones al ordenar; sin eso, prueba de memoria y se le mezclan.
+ * Los niveles no son un handicap: son tres formas distintas de jugar.
+ *
+ * - `olvido`: probabilidad de no usar algo que ya sabía. Se aplica tanto al
+ *   anotar como al repasar, que es donde a uno se le escapan los renglones.
+ * - `deduceCambio`: la técnica de cambiar de a un dígito y mirar si el total se
+ *   mueve. La que más acelera y la que menos gente aplica sola.
+ * - `repasa`: al ordenar, revisar las 24 combinaciones contra lo anotado. Sin
+ *   esto prueba de memoria y se le mezclan.
+ * - `grupos`: segunda tanda de cuatro dígitos nuevos, y el noveno por resta.
+ * - `verifica` / `imagina`: cuántos números se imagina antes de tirar uno, y si
+ *   los imagina libremente o retocando el anterior. Las dos cosas van juntas:
+ *   imaginar libre sin insistir termina jugando cualquier cosa, y retocar el
+ *   anterior nunca se aleja lo suficiente para encontrar el que cierra.
+ *
+ * Medidos sobre 20.000 partidas cada uno (`npm run bot`): media de 15,9 / 12,1
+ * / 8,1 y mediana de 15 / 12 / 8. Si tocás cualquiera de estos números, corré
+ * la medición: son knobs acoplados y la intuición falla feo.
  */
 export const NIVELES = {
-  // Fácil también cambia de a un dígito: sin eso no aprende nada y no termina
-  // nunca. Un jugador malo es lento, no inmortal. Lo que lo hace malo es que se
-  // olvida de la mitad de lo que dedujo y que al ordenar prueba de memoria.
-  facil: { olvido: 0.45, deduceCambio: true, repasa: false, grupos: false },
-  normal: { olvido: 0.28, deduceCambio: true, repasa: true, grupos: false },
-  dificil: { olvido: 0.02, deduceCambio: true, repasa: true, grupos: true },
+  // El distraído. Retoca el anterior de a un dígito, se olvida de casi la mitad
+  // de lo que dedujo y al ordenar prueba de memoria. Igual cambia de a un
+  // dígito: sin eso no aprende nada y no termina nunca. Un jugador malo es
+  // lento, no inmortal.
+  facil: { olvido: 0.45, deduceCambio: true, repasa: false, grupos: false, verifica: 2, imagina: false },
+
+  // El que juega bien pero de memoria. Lleva la cuenta y repasa al ordenar,
+  // pero piensa pocos números antes de tirar y se le escapan cosas.
+  normal: { olvido: 0.28, deduceCambio: true, repasa: true, grupos: false, verifica: 8, imagina: false },
+
+  // El metódico. Abre con dos tandas para cubrir los nueve dígitos y después
+  // insiste hasta dar con un número que explique todo lo anotado. Lo que lo
+  // frena es lo único que frena a alguien así: repasando salteado se le pasa
+  // un renglón y tira un número que ya estaba descartado.
+  dificil: { olvido: 0.25, deduceCambio: true, repasa: true, grupos: true, verifica: 400, imagina: true },
 };
 
 export function nuevoCuaderno(nivel = 'normal') {
@@ -219,19 +242,6 @@ function intentoDeBusqueda(c, azar) {
   }
 
   const actual = c.ultimo.intento.split('');
-
-  // Cambiar un dudoso por uno que ya sé que no está: el resultado nunca queda
-  // ambiguo. Si el total baja, el que saqué estaba; si no se mueve, tampoco.
-  // Contra un dígito sin probar, el empate no dice nada.
-  const dudosos = actual
-    .map((_, i) => i)
-    .filter((i) => !c.dentro.has(actual[i]) && !c.fuera.has(actual[i]));
-  const descartados = [...c.fuera].filter((d) => !actual.includes(d));
-  if (nivel.grupos && dudosos.length > 0 && descartados.length > 0) {
-    const salida = [...actual];
-    salida[alAzar(dudosos, azar)] = alAzar(descartados, azar);
-    return salida.join('');
-  }
   const sinProbar = DIGITOS.filter(
     (d) => !c.dentro.has(d) && !c.fuera.has(d) && !actual.includes(d),
   );
@@ -249,6 +259,47 @@ function intentoDeBusqueda(c, azar) {
   return salida.join('');
 }
 
+/**
+ * ¿Este número explica todo lo que anoté? O sea: si el secreto fuera éste, ¿los
+ * intentos que ya tiré habrían dado los fijos y picas que dieron? Es el "a ver,
+ * probemos si cierra" de cualquiera antes de comprometerse con un número.
+ *
+ * Con `olvido` se saltea renglones: repasar la lista entera cada vez, sin que
+ * se te escape ninguno, es justamente lo que no hace una persona.
+ */
+function cierraConLasNotas(candidato, c, azar) {
+  const olvido = NIVELES[c.nivel].olvido;
+  for (const h of c.historia) {
+    if (azar() < olvido) continue;
+    const { fijos, picas } = scoreGuess(h.intento, candidato);
+    if (fijos !== h.fijos || picas !== h.picas) return false;
+  }
+  return true;
+}
+
+/**
+ * El próximo intento. Piensa un número, se fija si cierra con lo anotado, y si
+ * no, piensa otro. **No enumera las 3024**: las imagina de a una y las
+ * descarta, que es lo que se puede hacer en la mesa. `verifica` es cuántas
+ * llega a probar antes de encogerse de hombros y jugar la última que pensó —
+ * o sea, cuánta paciencia tiene.
+ */
 export function proponerIntento(c, azar = azarPorDefecto) {
-  return c.dentro.size >= SECRET_LEN ? intentoDeOrden(c, azar) : intentoDeBusqueda(c, azar);
+  const nivel = NIVELES[c.nivel];
+  const pensar = () => {
+    if (c.dentro.size >= SECRET_LEN) return intentoDeOrden(c, azar);
+    // Cambiar de a un dígito hace que el resultado signifique algo, pero solo
+    // imagina números pegados al anterior: si el que cierra está lejos, no lo
+    // encuentra. Con paciencia para verificar conviene lo contrario —imaginar
+    // libre y descartar— y sin ella, el cambio de a uno es lo mejor que hay.
+    if (nivel.imagina) return colocar(cuatroDigitos(c, azar), c, azar);
+    return intentoDeBusqueda(c, azar);
+  };
+
+  let candidato = pensar();
+  for (let i = 0; i < nivel.verifica; i++) {
+    if (cierraConLasNotas(candidato, c, azar)) return candidato;
+    candidato = pensar();
+  }
+  return candidato;
 }
