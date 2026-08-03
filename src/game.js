@@ -91,8 +91,22 @@ export function scoreGuess(guess, secret) {
   return { fijos, picas: comunes - fijos };
 }
 
+/**
+ * Las marcas de dirección son invisibles y dan vuelta el texto que las rodea:
+ * un nombre con una adentro desordena la línea entera de la interfaz. Los
+ * caracteres de control se cambian por espacio (y no se borran) para que
+ * "Ana\nBeto" quede "Ana Beto" y no "AnaBeto".
+ */
+const BIDI = /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
+const CONTROL = /\p{Cc}/gu;
+
 export function cleanName(raw) {
-  const name = String(raw ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME);
+  const name = String(raw ?? '')
+    .replace(BIDI, '')
+    .replace(CONTROL, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_NAME);
   return name || 'Jugador';
 }
 

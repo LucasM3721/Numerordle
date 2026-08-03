@@ -148,6 +148,19 @@ mensajes por hora de juego.
 Los archivos estáticos no invocan el Worker, así que las visitas a la página son
 gratis. Las salas inactivas hibernan y no cuestan nada.
 
+Con el link circulando en público eso deja de ser solo una cuenta y pasa a ser
+una superficie: cada mensaje que alguien mande cuesta. Por eso hay un tope de
+**60 mensajes cada 10 segundos por jugador**; pasado eso se descartan en
+silencio (contestar sería justo el trabajo que se quiere evitar) y a los 300 se
+corta la conexión, porque a esa altura no es una pestaña colgada. Una partida
+entera son decenas de mensajes: nadie que juegue lo va a notar.
+
+El historial también está acotado, en **600 entradas**. El estado de la sala se
+guarda entero en una sola clave y se reescribe en cada jugada, así que el log
+es lo único que puede crecer sin freno. 600 son unas 50 rondas con la sala
+llena. Su numerador (`logSeq`) es aparte del largo del array: si se recorta, los
+números no se repiten, que es lo que rompería las anotaciones del cuaderno.
+
 ## Trampas que ya nos comimos
 
 - **`new_sqlite_classes` en la migración** (y no `new_classes`) es lo que permite

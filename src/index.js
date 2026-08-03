@@ -32,13 +32,12 @@ export default {
       return json({ error: 'No se pudo crear la sala, probá de nuevo.' }, 503);
     }
 
-    const match = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(ws|exists)$/);
+    // Hubo un /exists que decía si una sala existía y cuántos había adentro.
+    // No lo usaba el cliente y servía para barrer códigos a ver qué aparecía.
+    const match = url.pathname.match(/^\/api\/rooms\/([^/]+)\/ws$/);
     if (match) {
       const code = normalizeCode(decodeURIComponent(match[1]));
-      const action = match[2];
       if (!isValidCode(code)) return json({ error: 'Código inválido.' }, 400);
-
-      if (action === 'exists') return roomFetch(env, code, 'exists');
 
       const qs = new URLSearchParams({
         pid: url.searchParams.get('pid') ?? '',

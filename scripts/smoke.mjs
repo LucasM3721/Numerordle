@@ -311,6 +311,33 @@ async function identidadPublica() {
   [ana, beto, impostor].forEach((w) => w.close());
 }
 
+// ------------------------------------------------------------ endurecido
+
+async function limitesYRuido() {
+  console.log('\nLímites del servidor');
+  const code = await crearSala('sim');
+  const ana = await conectar(code, 'ritmo-ana', 'Ana');
+  await esperar(ana, (s) => s.players.length === 1, 'que entre Ana');
+
+  // El endpoint que decía si una sala existía servía para barrer códigos.
+  const res = await fetch(`${BASE}/api/rooms/${code}/exists`);
+  chequear('ya no se puede preguntar si una sala existe', res.status === 404, `HTTP ${res.status}`);
+
+  // Una marca de dirección adentro del nombre da vuelta la línea entera.
+  decir(ana, { t: 'rename', name: 'Be‮to' });
+  await esperar(ana, (s) => s.players[0].name !== 'Ana', 'el cambio de nombre');
+  igual('el nombre queda sin marcas de dirección', estado(ana).players[0].name, 'Beto');
+
+  // Y una avalancha corta la conexión en vez de seguir facturando requests.
+  const cerro = new Promise((ok) => ana.addEventListener('close', (e) => ok(e.code)));
+  for (let i = 0; i < 400; i++) decir(ana, { t: 'ping' });
+  const codigo = await Promise.race([
+    cerro,
+    new Promise((_, no) => setTimeout(() => no(new Error('no cortó la conexión')), TIMEOUT_MS)),
+  ]);
+  igual('una avalancha de mensajes corta la conexión', codigo, 4004);
+}
+
 // ------------------------------------------------------------------ main
 
 console.log(`Probando contra ${BASE}`);
@@ -319,6 +346,7 @@ try {
   await partidaSimultanea();
   await cupoDeLaSala();
   await identidadPublica();
+  await limitesYRuido();
 } catch (err) {
   fallos++;
   console.log(`\nError inesperado: ${err.message}`);

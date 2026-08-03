@@ -17,7 +17,19 @@ import {
 
 const IDLE_TTL_MS = 1000 * 60 * 60 * 24; // la sala se borra tras 24 h sin uso
 const GRACE_MS = 1000 * 90; // margen para recargar la página o cambiar de red
-const MAX_LOG = 2000;
+
+// Todo el estado de la sala se guarda en una sola clave y se reescribe entero
+// en cada jugada, así que el historial es lo único que puede crecer sin freno.
+// 600 entradas son unas 50 rondas con la sala llena: de sobra para una partida
+// de verdad, y deja el estado bien lejos del límite de tamaño por valor.
+const MAX_LOG = 600;
+
+// Cada mensaje que entra por websocket es un request facturable del Durable
+// Object. Esto no es para el que juega —una partida entera son decenas de
+// mensajes— sino para el que quiera hacer girar la factura.
+const MSG_VENTANA_MS = 10000;
+const MSG_MAX = 60;
+const MSG_CORTE = MSG_MAX * 5; // pasado esto no es una pestaña loca, es a propósito
 
 // ---------------------------------------------------------------- helpers
 
@@ -38,6 +50,7 @@ function newState(code, mode, maxPlayers) {
     turnPtr: 0,
     pending: {}, // modo simultáneo: playerId -> intento
     log: [],
+    logSeq: 0, // numerador del historial: no se reinicia aunque el log se recorte
     revealed: [], // ids cuyos secretos ya son públicos
     game: 1,
   };
@@ -225,7 +238,7 @@ function resolveGuess(state, playerId, guess) {
   const target = findPlayer(state, targetIdOf(state, playerId));
   const { fijos, picas } = scoreGuess(guess, target.secret);
   state.log.push({
-    n: state.log.length,
+    n: state.logSeq++,
     round: state.round,
     playerId: player.pub,
     playerName: player.name,
@@ -282,7 +295,7 @@ function pushSkip(state, playerId) {
   const player = findPlayer(state, playerId);
   const target = findPlayer(state, targetIdOf(state, playerId));
   state.log.push({
-    n: state.log.length,
+    n: state.logSeq++,
     round: state.round,
     playerId: player?.pub ?? null,
     playerName: player?.name ?? '?',
@@ -364,9 +377,17 @@ export class GameRoom {
     this.ctx = ctx;
     this.env = env;
     this.state = null;
+    // Contador de mensajes por jugador. En memoria a propósito: si la sala
+    // hiberna es porque estuvo quieta, que es justo cuando no hay nada que
+    // limitar.
+    this.ritmo = new Map();
     ctx.blockConcurrencyWhile(async () => {
       this.state = (await ctx.storage.get('state')) ?? null;
       ensurePublicIds(this.state);
+      // Salas de antes de que el historial tuviera numerador propio.
+      if (this.state && this.state.logSeq == null) {
+        this.state.logSeq = this.state.log.reduce((max, e) => Math.max(max, e.n + 1), 0);
+      }
     });
   }
 
@@ -383,14 +404,6 @@ export class GameRoom {
       );
       await this.save();
       return json({ ok: true, code: this.state.code });
-    }
-
-    if (action === 'exists') {
-      return json({
-        exists: !!this.state,
-        phase: this.state?.phase ?? null,
-        players: this.state?.players.length ?? 0,
-      });
     }
 
     if (action === 'ws') {
@@ -458,15 +471,40 @@ export class GameRoom {
     return null;
   }
 
+  /**
+   * Cuántos mensajes lleva este jugador en la ventana actual. Devuelve el
+   * número para que quien llama decida: ignorar de más, o cortar.
+   */
+  contar(pid) {
+    const ahora = Date.now();
+    const previo = this.ritmo.get(pid);
+    if (!previo || ahora - previo.desde >= MSG_VENTANA_MS) {
+      this.ritmo.set(pid, { desde: ahora, n: 1 });
+      return 1;
+    }
+    previo.n++;
+    return previo.n;
+  }
+
   async webSocketMessage(ws, raw) {
     if (!this.state) return;
+
+    const { pid } = ws.deserializeAttachment() ?? {};
+    const cuantos = this.contar(pid);
+    if (cuantos > MSG_CORTE) {
+      ws.close(4004, 'demasiados mensajes');
+      return;
+    }
+    // Se descarta en silencio: contestar cada mensaje de más sería justamente
+    // el trabajo que se quiere evitar.
+    if (cuantos > MSG_MAX) return;
+
     let msg;
     try {
       msg = JSON.parse(raw);
     } catch {
       return;
     }
-    const { pid } = ws.deserializeAttachment() ?? {};
     const player = findPlayer(this.state, pid);
     if (!player) return;
 
@@ -698,6 +736,7 @@ export class GameRoom {
         s.turnPtr = 0;
         s.pending = {};
         s.log = [];
+        s.logSeq = 0;
         s.revealed = [];
         s.game++;
         return true;
