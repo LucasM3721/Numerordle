@@ -58,6 +58,31 @@ y se equivoca o filtra información sin querer. Acá no puede pasar.
 El historial de intentos, en cambio, **es público a propósito**: en la mesa
 escuchás lo que arriesgan todos.
 
+## Identidad: el pid no es el id
+
+Cada jugador tiene **dos** identificadores y no hay que confundirlos:
+
+- El **pid** es la credencial. Lo genera el cliente, vive en su `localStorage` y
+  viaja en la query del websocket. Quien lo tenga **es** ese jugador.
+- El **id público** (`pub`) lo asigna el servidor al entrar. Es lo único que ven
+  los demás: va en la lista de jugadores, en el historial, en `revealed` y en
+  todo lo que sale por `viewFor`.
+
+Al principio eran el mismo valor, y eso era un agujero grande: `viewFor` mandaba
+el pid de todos a todos, así que cualquiera que hubiera pasado por la sala podía
+reconectarse con el pid ajeno y el servidor le contestaba con el número secreto
+de esa persona. La consola del navegador alcanzaba.
+
+Por eso `viewFor` es **la frontera**: de ahí para afuera no sale ni un solo
+identificador que sirva para autenticarse. Los mensajes que nombran a otro
+jugador (mover, coronar, echar) traen ids públicos y se resuelven con
+`findByPub`. Si agregás un campo al estado que lleve un id, fijate de qué
+espacio es.
+
+El pid además se valida (`isValidPid`): tiene que parecer un identificador, y
+`__proto__` y compañía quedan afuera porque terminan usándose como clave en
+`state.pending` y ahí no se comportan como una clave normal.
+
 ## Los dos modos
 
 - **Ronda simultánea** (por defecto): cada uno manda su intento cuando puede y se

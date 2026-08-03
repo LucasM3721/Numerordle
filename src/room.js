@@ -8,7 +8,9 @@ import {
   MAX_PLAYERS,
   clampMaxPlayers,
   cleanName,
+  isValidPid,
   isValidSecret,
+  randomPublicId,
   scoreGuess,
   shuffled,
 } from './game.js';
@@ -41,8 +43,47 @@ function newState(code, mode, maxPlayers) {
   };
 }
 
+/**
+ * Dos espacios de identificadores, y no hay que mezclarlos:
+ *
+ * - `p.id` es el **pid**: la credencial con la que el jugador se autentica.
+ *   Vive solo en el servidor. Quien lo tenga, ES ese jugador.
+ * - `p.pub` es el **id público**: lo que ven los demás. Va en el historial,
+ *   en `revealed` y en todo lo que sale por `viewFor`.
+ *
+ * Los mensajes que entran nombrando a otro jugador (mover, coronar, echar)
+ * traen ids públicos, así que se resuelven con `findByPub`.
+ */
 function findPlayer(state, id) {
   return state.players.find((p) => p.id === id) ?? null;
+}
+
+function findByPub(state, pub) {
+  return state.players.find((p) => p.pub === pub) ?? null;
+}
+
+function pubOf(state, id) {
+  return findPlayer(state, id)?.pub ?? null;
+}
+
+/**
+ * Salas guardadas antes de que existiera el id público: se les inventa uno y
+ * se traduce lo que ya quedó escrito, para que una partida en curso no pierda
+ * el historial ni a sus ganadores al desplegar.
+ */
+function ensurePublicIds(state) {
+  if (!state || state.players.every((p) => p.pub)) return;
+  const mapa = new Map();
+  for (const p of state.players) {
+    if (!p.pub) p.pub = randomPublicId();
+    mapa.set(p.id, p.pub);
+  }
+  const tr = (id) => mapa.get(id) ?? id;
+  for (const e of state.log) {
+    e.playerId = tr(e.playerId);
+    e.targetId = tr(e.targetId);
+  }
+  state.revealed = state.revealed.map(tr);
 }
 
 /** Las salas creadas antes de que el cupo fuera configurable no lo tienen. */
@@ -162,20 +203,19 @@ function finishGame(state) {
   state.phase = 'finished';
   state.roundQueue = [];
   state.pending = {};
-  state.revealed = state.players.map((p) => p.id); // se destapa todo
+  state.revealed = state.players.map((p) => p.pub); // se destapa todo
 }
 
 function resolveGuess(state, playerId, guess) {
   const player = findPlayer(state, playerId);
-  const targetId = targetIdOf(state, playerId);
-  const target = findPlayer(state, targetId);
+  const target = findPlayer(state, targetIdOf(state, playerId));
   const { fijos, picas } = scoreGuess(guess, target.secret);
   state.log.push({
     n: state.log.length,
     round: state.round,
-    playerId,
+    playerId: player.pub,
     playerName: player.name,
-    targetId,
+    targetId: target.pub,
     targetName: target.name,
     guess,
     fijos,
@@ -194,7 +234,8 @@ function endRound(state) {
 
   if (roundHits.length > 0) {
     for (const hit of roundHits) {
-      const winner = findPlayer(state, hit.playerId);
+      // El historial habla en ids públicos.
+      const winner = findByPub(state, hit.playerId);
       if (winner && winner.status === 'playing') {
         winner.status = 'won';
         winner.wonRound = state.round;
@@ -224,14 +265,15 @@ function advanceStrict(state) {
 }
 
 function pushSkip(state, playerId) {
-  const targetId = targetIdOf(state, playerId);
+  const player = findPlayer(state, playerId);
+  const target = findPlayer(state, targetIdOf(state, playerId));
   state.log.push({
     n: state.log.length,
     round: state.round,
-    playerId,
-    playerName: findPlayer(state, playerId)?.name ?? '?',
-    targetId,
-    targetName: findPlayer(state, targetId)?.name ?? '?',
+    playerId: player?.pub ?? null,
+    playerName: player?.name ?? '?',
+    targetId: target?.pub ?? null,
+    targetName: target?.name ?? '?',
     guess: null,
     fijos: 0,
     picas: 0,
@@ -249,7 +291,11 @@ function resolveSimultaneous(state, force = false) {
   endRound(state);
 }
 
-/** Vista personalizada: nadie recibe el secreto de otro hasta que se revela. */
+/**
+ * Vista personalizada: nadie recibe el secreto de otro hasta que se revela.
+ * Es también la frontera donde los pid se traducen a ids públicos: de acá
+ * para afuera no sale ni un solo identificador que sirva para autenticarse.
+ */
 function viewFor(state, pid) {
   const me = findPlayer(state, pid);
   const n = state.players.length;
@@ -261,35 +307,35 @@ function viewFor(state, pid) {
     overtime: state.overtime,
     round: state.round,
     game: state.game,
-    hostId: state.hostId,
+    hostId: pubOf(state, state.hostId),
     minPlayers: MIN_PLAYERS,
     maxPlayers: roomLimit(state), // el cupo de esta sala
     maxPlayersCap: MAX_PLAYERS, // el techo hasta donde el anfitrión lo puede subir
     players: state.players.map((p, i) => ({
-      id: p.id,
+      id: p.pub,
       name: p.name,
       connected: p.connected,
       status: p.status,
       ready: isValidSecret(p.secret),
       wonRound: p.wonRound,
       decision: p.decision ?? null,
-      targetId: n >= 2 ? state.players[(i + 1) % n].id : null,
-      secret: state.revealed.includes(p.id) ? p.secret : null,
+      targetId: n >= 2 ? state.players[(i + 1) % n].pub : null,
+      secret: state.revealed.includes(p.pub) ? p.secret : null,
     })),
     turnId:
       state.mode === 'strict' && state.phase === 'playing'
-        ? state.roundQueue[state.turnPtr] ?? null
+        ? pubOf(state, state.roundQueue[state.turnPtr])
         : null,
     waitingOn:
       state.mode === 'sim' && state.phase === 'playing'
-        ? state.roundQueue.filter((id) => !state.pending[id])
+        ? state.roundQueue.filter((id) => !state.pending[id]).map((id) => pubOf(state, id))
         : [],
     log: state.log,
     you: {
-      id: pid,
+      id: me?.pub ?? null,
       name: me?.name ?? null,
       secret: me?.secret ?? null,
-      targetId: me ? targetIdOf(state, pid) : null,
+      targetId: me ? pubOf(state, targetIdOf(state, pid)) : null,
       pending: state.pending[pid] ?? null,
       isHost: state.hostId === pid,
       inGame: !!me,
@@ -306,6 +352,7 @@ export class GameRoom {
     this.state = null;
     ctx.blockConcurrencyWhile(async () => {
       this.state = (await ctx.storage.get('state')) ?? null;
+      ensurePublicIds(this.state);
     });
   }
 
@@ -360,8 +407,11 @@ export class GameRoom {
 
   async join(pid, rawName) {
     if (!this.state) return 'Esta sala no existe (o venció por inactividad).';
-    if (!pid || pid.length > 64) return 'Identificador inválido.';
+    if (!isValidPid(pid)) return 'Identificador inválido.';
 
+    // El pid es la credencial: quien lo tenga es ese jugador. Por eso no sale
+    // nunca del servidor (ver `viewFor`); si saliera, alcanzaría con leerlo de
+    // la sala para hacerse pasar por otro y que el servidor le mande su número.
     const existing = findPlayer(this.state, pid);
     if (existing) {
       existing.connected = true;
@@ -378,6 +428,7 @@ export class GameRoom {
       }
       this.state.players.push({
         id: pid,
+        pub: randomPublicId(),
         name: uniqueName(this.state, rawName, pid),
         secret: null,
         connected: true,
@@ -493,7 +544,7 @@ export class GameRoom {
       case 'move': {
         requireHost();
         if (s.phase !== 'lobby') throw new Error('El orden se arma antes de empezar.');
-        const i = s.players.findIndex((p) => p.id === msg.id);
+        const i = s.players.findIndex((p) => p.pub === msg.id);
         if (i < 0) throw new Error('Ese jugador ya no está en la sala.');
         const j = i + (msg.dir < 0 ? -1 : 1);
         if (j < 0 || j >= s.players.length) return false;
@@ -503,7 +554,7 @@ export class GameRoom {
 
       case 'makeHost': {
         requireHost();
-        const nuevo = findPlayer(s, msg.id);
+        const nuevo = findByPub(s, msg.id);
         if (!nuevo) throw new Error('Ese jugador ya no está en la sala.');
         if (nuevo.id === player.id) throw new Error('Ya sos vos el anfitrión.');
         if (!nuevo.connected) {
@@ -515,12 +566,12 @@ export class GameRoom {
 
       case 'kick': {
         requireHost();
-        if (msg.id === player.id) throw new Error('No podés sacarte a vos mismo.');
-        const victima = findPlayer(s, msg.id);
+        const victima = findByPub(s, msg.id);
         if (!victima) throw new Error('Ese jugador ya no está en la sala.');
+        if (victima.id === player.id) throw new Error('No podés sacarte a vos mismo.');
         if (detach(s, victima)) {
           for (const sock of this.ctx.getWebSockets()) {
-            if ((sock.deserializeAttachment() ?? {}).pid === msg.id) {
+            if ((sock.deserializeAttachment() ?? {}).pid === victima.id) {
               sock.send(JSON.stringify({ t: 'kicked', reason: 'El anfitrión te sacó de la sala.' }));
               sock.close(4002, 'kick');
             }

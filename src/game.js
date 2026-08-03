@@ -23,6 +23,32 @@ export function normalizeCode(raw) {
   return String(raw ?? '').trim().toUpperCase();
 }
 
+/**
+ * Id público de un jugador. Es lo único que viaja a los demás: el `pid` con el
+ * que cada uno se autentica no sale nunca del servidor, así que conocer a
+ * alguien en la sala no alcanza para hacerse pasar por él.
+ */
+export function randomPublicId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(9));
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * El pid lo elige el cliente y termina usándose como clave de objetos (los
+ * intentos pendientes), así que conviene que sea un identificador y no
+ * cualquier cosa. `__proto__` y compañía quedan afuera aparte: pasan el patrón
+ * pero no se comportan como claves normales de un objeto plano.
+ */
+const PID_RESERVADOS = new Set(['__proto__', 'constructor', 'prototype']);
+
+export function isValidPid(pid) {
+  return (
+    typeof pid === 'string'
+    && /^[A-Za-z0-9_-]{8,64}$/.test(pid)
+    && !PID_RESERVADOS.has(pid)
+  );
+}
+
 export function isValidCode(code) {
   return typeof code === 'string' && /^[A-Z2-9]{4,8}$/.test(code);
 }

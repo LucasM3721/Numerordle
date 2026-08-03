@@ -102,9 +102,9 @@ const resumenLog = (s) =>
 async function partidaPorTurnos() {
   console.log('\nModo por turnos, 3 jugadores');
   const code = await crearSala('strict');
-  const ana = await conectar(code, 'sm-a', 'Ana');
-  const beto = await conectar(code, 'sm-b', 'Beto');
-  const cami = await conectar(code, 'sm-c', 'Cami');
+  const ana = await conectar(code, 'smoke-ana', 'Ana');
+  const beto = await conectar(code, 'smoke-beto', 'Beto');
+  const cami = await conectar(code, 'smoke-cami', 'Cami');
 
   await esperar(ana, (s) => s.players.length === 3, 'que entren los tres');
   igual('entran los tres en orden', nombres(estado(ana)), ['Ana', 'Beto', 'Cami']);
@@ -185,8 +185,8 @@ async function partidaPorTurnos() {
 async function partidaSimultanea() {
   console.log('\nModo simultáneo, 2 jugadores');
   const code = await crearSala('sim');
-  const ana = await conectar(code, 'sm-d', 'Ana');
-  const beto = await conectar(code, 'sm-e', 'Beto');
+  const ana = await conectar(code, 'smoke-dana', 'Ana');
+  const beto = await conectar(code, 'smoke-elsa', 'Beto');
   await esperar(ana, (s) => s.players.length === 2, 'que entren los dos');
 
   decir(ana, { t: 'start' });
@@ -225,19 +225,19 @@ async function cupoDeLaSala() {
 
   // Pedir un cupo absurdo no abre una sala absurda: el tope es del servidor.
   const grande = await crearSala('sim', 99);
-  const ana = await conectar(grande, 'cp-a', 'Ana');
+  const ana = await conectar(grande, 'cupo-ana', 'Ana');
   const vista = await esperar(ana, (s) => s.players.length === 1, 'que entre Ana');
   igual('el pedido se recorta al tope duro', vista.maxPlayers, 12);
   igual('el cliente sabe hasta dónde se puede subir', vista.maxPlayersCap, 12);
 
   // Sala armada para dos: el tercero rebota en la puerta.
   const chica = await crearSala('sim', 2);
-  const beto = await conectar(chica, 'cp-b', 'Beto');
-  const cami = await conectar(chica, 'cp-c', 'Cami');
+  const beto = await conectar(chica, 'cupo-beto', 'Beto');
+  const cami = await conectar(chica, 'cupo-cami', 'Cami');
   await esperar(beto, (s) => s.players.length === 2, 'que entren los dos');
   igual('la sala respeta el cupo que se pidió', estado(beto).maxPlayers, 2);
 
-  const dani = await conectar(chica, 'cp-d', 'Dani');
+  const dani = await conectar(chica, 'cupo-dani', 'Dani');
   const rebote = await esperarRechazo(dani);
   chequear('el tercero no entra en una sala de dos', rebote.includes('llena'), rebote);
   igual('y adentro siguen siendo dos', estado(beto).players.length, 2);
@@ -259,6 +259,49 @@ async function cupoDeLaSala() {
   [ana, beto, cami, dani].forEach((w) => w.close());
 }
 
+// --------------------------------------------------- identidad de jugador
+
+/**
+ * El agujero que esto cubre: si el id que ven los demás fuera el mismo con el
+ * que uno se autentica, cualquiera que estuvo en la sala podría reconectarse
+ * como otro y el servidor le mandaría el número secreto de esa persona.
+ */
+async function identidadPublica() {
+  console.log('\nIdentidad: el pid no sale del servidor');
+  const code = await crearSala('sim');
+  const ana = await conectar(code, 'ident-ana', 'Ana');
+  const beto = await conectar(code, 'ident-beto', 'Beto');
+  await esperar(ana, (s) => s.players.length === 2, 'que entren los dos');
+
+  decir(ana, { t: 'start' });
+  await esperar(ana, (s) => s.phase === 'secret', 'el reparto de números');
+  decir(ana, { t: 'setSecret', secret: '1234' });
+  decir(beto, { t: 'setSecret', secret: '5678' });
+  const jugando = await esperar(ana, (s) => s.phase === 'playing', 'que arranque la partida');
+
+  const crudo = JSON.stringify(jugando);
+  chequear('el pid de Beto no viaja al cliente', !crudo.includes('ident-beto'));
+  chequear('el pid propio tampoco viaja', !crudo.includes('ident-ana'));
+
+  // Con el id público de Beto no se puede ser Beto: para el servidor es
+  // alguien nuevo, y la partida ya empezó.
+  const pubBeto = buscar(jugando, 'Beto').id;
+  const impostor = await conectar(code, pubBeto, 'Impostor');
+  const rebote = await esperarRechazo(impostor);
+  chequear('el id público no sirve para entrar como otro', rebote.includes('ya empezó'), rebote);
+  igual('el impostor no recibió ni un estado', impostor.estados.length, 0);
+  igual('y la sala sigue siendo de dos', estado(ana).players.length, 2);
+
+  // Un pid que no parece un identificador ni siquiera se considera.
+  const raro = await conectar(code, '__proto__', 'Raro');
+  chequear(
+    'un pid con formato inválido se rechaza',
+    (await esperarRechazo(raro)).includes('Identificador'),
+  );
+
+  [ana, beto, impostor, raro].forEach((w) => w.close());
+}
+
 // ------------------------------------------------------------------ main
 
 console.log(`Probando contra ${BASE}`);
@@ -266,6 +309,7 @@ try {
   await partidaPorTurnos();
   await partidaSimultanea();
   await cupoDeLaSala();
+  await identidadPublica();
 } catch (err) {
   fallos++;
   console.log(`\nError inesperado: ${err.message}`);

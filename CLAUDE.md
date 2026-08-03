@@ -62,16 +62,20 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 2. **Los secretos no salen del servidor.** Todo lo que se manda al cliente pasa por
    `viewFor()`, que arma una vista por jugador. Si agregás campos al estado,
    fijate que no filtren el número de nadie.
-3. **En modo simultáneo los intentos pendientes no se publican** hasta que juegan
+3. **El `pid` tampoco sale.** Es la credencial: quien lo tenga es ese jugador.
+   Hacia afuera cada uno se identifica con su `pub`, y los mensajes que nombran
+   a otro se resuelven con `findByPub`. Si agregás un campo con un id, fijate
+   de qué espacio es (ver `viewFor` y docs/DECISIONES.md).
+4. **En modo simultáneo los intentos pendientes no se publican** hasta que juegan
    todos. Solo su dueño ve el suyo (`you.pending`).
-4. **La ronda se juega entera aunque alguien ya haya ganado**, para que pueda haber
+5. **La ronda se juega entera aunque alguien ya haya ganado**, para que pueda haber
    empate en la misma vuelta. Los ganadores se resuelven en `endRound()`.
-5. **Nada se encola si se corta la conexión.** `send()` avisa y pide repetir.
+6. **Nada se encola si se corta la conexión.** `send()` avisa y pide repetir.
 
 ## Cómo probar
 
-`scripts/smoke.mjs` (o sea `npm test`) juega dos partidas enteras y verifica los
-cinco invariantes de arriba. **Si tocás la lógica del juego, agregale un caso.**
+`scripts/smoke.mjs` (o sea `npm test`) juega partidas enteras y verifica los
+invariantes de arriba. **Si tocás la lógica del juego, agregale un caso.**
 Se validó rompiendo el cálculo de picas a propósito: la prueba falla y corta el
 deploy, que es lo único que hace que valga la pena tenerla.
 
