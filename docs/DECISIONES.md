@@ -155,7 +155,40 @@ silencio (contestar sería justo el trabajo que se quiere evitar) y a los 300 se
 corta la conexión, porque a esa altura no es una pestaña colgada. Una partida
 entera son decenas de mensajes: nadie que juegue lo va a notar.
 
-Tres topes más, todos por la misma razón:
+## El límite de ritmo
+
+Crear una sala es la operación cara: cada una es un Durable Object. Va limitada
+a **10 por minuto por IP**, y abrir una sala a 60, con la API de Rate Limiting
+de Workers declarada en `wrangler.jsonc`.
+
+Se descartó la regla de *Rate Limiting* del WAF, que hace lo mismo desde el
+panel, por una razón de interfaz: el WAF devuelve una página de error de
+Cloudflare, y desde el Worker se puede devolver un 429 con JSON que el cliente
+convierte en un aviso que explica qué pasó **y que entrar con un código sigue
+andando**. Un juego no debería parecer roto porque alguien lo estaba abusando.
+
+Se cuenta por `CF-Connecting-IP`, que pone el borde y el cliente no puede
+falsear. **No** por jugador: el `pid` lo elige el cliente y se cambia borrando
+el `localStorage`, así que serviría para frenar un accidente pero no a alguien
+que no quiere ser frenado. Sin esa cabecera no estamos detrás del borde —o sea,
+`wrangler dev`— y se deja pasar.
+
+Dos límites del enfoque, para no confundirse:
+
+- **El conteo es por centro de datos, no global.** Alguien distribuido lo
+  esquiva en parte. Para el nivel de amenaza de un juego con link público
+  alcanza; no es una barrera absoluta.
+- **Una IP no es una persona.** Detrás de un NAT pueden ser muchos. Por eso 10
+  por minuto y no 2: un grupo grande armando varias salas seguidas tiene que
+  poder.
+
+El aviso a Discord pasa por su propio limitador de uno por minuto. Sin eso, el
+aviso amplificaría el ataque en vez de contarlo. No lleva la IP: es dato
+personal de un tercero y no cambia lo que hay que hacer al respecto.
+
+## Otros topes
+
+Tres más, todos por la misma razón:
 
 - **Una sala vacía vence a los 10 minutos**, no a las 24 horas. El que crea una
   sala se conecta en el acto, así que `players: []` significa que nadie llegó a

@@ -323,6 +323,19 @@ function goHome(message) {
 
 // -------------------------------------------------------------- acciones
 
+/**
+ * El aviso de saturación no es un error del jugador y no se va solo: mientras
+ * esté puesto, la sala no se puede crear. Entrar con un código sigue andando,
+ * y eso hay que decirlo o parece que se rompió todo.
+ */
+function setBusy(msg) {
+  const node = $('home-busy');
+  node.textContent = msg
+    ? `${msg} Si te pasaron un código, podés entrar igual.`
+    : '';
+  node.classList.toggle('hidden', !msg);
+}
+
 async function createRoom() {
   const name = $('home-name').value.trim();
   if (!name) return flash('home-error', 'Poné tu nombre primero.');
@@ -335,7 +348,16 @@ async function createRoom() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ mode, max: Number($('home-max').value) }),
     });
-    const data = await res.json();
+
+    // El cuerpo puede no ser JSON: si algún día frena el borde de Cloudflare en
+    // vez del Worker, lo que llega es una página de error.
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 429) {
+      setBusy(data.error ?? 'Ahora mismo no se pueden crear salas nuevas. Probá de nuevo en un minuto.');
+      return;
+    }
+    setBusy('');
     if (!res.ok) throw new Error(data.error ?? 'No se pudo crear la sala.');
     history.pushState({}, '', `/r/${data.code}`);
     connect(data.code);

@@ -13,10 +13,13 @@
 > por la sala podía reconectarse como otro y el servidor le contestaba con su
 > número secreto.
 >
-> **Antes de lanzar en serio falta una cosa que no se puede hacer desde el
-> repo**: una regla de *Rate Limiting* del WAF sobre `POST /api/rooms` en el
-> panel de Cloudflare. El tope de mensajes por websocket ya está en el código,
-> pero la creación de salas no tiene freno: cada una es un Durable Object.
+> El límite de creación de salas quedó **en el código** (API de Rate Limiting de
+> Workers, en `wrangler.jsonc`) y no en el panel, así el cliente puede mostrar
+> un aviso decente en vez de una página de error de Cloudflare.
+>
+> **Lo único que falta cargar a mano** es el secreto `DISCORD_WEBHOOK_URL`, para
+> que avise cuando esté frenando. Sin él el límite funciona igual, en silencio.
+> Los pasos están en el README.
 >
 > Ideas que se evaluaron y se descartaron (con el porqué) están al final de
 > [docs/DECISIONES.md](docs/DECISIONES.md).

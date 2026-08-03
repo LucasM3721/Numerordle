@@ -9,10 +9,17 @@ import { MAX_PLAYERS, clampMaxPlayers, isValidCode, normalizeCode, randomCode } 
 export { GameRoom };
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/rooms' && request.method === 'POST') {
+      if (!(await dentroDelLimite(env, env.CREAR_SALA, request))) {
+        ctx.waitUntil(avisar(env, 'Se está frenando la creación de salas: alguien viene pidiendo más de 10 por minuto.'));
+        return json({
+          error: 'Ahora mismo no se pueden crear salas nuevas. Probá de nuevo en un minuto.',
+        }, 429);
+      }
+
       let mode = 'sim';
       let max = MAX_PLAYERS;
       try {
@@ -46,6 +53,12 @@ export default {
       }
       if (!isValidCode(code)) return json({ error: 'Código inválido.' }, 400);
 
+      // Entrar a una sala es mucho más barato que crearla, pero abrir sockets
+      // en masa igual cuesta: cada apertura es un request del Durable Object.
+      if (!(await dentroDelLimite(env, env.ABRIR_SALA, request))) {
+        return json({ error: 'Demasiados intentos de conexión. Esperá un momento.' }, 429);
+      }
+
       const qs = new URLSearchParams({
         pid: url.searchParams.get('pid') ?? '',
         name: url.searchParams.get('name') ?? '',
@@ -60,6 +73,42 @@ export default {
     return env.ASSETS.fetch(request);
   },
 };
+
+/**
+ * Límite por IP. Se cuenta por `CF-Connecting-IP`, que lo pone el borde de
+ * Cloudflare y el cliente no puede falsear. No se limita por jugador: el `pid`
+ * lo elige el cliente y se cambia borrando el localStorage, así que serviría
+ * para frenar un accidente pero no a alguien que no quiere ser frenado.
+ *
+ * Sin esa cabecera no estamos detrás del borde —o sea, `wrangler dev`— y no hay
+ * por dónde limitar: se deja pasar. En producción Cloudflare la pone siempre.
+ */
+async function dentroDelLimite(env, limitador, request) {
+  const ip = request.headers.get('CF-Connecting-IP');
+  if (!limitador || !ip) return true;
+  const { success } = await limitador.limit({ key: ip });
+  return success;
+}
+
+/**
+ * Aviso a Discord. Pasa por su propio limitador de uno por minuto: sin eso, el
+ * aviso amplificaría el ataque en vez de contarlo. No se manda la IP: es dato
+ * personal de un tercero y no cambia lo que hay que hacer al respecto.
+ */
+async function avisar(env, texto) {
+  if (!env.DISCORD_WEBHOOK_URL || !env.AVISO) return;
+  try {
+    const { success } = await env.AVISO.limit({ key: 'aviso' });
+    if (!success) return;
+    await fetch(env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ content: `⚠️ Fijos y Picas — ${texto}` }),
+    });
+  } catch {
+    /* que el aviso falle no puede romper la respuesta al jugador */
+  }
+}
 
 function roomFetch(env, code, path, method = 'GET', original = null) {
   const id = env.ROOMS.idFromName(code);

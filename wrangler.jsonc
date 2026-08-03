@@ -25,6 +25,19 @@
     { "tag": "v1", "new_sqlite_classes": ["GameRoom"] }
   ],
 
+  // Límites de ritmo, por IP. Ojo con dos cosas:
+  //   - El período solo puede ser 10 o 60 segundos.
+  //   - El conteo es *por centro de datos*, no global. Alguien distribuido lo
+  //     esquiva en parte; para el nivel de amenaza de un juego con link público
+  //     alcanza, pero no es una barrera absoluta.
+  // CREAR_SALA es el que importa: cada sala es un Durable Object.
+  // AVISO no limita a nadie, se usa para no mandar mil notificaciones seguidas.
+  "ratelimits": [
+    { "name": "CREAR_SALA", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
+    { "name": "ABRIR_SALA", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } },
+    { "name": "AVISO", "namespace_id": "1003", "simple": { "limit": 1, "period": 60 } }
+  ],
+
   // Cada versión publicada podría quedar accesible en su propia URL pública.
   // Hoy Cloudflare no las emite para Workers con Durable Objects, así que esto
   // probablemente no cambie nada; queda escrito porque con el link dando

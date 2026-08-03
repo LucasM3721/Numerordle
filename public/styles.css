@@ -51,6 +51,19 @@ h3 { font-size: 0.9rem; margin: 18px 0 6px; color: var(--muted); text-transform:
 .sub { color: var(--muted); margin: 0 auto; max-width: 42ch; }
 .hint { color: var(--muted); font-size: 0.88rem; margin: 4px 0 0; }
 .error { color: var(--danger); font-size: 0.88rem; margin: 8px 0 0; }
+
+/* No es un error del jugador: es el servidor pidiendo un minuto. Se distingue
+   del rojo a propósito, y a diferencia de .error no se va sola a los 5 s. */
+.notice {
+  color: var(--accent);
+  background: rgba(255, 200, 87, .08);
+  border: 1px solid rgba(255, 200, 87, .35);
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin: 12px 0 0;
+}
 .foot { text-align: center; color: #5c6377; font-size: 0.75rem; margin-top: 28px; }
 
 /* ----------------------------------------------------------------- cajas */

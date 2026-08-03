@@ -64,6 +64,20 @@ revoca desde el mismo panel de Cloudflare y se crea otro.
 Si el deploy se queja de no poder resolver la cuenta, agregá un segundo secreto
 `CLOUDFLARE_ACCOUNT_ID` (lo ves con `npx wrangler whoami`).
 
+### Avisos cuando se frena la creación de salas (opcional)
+
+Cuando alguien pide más de 10 salas por minuto, el Worker corta y puede avisarte
+por Discord. En el canal que quieras: **Editar canal → Integraciones → Webhooks
+→ Nuevo webhook**, copiás la URL y:
+
+```bash
+npx wrangler secret put DISCORD_WEBHOOK_URL
+```
+
+Sin ese secreto el límite funciona igual, nada más que en silencio. El aviso
+sale como mucho una vez por minuto —si no, el propio aviso amplificaría el
+problema— y no incluye la IP de nadie.
+
 > Al crear un subdominio `workers.dev` por primera vez, Cloudflare tarda en emitir
 > el certificado TLS. Mientras tanto el sitio da `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`
 > aunque el Worker ya esté sirviendo. Es esperar, no hay nada que configurar.
