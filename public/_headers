@@ -1,0 +1,14 @@
+# Cabeceras de todo lo estático. Cloudflare las aplica y no sirve este archivo.
+#
+# Ojo al tocarlo: un error acá rompe el sitio en el navegador y las pruebas no
+# lo notan, porque no abren ninguno. Después de desplegar, mirá la consola.
+#
+# connect-src lleva los orígenes del websocket a mano. 'self' debería alcanzar
+# —el spec dice que cubre ws/wss del mismo host— pero no todos los navegadores
+# lo cumplieron siempre, y quedarse sin websocket es quedarse sin juego. Si
+# algún día el juego vive en un dominio propio, hay que agregarlo acá.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' wss://numerordle.lucasm3721.workers.dev ws://127.0.0.1:8787 ws://localhost:8787; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), microphone=(), camera=()

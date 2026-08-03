@@ -176,6 +176,11 @@ números no se repiten, que es lo que rompería las anotaciones del cuaderno.
 - **PowerShell 5.1 no negocia TLS 1.2 por defecto**, así que `Invoke-WebRequest` y
   `curl.exe` fallan contra Cloudflare. Para probar, usar `node -e "fetch(...)"`.
 - **Node 20 necesita `--experimental-websocket`** para tener `WebSocket` global.
+- **`wrangler dev` puede no arrancar en Windows** con *"There was an access
+  violation in the runtime"*. No es el código ni la versión de wrangler: le
+  falta la [VC++ Redistributable x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)
+  a la máquina. Mientras tanto, la única forma de correr `npm test` es abrir un
+  pull request y dejar que lo haga CI.
 
 ## Por qué GitHub Actions y no Workers Builds
 

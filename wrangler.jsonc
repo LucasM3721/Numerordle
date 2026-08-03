@@ -25,5 +25,12 @@
     { "tag": "v1", "new_sqlite_classes": ["GameRoom"] }
   ],
 
+  // Cada versión publicada podría quedar accesible en su propia URL pública.
+  // Hoy Cloudflare no las emite para Workers con Durable Objects, así que esto
+  // probablemente no cambie nada; queda escrito porque con el link dando
+  // vueltas en público no queremos versiones viejas sirviendo por su cuenta,
+  // y el despliegue de este proyecto va derecho a producción igual.
+  "preview_urls": false,
+
   "observability": { "enabled": true }
 }

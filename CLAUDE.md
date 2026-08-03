@@ -2,18 +2,21 @@
 
 > **Dónde quedamos** (última sesión: agosto 2026)
 >
-> El juego está terminado y en vivo, jugado y probado con gente real. El deploy
-> automático **ya funciona de punta a punta**: el secreto `CLOUDFLARE_API_TOKEN`
-> está cargado en GitHub y el workflow pasó entero, *Verificar* (sintaxis, build
-> y la partida de prueba en CI) y *Desplegar*. Se comprobó además que producción
-> sirve exactamente los mismos archivos que hay en `main`.
+> El juego está terminado y en vivo. El deploy automático funciona de punta a
+> punta: el secreto está cargado y el workflow pasa entero, *Verificar* y
+> *Desplegar*.
 >
-> Lo único pendiente:
+> Lo último que se hizo fue prepararlo para **abrir el link al público**, en
+> cuatro pull requests apilados (cupo configurable → identidad → endurecer →
+> cabeceras). El grande es el de identidad: `viewFor` mandaba a todos el `pid`
+> de cada jugador, que es la credencial, así que cualquiera que hubiera pasado
+> por la sala podía reconectarse como otro y el servidor le contestaba con su
+> número secreto.
 >
-> 1. **Pendiente menor**: las *preview URLs* quedaron activadas por defecto en el
->    deploy. Cada versión publicada queda accesible en una URL pública aparte.
->    Para este juego es inofensivo; se apaga con `"preview_urls": false` en
->    `wrangler.jsonc` y un deploy.
+> **Antes de lanzar en serio falta una cosa que no se puede hacer desde el
+> repo**: una regla de *Rate Limiting* del WAF sobre `POST /api/rooms` en el
+> panel de Cloudflare. El tope de mensajes por websocket ya está en el código,
+> pero la creación de salas no tiene freno: cada una es un Durable Object.
 >
 > Ideas que se evaluaron y se descartaron (con el porqué) están al final de
 > [docs/DECISIONES.md](docs/DECISIONES.md).
