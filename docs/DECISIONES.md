@@ -184,8 +184,10 @@ buena fe y dejarlos afuera con un cambio de configuración sería peor que tener
 uno de más. `clampMaxPlayers()` recibe ese piso y lo hace cumplir; el servidor
 recorta siempre, así que un cliente modificado no puede abrir una sala de 50.
 
-Se toca solo en la sala de espera: una vez repartidos los números la sala ya
-está cerrada a los de afuera y el número no significaría nada.
+Se toca solo en la sala de espera, que es donde el anfitrión está mirando la
+lista. Durante el reparto todavía puede entrar gente hasta llenar el cupo, pero
+ahí ya están todos eligiendo su número y andar moviendo la configuración de la
+sala en ese momento es ruido.
 
 ## Ideas que quedaron afuera
 

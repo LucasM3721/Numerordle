@@ -169,8 +169,8 @@ sola y no queda esperándolo.
 - Hasta 12 jugadores por sala. El que la crea elige el cupo (de 2 a 12) y lo
   puede cambiar en la sala de espera, pero nunca por debajo de los que ya
   entraron.
-- Se puede entrar hasta que empieza el reparto de secretos; después la sala se
-  cierra a los de afuera.
+- Se puede entrar mientras el resto elige su número; la sala se cierra a los de
+  afuera recién cuando arranca la primera ronda.
 - Recargar la página o cambiar de dispositivo no te saca: la identidad va en
   `localStorage` y el estado vive en el servidor.
 - Las salas se borran solas a las 24 h sin actividad (una alarma del Durable
