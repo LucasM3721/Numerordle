@@ -74,6 +74,35 @@ export function nuevoCuaderno(nivel = 'normal') {
   };
 }
 
+/**
+ * El cuaderno vive en el estado de la sala, que se guarda y se recupera. Los
+ * `Set` no sobreviven a ese viaje de forma confiable, así que entra y sale como
+ * listas planas. La conversión está acá y no en `room.js` para que el resto del
+ * juego no tenga que saber cómo está armado el cuaderno por dentro.
+ */
+export function guardarCuaderno(c) {
+  return {
+    nivel: c.nivel,
+    fuera: [...c.fuera],
+    dentro: [...c.dentro],
+    prohibido: c.prohibido.map((s) => [...s]),
+    historia: c.historia,
+    ultimo: c.ultimo,
+  };
+}
+
+export function cargarCuaderno(plano) {
+  const c = nuevoCuaderno(plano?.nivel);
+  if (!plano) return c;
+  c.fuera = new Set(plano.fuera ?? []);
+  c.dentro = new Set(plano.dentro ?? []);
+  c.prohibido = (plano.prohibido ?? []).map((l) => new Set(l));
+  while (c.prohibido.length < SECRET_LEN) c.prohibido.push(new Set());
+  c.historia = plano.historia ?? [];
+  c.ultimo = plano.ultimo ?? null;
+  return c;
+}
+
 const azarPorDefecto = () => Math.random();
 
 function mezclar(lista, azar) {

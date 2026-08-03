@@ -59,6 +59,10 @@ const marks = {
 const CAP_JUGADORES = 12;
 const MIN_JUGADORES = 2;
 
+// Cómo se presenta cada nivel de la máquina. Describen cómo juega, no cuán
+// buena es: "difícil" no dice nada, "metódica" sí.
+const NIVEL_TEXTO = { facil: 'distraída', normal: 'atenta', dificil: 'metódica' };
+
 const MARK_CLASS = ['', 'no', 'pica', 'fijo'];
 const MARK_LABEL = ['sin marcar', 'no está', 'pica: está, pero en otro lugar', 'fijo: está justo acá'];
 
@@ -338,15 +342,20 @@ let bloqueo = null;
 
 function bloquearCreacion(segundos, msg) {
   const btn = $('btn-create');
+  // Las dos formas de crear sala pasan por el mismo límite, así que se apagan
+  // juntas: dejar una prendida es prometer algo que va a fallar igual.
+  const otro = $('btn-bot');
   setBusy(msg);
   clearInterval(bloqueo);
   let quedan = segundos;
   btn.disabled = true;
+  otro.disabled = true;
   const tick = () => {
     if (quedan <= 0) {
       clearInterval(bloqueo);
       bloqueo = null;
       btn.disabled = false;
+      otro.disabled = false;
       btn.textContent = 'Crear sala';
       setBusy('');
       return;
@@ -373,17 +382,29 @@ function horaDeReposicion() {
   return reset.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-async function createRoom() {
+/**
+ * Contra la máquina: una sala de dos, por turnos, con la máquina ya adentro.
+ * Es el mismo camino que crear una sala normal — el bot es un jugador más del
+ * lado del servidor, así que acá no hay nada especial más que el pedido.
+ */
+function createBotRoom() {
+  const nivel = document.querySelector('input[name="nivel"]:checked')?.value ?? 'normal';
+  return createRoom({ mode: 'strict', max: 2, bot: nivel, boton: 'btn-bot' });
+}
+
+async function createRoom(opciones = {}) {
   const name = $('home-name').value.trim();
   if (!name) return flash('home-error', 'Poné tu nombre primero.');
   store.name = name;
-  const mode = document.querySelector('input[name="mode"]:checked')?.value ?? 'sim';
-  $('btn-create').disabled = true;
+  const boton = opciones.boton ?? 'btn-create';
+  const mode = opciones.mode ?? document.querySelector('input[name="mode"]:checked')?.value ?? 'sim';
+  const max = opciones.max ?? Number($('home-max').value);
+  $(boton).disabled = true;
   try {
     const res = await fetch('/api/rooms', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mode, max: Number($('home-max').value) }),
+      body: JSON.stringify({ mode, max, bot: opciones.bot }),
     });
 
     // Se lee como texto y después se intenta parsear: cuando el que corta es
@@ -414,7 +435,7 @@ async function createRoom() {
     flash('home-error', String(err.message ?? err));
   } finally {
     // Si quedó bloqueado a propósito, la cuenta regresiva es la que manda.
-    if (!bloqueo) $('btn-create').disabled = false;
+    if (!bloqueo) $(boton).disabled = false;
   }
 }
 
@@ -464,6 +485,7 @@ function playerEl(p, opts = {}) {
 
   const tag = el('span', 'tag');
   if (p.id === state.hostId) tag.appendChild(el('span', null, 'anfitrión'));
+  if (p.bot) tag.appendChild(el('span', 'maquina', NIVEL_TEXTO[p.bot] ?? p.bot));
   if (opts.tag) tag.appendChild(el('span', null, opts.tag));
   if (p.secret) tag.appendChild(el('span', 'num', p.secret));
 
@@ -479,7 +501,7 @@ function playerEl(p, opts = {}) {
     }
   }
 
-  if (opts.crown && p.id !== state.you.id && p.id !== state.hostId) {
+  if (opts.crown && !p.bot && p.id !== state.you.id && p.id !== state.hostId) {
     const btn = el('button', 'ctl crown', '👑');
     btn.title = `Hacer anfitrión a ${p.name}`;
     btn.setAttribute('aria-label', `Hacer anfitrión a ${p.name}`);
@@ -836,7 +858,8 @@ function renderFinished(isHost) {
 
 // ------------------------------------------------------------------ eventos
 
-$('btn-create').onclick = createRoom;
+$('btn-create').onclick = () => createRoom();
+$('btn-bot').onclick = createBotRoom;
 $('btn-join').onclick = joinRoom;
 $('home-code').addEventListener('keydown', (e) => e.key === 'Enter' && joinRoom());
 $('home-name').addEventListener('keydown', (e) => e.key === 'Enter' && ($('home-code').value ? joinRoom() : createRoom()));

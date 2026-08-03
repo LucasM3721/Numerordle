@@ -11,9 +11,18 @@ import {
   isValidPid,
   isValidSecret,
   randomPublicId,
+  randomSecret,
   scoreGuess,
   shuffled,
 } from './game.js';
+import {
+  NIVELES,
+  anotarResultado,
+  cargarCuaderno,
+  guardarCuaderno,
+  nuevoCuaderno,
+  proponerIntento,
+} from './bot.js';
 
 const IDLE_TTL_MS = 1000 * 60 * 60 * 24; // la sala se borra tras 24 h sin uso
 const GRACE_MS = 1000 * 90; // margen para recargar la página o cambiar de red
@@ -83,6 +92,40 @@ function findPlayer(state, id) {
 
 function findByPub(state, pub) {
   return state.players.find((p) => p.pub === pub) ?? null;
+}
+
+/**
+ * La máquina es un jugador más del círculo: tiene su número, su lugar en el
+ * orden y su historial. Todo lo que la distingue es que no hay un websocket
+ * del otro lado, así que juega sola cuando le toca.
+ *
+ * Nunca puede ser anfitriona ni la barre el barrido de ausentes: figura siempre
+ * conectada, que es lo que es.
+ */
+const esBot = (p) => Boolean(p?.bot);
+const humanos = (state) => state.players.filter((p) => !esBot(p));
+
+function nuevoBot(state, nivel) {
+  return {
+    id: `bot-${randomPublicId()}`,
+    pub: nuevoPub(state),
+    bot: NIVELES[nivel] ? nivel : 'normal',
+    cuaderno: guardarCuaderno(nuevoCuaderno(nivel)),
+    name: 'La máquina',
+    secret: null,
+    connected: true,
+    disconnectedAt: null,
+    status: 'playing',
+    wonRound: null,
+    decision: null,
+    joinedAt: Date.now(),
+  };
+}
+
+/** El anfitrión siempre es una persona: la máquina no maneja la sala. */
+function nuevoAnfitrion(state) {
+  const gente = humanos(state);
+  return (gente.find((p) => p.connected) ?? gente[0])?.id ?? null;
 }
 
 function pubOf(state, id) {
@@ -165,7 +208,7 @@ function uniqueName(state, raw, selfId) {
  * En partida no: los objetivos y el historial dependen del orden del círculo.
  */
 function sweepable(state, p) {
-  if (p.connected || !p.disconnectedAt) return false;
+  if (esBot(p) || p.connected || !p.disconnectedAt) return false;
   if (state.phase === 'lobby') return true;
   // En el reparto, solo se va el que todavía no eligió número: el que ya se
   // comprometió sigue siendo parte de la partida aunque se le caiga la conexión.
@@ -215,9 +258,7 @@ function detach(state, player) {
   const fuera = state.phase === 'lobby' || state.phase === 'secret' || state.phase === 'finished';
   if (fuera) {
     state.players = state.players.filter((p) => p.id !== player.id);
-    if (state.hostId === player.id) {
-      state.hostId = state.players.find((p) => p.connected)?.id ?? state.players[0]?.id ?? null;
-    }
+    if (state.hostId === player.id) state.hostId = nuevoAnfitrion(state);
     return true;
   }
   if (player.status === 'playing') {
@@ -259,7 +300,86 @@ function resolveGuess(state, playerId, guess) {
     picas,
   });
   if (state.log.length > MAX_LOG) state.log.splice(0, state.log.length - MAX_LOG);
+
+  // La máquina se entera del resultado acá y no al tirar el intento: en modo
+  // simultáneo su jugada queda pendiente hasta que juegan todos, igual que la
+  // de cualquiera, y no tendría por qué enterarse antes.
+  if (esBot(player)) {
+    const cuaderno = cargarCuaderno(player.cuaderno);
+    anotarResultado(cuaderno, guess, fijos, picas);
+    player.cuaderno = guardarCuaderno(cuaderno);
+  }
   return fijos;
+}
+
+/**
+ * Le toca a la máquina: elige su número cuando arranca el reparto y tira su
+ * intento cuando llega su turno. Se llama después de cada cambio de estado.
+ *
+ * El bucle existe porque una jugada suya destraba la siguiente —elige número,
+ * eso arranca la partida, y ahí le toca jugar— y con dos bots enfrentados una
+ * ronda entera puede resolverse sola. El tope es para que un error de lógica
+ * no se lleve puesto al Worker.
+ */
+function turnoDeBots(state) {
+  for (let vuelta = 0; vuelta < 100; vuelta++) {
+    if (!unaJugadaDeBot(state)) return;
+  }
+}
+
+function unaJugadaDeBot(state) {
+  if (state.phase === 'secret') {
+    const sinNumero = state.players.find((p) => esBot(p) && !isValidSecret(p.secret));
+    if (!sinNumero) return false;
+    sinNumero.secret = randomSecret();
+    if (everyoneReady(state)) {
+      state.phase = 'playing';
+      state.round = 1;
+      state.overtime = false;
+      startRound(state);
+    }
+    return true;
+  }
+
+  // Entre rondas, la máquina se planta. Seguir jugando por el gusto de
+  // encontrarlo es algo que hace una persona; ella ya no tiene nada que ganar,
+  // y así la partida termina cuando el que juega quiere.
+  if (state.phase === 'intermission') {
+    const indeciso = state.players.find(
+      (p) => esBot(p) && p.status === 'playing' && p.decision === null,
+    );
+    if (!indeciso) return false;
+    indeciso.decision = false;
+    indeciso.status = 'quit';
+    settleIntermission(state);
+    return true;
+  }
+
+  if (state.phase !== 'playing') return false;
+
+  const leToca = (p) =>
+    esBot(p) &&
+    p.status === 'playing' &&
+    state.roundQueue.includes(p.id) &&
+    (state.mode === 'strict' ? state.roundQueue[state.turnPtr] === p.id : !state.pending[p.id]);
+
+  const bot = state.players.find(leToca);
+  if (!bot) return false;
+
+  const cuaderno = cargarCuaderno(bot.cuaderno);
+  let intento = proponerIntento(cuaderno);
+  // El cuaderno no debería producir nunca un número inválido, pero si algún día
+  // lo hace, que la máquina juegue cualquier cosa y no que trabe la sala.
+  if (!isValidSecret(intento)) intento = randomSecret();
+
+  if (state.mode === 'strict') {
+    resolveGuess(state, bot.id, intento);
+    advanceStrict(state);
+  } else {
+    state.pending[bot.id] = intento;
+    if (state.roundQueue.every((id) => state.pending[id])) resolveSimultaneous(state);
+  }
+  return true;
 }
 
 /**
@@ -351,6 +471,7 @@ function viewFor(state, pid) {
     players: state.players.map((p, i) => ({
       id: p.pub,
       name: p.name,
+      bot: p.bot ?? null, // el nivel, para que el cliente lo muestre
       connected: p.connected,
       status: p.status,
       ready: isValidSecret(p.secret),
@@ -412,6 +533,10 @@ export class GameRoom {
         url.searchParams.get('mode'),
         url.searchParams.get('max'),
       );
+      // La máquina entra al crearse la sala, antes que nadie, así ya está en el
+      // círculo cuando llega el primero. Con dos jugadores el objetivo es mutuo.
+      const nivel = url.searchParams.get('bot');
+      if (nivel && NIVELES[nivel]) this.state.players.push(nuevoBot(this.state, nivel));
       await this.save();
       return json({ ok: true, code: this.state.code });
     }
@@ -462,6 +587,9 @@ export class GameRoom {
     // nunca del servidor (ver `viewFor`); si saliera, alcanzaría con leerlo de
     // la sala para hacerse pasar por otro y que el servidor le mande su número.
     const existing = findPlayer(this.state, pid);
+    // El lugar de la máquina no se ocupa: su pid es aleatorio y no sale de acá,
+    // pero el chequeo es gratis y no depende de que adivinar sea difícil.
+    if (esBot(existing)) return 'Ese lugar es de la máquina.';
     if (existing) {
       existing.connected = true;
       existing.disconnectedAt = null;
@@ -544,6 +672,7 @@ export class GameRoom {
     try {
       const changed = this.handle(player, msg);
       if (changed === false) return;
+      turnoDeBots(this.state);
       await this.save();
       await this.broadcast();
     } catch (err) {
@@ -572,8 +701,8 @@ export class GameRoom {
     player.connected = false;
     player.disconnectedAt = Date.now();
     if (this.state.hostId === pid) {
-      const heir = this.state.players.find((p) => p.connected);
-      if (heir) this.state.hostId = heir.id;
+      const heredero = nuevoAnfitrion(this.state);
+      if (heredero) this.state.hostId = heredero;
     }
     await this.save();
     await this.broadcast();
@@ -642,6 +771,7 @@ export class GameRoom {
         const nuevo = findByPub(s, msg.id);
         if (!nuevo) throw new Error('Ese jugador ya no está en la sala.');
         if (nuevo.id === player.id) throw new Error('Ya sos vos el anfitrión.');
+        if (esBot(nuevo)) throw new Error('La máquina no puede manejar la sala.');
         if (!nuevo.connected) {
           throw new Error('No le podés dejar la sala a alguien sin conexión.');
         }
@@ -789,9 +919,14 @@ export class GameRoom {
     await this.ctx.storage.setAlarm(this.nextAlarmAt());
   }
 
-  /** Cuánto vive esta sala sin actividad: poco si nunca entró nadie. */
+  /**
+   * Cuánto vive esta sala sin actividad: poco si nunca entró nadie. Se cuentan
+   * personas, no jugadores: una sala con la máquina esperando sola adentro está
+   * tan vacía como una sin nadie, y si no, crear salas contra la máquina sería
+   * la forma barata de dejar Durable Objects ocupados un día entero.
+   */
   ttl() {
-    return this.state.players.length === 0 ? EMPTY_TTL_MS : IDLE_TTL_MS;
+    return humanos(this.state).length === 0 ? EMPTY_TTL_MS : IDLE_TTL_MS;
   }
 
   /** La alarma sirve para dos cosas: barrer ausentes y vencer la sala. */
@@ -833,13 +968,13 @@ export class GameRoom {
     );
 
     if (s.players.length !== antes) {
-      if (s.players.length === 0) {
+      // Una sala donde solo queda la máquina no es una sala: es un Durable
+      // Object jugando solo.
+      if (humanos(s).length === 0) {
         await this.demolish();
         return;
       }
-      if (!findPlayer(s, s.hostId)) {
-        s.hostId = s.players.find((p) => p.connected)?.id ?? s.players[0].id;
-      }
+      if (!findPlayer(s, s.hostId)) s.hostId = nuevoAnfitrion(s);
       // Sin tocar lastActivity: barrer no cuenta como actividad de la sala.
       await this.ctx.storage.put('state', s);
       await this.broadcast();

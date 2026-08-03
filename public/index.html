@@ -56,6 +56,37 @@
     </div>
 
     <div class="card">
+      <div class="field">
+        <span>Contra la máquina</span>
+        <p class="hint">Uno a uno, por turnos. Ella también anota un número y te lo tenés que sacar antes de que te lo saque.</p>
+        <div class="modes">
+          <label class="mode">
+            <input type="radio" name="nivel" value="facil" />
+            <div>
+              <strong>Distraída</strong>
+              <small>Lleva mal la cuenta y se le mezclan las cosas. Suele tardar unos 16 intentos.</small>
+            </div>
+          </label>
+          <label class="mode">
+            <input type="radio" name="nivel" value="normal" checked />
+            <div>
+              <strong>Atenta</strong>
+              <small>Juega bien pero de memoria, y se le escapan cosas. Unos 12 intentos.</small>
+            </div>
+          </label>
+          <label class="mode">
+            <input type="radio" name="nivel" value="dificil" />
+            <div>
+              <strong>Metódica</strong>
+              <small>Descarta en orden y repasa lo anotado. Unos 8 intentos, y a veces lo saca en 5.</small>
+            </div>
+          </label>
+        </div>
+      </div>
+      <button id="btn-bot" class="btn primary big">Jugar contra la máquina</button>
+    </div>
+
+    <div class="card">
       <label class="field">
         <span>¿Te pasaron un código?</span>
         <div class="row">

@@ -31,11 +31,11 @@ function igual(descripcion, obtenido, esperado) {
 
 // --------------------------------------------------------------- conexión
 
-async function crearSala(mode, max) {
+async function crearSala(mode, max, bot) {
   const res = await fetch(`${BASE}/api/rooms`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ mode, max }),
+    body: JSON.stringify({ mode, max, bot }),
   });
   if (!res.ok) throw new Error(`no se pudo crear la sala: HTTP ${res.status}`);
   return (await res.json()).code;
@@ -371,6 +371,60 @@ async function topeDeConexiones() {
   [...abiertos, beto].forEach((w) => w.close());
 }
 
+// ------------------------------------------------- contra la máquina
+
+async function contraLaMaquina() {
+  console.log('\nPartida contra la máquina');
+  const code = await crearSala('strict', 2, 'dificil');
+  const ana = await conectar(code, 'maquina-ana', 'Ana');
+
+  const inicio = await esperar(ana, (s) => s.players.length === 2, 'que estén Ana y la máquina');
+  const maquina = inicio.players.find((p) => p.bot);
+  chequear('la máquina ya está en la sala al crearla', !!maquina, JSON.stringify(nombres(inicio)));
+  igual('con su nivel a la vista', maquina?.bot, 'dificil');
+  igual('la sala es de Ana, no de la máquina', inicio.you.isHost, true);
+
+  // No se le puede dejar la sala: quedaría sin nadie que la maneje.
+  decir(ana, { t: 'makeHost', id: maquina.id });
+  chequear(
+    'no se le puede ceder la sala a la máquina',
+    (await esperarError(ana, 1)).includes('máquina'),
+  );
+
+  decir(ana, { t: 'start' });
+  await esperar(ana, (s) => s.phase === 'secret', 'el reparto de números');
+  decir(ana, { t: 'setSecret', secret: '1234' });
+
+  const jugando = await esperar(ana, (s) => s.phase === 'playing', 'que arranque la partida');
+  igual('la máquina eligió su número sola', jugando.players.every((p) => p.ready), true);
+  igual('y el suyo sigue tapado', jugando.players.find((p) => p.bot).secret, null);
+
+  // Va primera en el círculo, así que juega sin que nadie la empuje.
+  igual('tiró su intento sin esperar a nadie', jugando.log.length, 1);
+  igual('y ahora le toca a Ana', jugando.turnId, jugando.you.id);
+  const suyo = jugando.log[0];
+  chequear(
+    'su intento es un número válido',
+    /^[1-9]{4}$/.test(suyo.guess) && new Set(suyo.guess).size === 4,
+    suyo.guess,
+  );
+
+  decir(ana, { t: 'guess', guess: '5678' });
+  // Con dos jugadas por ronda, la ronda se cierra y la máquina abre la que
+  // sigue. Puede acertar de entrada (pasa 1 de cada 3024), así que se verifica
+  // que la partida avance, no en qué ronda quedó.
+  const avance = await esperar(ana, (s) => s.log.length >= 2, 'que se juegue la ronda');
+  const deLaMaquina = avance.log.filter((e) => e.playerId === maquina.id);
+  chequear(
+    'la máquina sigue jugando sola cada vez que le toca',
+    deLaMaquina.length >= 1 && deLaMaquina.every((e) => /^[1-9]{4}$/.test(e.guess)),
+    JSON.stringify(deLaMaquina.map((e) => e.guess)),
+  );
+  igual('y le adivina a Ana, que es la única que tiene al lado', deLaMaquina[0].targetId, avance.you.id);
+
+  ana.close();
+}
+
 // ------------------------------------------------------------------ main
 
 console.log(`Probando contra ${BASE}`);
@@ -381,6 +435,7 @@ try {
   await identidadPublica();
   await limitesYRuido();
   await topeDeConexiones();
+  await contraLaMaquina();
 } catch (err) {
   fallos++;
   console.log(`\nError inesperado: ${err.message}`);

@@ -110,6 +110,17 @@ export function cleanName(raw) {
   return name || 'Jugador';
 }
 
+/** Un número válido al azar. Lo usa la máquina para elegir el suyo. */
+export function randomSecret() {
+  const pool = '123456789'.split('');
+  let out = '';
+  for (let i = 0; i < SECRET_LEN; i++) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % pool.length;
+    out += pool.splice(j, 1)[0];
+  }
+  return out;
+}
+
 /** Fisher-Yates con crypto, para mezclar el orden del círculo. */
 export function shuffled(list) {
   const out = [...list];
