@@ -1,0 +1,75 @@
+name: Verificar y desplegar
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # permite desplegar a mano desde la pestaña Actions
+
+# Si llegan dos push seguidos, cancela el anterior: no tiene sentido desplegar
+# una versión que ya quedó vieja.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Verificar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      # El deploy sube public/ tal cual, sin mirarlo: sin este paso un error de
+      # sintaxis en la interfaz llegaría a producción sin que nadie lo note.
+      - name: Sintaxis
+        run: npm run check
+
+      - name: Build del Worker
+        run: npx wrangler deploy --dry-run
+
+      - name: Levantar el servidor local
+        run: |
+          npx wrangler dev --port 8787 > wrangler-dev.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8787/ > /dev/null; then
+              echo "servidor listo"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "el servidor no arrancó a tiempo"
+          cat wrangler-dev.log
+          exit 1
+
+      - name: Jugar una partida de prueba
+        run: npm test
+
+      - name: Log del servidor si algo falló
+        if: failure()
+        run: cat wrangler-dev.log || true
+
+  desplegar:
+    name: Desplegar
+    needs: verificar # sin esto, no se despliega nada
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

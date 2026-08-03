@@ -10,9 +10,18 @@ Ahí está el porqué de las reglas y varios invariantes que no son obvios en el
 
 ```bash
 npm run dev      # servidor local en http://localhost:8787
-npm run deploy   # publica a Cloudflare
+npm run check    # sintaxis de src/ y public/
+npm test         # juega partidas de prueba contra el servidor local
+npm run deploy   # publica a Cloudflare (a mano)
 npm run tail     # logs de producción en vivo
 ```
+
+`npm test` necesita `npm run dev` corriendo en otra terminal. Para probar contra
+producción: `BASE=https://numerordle.lucasm3721.workers.dev npm test`.
+
+**Cada push a `main` despliega solo**, pero únicamente si pasan `check`, el build
+y `npm test` (ver `.github/workflows/deploy.yml`). Trabajá en ramas y abrí un pull
+request: ahí corren las verificaciones sin desplegar nada.
 
 Producción: https://numerordle.lucasm3721.workers.dev
 Para volver atrás un deploy: `npx wrangler rollback`.
@@ -43,8 +52,13 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 
 ## Cómo probar
 
-No hay framework de tests. Se prueba abriendo varios websockets con identidades
-distintas y jugando una partida entera. Con `npm run dev` corriendo:
+`scripts/smoke.mjs` (o sea `npm test`) juega dos partidas enteras y verifica los
+cinco invariantes de arriba. **Si tocás la lógica del juego, agregale un caso.**
+Se validó rompiendo el cálculo de picas a propósito: la prueba falla y corta el
+deploy, que es lo único que hace que valga la pena tenerla.
+
+Para explorar algo puntual, el patrón manual es abrir varios websockets con
+identidades distintas. Con `npm run dev` corriendo:
 
 ```bash
 node --experimental-websocket -e "const B='http://127.0.0.1:8787', WS='ws://127.0.0.1:8787'; (async()=>{ const {code}=await (await fetch(B+'/api/rooms',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'sim'})})).json(); const open=(pid,name)=>new Promise((ok,no)=>{const w=new WebSocket(WS+'/api/rooms/'+code+'/ws?pid='+pid+'&name='+name); w.states=[];w.errs=[]; w.addEventListener('message',e=>{const m=JSON.parse(e.data); m.t==='state'?w.states.push(m):w.errs.push(m);}); w.addEventListener('open',()=>ok(w)); w.addEventListener('error',no);}); const wait=ms=>new Promise(r=>setTimeout(r,ms)), say=(w,m)=>w.send(JSON.stringify(m)), last=w=>w.states.at(-1); const A=await open('a','Ana'), B2=await open('b','Beto'); await wait(400); say(A,{t:'start'}); await wait(300); say(A,{t:'setSecret',secret:'1234'}); say(B2,{t:'setSecret',secret:'5678'}); await wait(500); say(A,{t:'guess',guess:'5678'}); say(B2,{t:'guess',guess:'1289'}); await wait(600); console.log(JSON.stringify(last(A).log,null,1)); process.exit(0); })()"
