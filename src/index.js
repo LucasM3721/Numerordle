@@ -4,7 +4,7 @@
  */
 
 import { GameRoom } from './room.js';
-import { isValidCode, normalizeCode, randomCode } from './game.js';
+import { MAX_PLAYERS, clampMaxPlayers, isValidCode, normalizeCode, randomCode } from './game.js';
 
 export { GameRoom };
 
@@ -14,16 +14,19 @@ export default {
 
     if (url.pathname === '/api/rooms' && request.method === 'POST') {
       let mode = 'sim';
+      let max = MAX_PLAYERS;
       try {
         const body = await request.json();
         if (body?.mode === 'strict') mode = 'strict';
+        // El clamp definitivo lo hace la sala; acá solo se acota lo que viaja.
+        max = clampMaxPlayers(body?.max);
       } catch {
         /* body opcional */
       }
       // 32^5 combinaciones: la colisión es remotísima, pero se chequea igual.
       for (let intento = 0; intento < 5; intento++) {
         const code = randomCode(5);
-        const res = await roomFetch(env, code, `create?code=${code}&mode=${mode}`, 'POST');
+        const res = await roomFetch(env, code, `create?code=${code}&mode=${mode}&max=${max}`, 'POST');
         if (res.ok) return json({ code });
       }
       return json({ error: 'No se pudo crear la sala, probá de nuevo.' }, 503);

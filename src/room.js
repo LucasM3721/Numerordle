@@ -6,6 +6,7 @@
 import {
   MIN_PLAYERS,
   MAX_PLAYERS,
+  clampMaxPlayers,
   cleanName,
   isValidSecret,
   scoreGuess,
@@ -18,7 +19,7 @@ const MAX_LOG = 2000;
 
 // ---------------------------------------------------------------- helpers
 
-function newState(code, mode) {
+function newState(code, mode, maxPlayers) {
   const now = Date.now();
   return {
     code,
@@ -26,6 +27,7 @@ function newState(code, mode) {
     lastActivity: now,
     phase: 'lobby', // lobby | secret | playing | intermission | finished
     mode: mode === 'strict' ? 'strict' : 'sim',
+    maxPlayers: clampMaxPlayers(maxPlayers),
     overtime: false,
     hostId: null,
     players: [], // el orden del array ES el orden del círculo
@@ -41,6 +43,11 @@ function newState(code, mode) {
 
 function findPlayer(state, id) {
   return state.players.find((p) => p.id === id) ?? null;
+}
+
+/** Las salas creadas antes de que el cupo fuera configurable no lo tienen. */
+function roomLimit(state) {
+  return clampMaxPlayers(state.maxPlayers);
 }
 
 /** A cada jugador le toca adivinarle al siguiente del círculo. */
@@ -256,7 +263,8 @@ function viewFor(state, pid) {
     game: state.game,
     hostId: state.hostId,
     minPlayers: MIN_PLAYERS,
-    maxPlayers: MAX_PLAYERS,
+    maxPlayers: roomLimit(state), // el cupo de esta sala
+    maxPlayersCap: MAX_PLAYERS, // el techo hasta donde el anfitrión lo puede subir
     players: state.players.map((p, i) => ({
       id: p.id,
       name: p.name,
@@ -307,7 +315,11 @@ export class GameRoom {
 
     if (action === 'create') {
       if (this.state) return json({ error: 'ocupado' }, 409);
-      this.state = newState(url.searchParams.get('code'), url.searchParams.get('mode'));
+      this.state = newState(
+        url.searchParams.get('code'),
+        url.searchParams.get('mode'),
+        url.searchParams.get('max'),
+      );
       await this.save();
       return json({ ok: true, code: this.state.code });
     }
@@ -360,8 +372,9 @@ export class GameRoom {
       if (this.state.phase !== 'lobby' && this.state.phase !== 'secret') {
         return 'La partida ya empezó. Esperá a que terminen para entrar.';
       }
-      if (this.state.players.length >= MAX_PLAYERS) {
-        return `La sala está llena (máximo ${MAX_PLAYERS} jugadores).`;
+      const cupo = roomLimit(this.state);
+      if (this.state.players.length >= cupo) {
+        return `La sala está llena (máximo ${cupo} jugadores).`;
       }
       this.state.players.push({
         id: pid,
@@ -453,6 +466,18 @@ export class GameRoom {
         requireHost();
         if (s.phase !== 'lobby') throw new Error('El modo se elige antes de empezar.');
         s.mode = msg.mode === 'strict' ? 'strict' : 'sim';
+        return true;
+      }
+
+      // El cupo se toca solo en la espera: una vez repartidos los números la
+      // sala ya está cerrada a los de afuera y cambiarlo no significaría nada.
+      case 'setMax': {
+        requireHost();
+        if (s.phase !== 'lobby') throw new Error('El cupo se elige antes de empezar.');
+        const piso = Math.max(MIN_PLAYERS, s.players.length);
+        const nuevo = clampMaxPlayers(msg.max, piso);
+        if (nuevo === roomLimit(s)) return false;
+        s.maxPlayers = nuevo;
         return true;
       }
 

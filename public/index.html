@@ -46,6 +46,12 @@
         </div>
       </div>
 
+      <label class="field">
+        <span>Cuántos entran</span>
+        <select id="home-max"></select>
+        <small class="hint">El tope de la sala. Podés cambiarlo después, en la sala de espera.</small>
+      </label>
+
       <button id="btn-create" class="btn primary big">Crear sala</button>
     </div>
 
@@ -109,6 +115,11 @@
               <label class="mode"><input type="radio" name="rmode" value="sim" /><div><strong>Ronda simultánea</strong></div></label>
               <label class="mode"><input type="radio" name="rmode" value="strict" /><div><strong>Por turnos</strong></div></label>
             </div>
+          </div>
+          <div class="field">
+            <span>Cuántos entran</span>
+            <select id="lobby-max"></select>
+            <small id="lobby-max-hint" class="hint"></small>
           </div>
           <div class="row">
             <button id="btn-shuffle" class="btn">Mezclar orden</button>

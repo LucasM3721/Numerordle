@@ -31,11 +31,11 @@ function igual(descripcion, obtenido, esperado) {
 
 // --------------------------------------------------------------- conexión
 
-async function crearSala(mode) {
+async function crearSala(mode, max) {
   const res = await fetch(`${BASE}/api/rooms`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ mode }),
+    body: JSON.stringify({ mode, max }),
   });
   if (!res.ok) throw new Error(`no se pudo crear la sala: HTTP ${res.status}`);
   return (await res.json()).code;
@@ -46,10 +46,12 @@ function conectar(code, pid, name) {
     const ws = new WebSocket(`${WS_BASE}/api/rooms/${code}/ws?pid=${pid}&name=${name}`);
     ws.estados = [];
     ws.errores = [];
+    ws.rechazo = null;
     ws.addEventListener('message', (e) => {
       const m = JSON.parse(e.data);
       if (m.t === 'state') ws.estados.push(m);
       else if (m.t === 'error') ws.errores.push(m.msg);
+      else if (m.t === 'kicked') ws.rechazo = m.reason;
     });
     ws.addEventListener('open', () => resolve(ws));
     ws.addEventListener('error', () => reject(new Error(`no conectó ${name}`)));
@@ -77,6 +79,15 @@ const esperarError = async (ws, cuantos) => {
     await new Promise((r) => setTimeout(r, 50));
   }
   throw new Error('se agotó el tiempo esperando un mensaje de error');
+};
+
+const esperarRechazo = async (ws) => {
+  const limite = Date.now() + TIMEOUT_MS;
+  while (Date.now() < limite) {
+    if (ws.rechazo) return ws.rechazo;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  throw new Error('se agotó el tiempo esperando que la sala rechazara al jugador');
 };
 
 const nombres = (s) => s.players.map((p) => p.name);
@@ -207,12 +218,54 @@ async function partidaSimultanea() {
   [ana, beto].forEach((w) => w.close());
 }
 
+// ------------------------------------------------------- cupo de la sala
+
+async function cupoDeLaSala() {
+  console.log('\nCupo de la sala');
+
+  // Pedir un cupo absurdo no abre una sala absurda: el tope es del servidor.
+  const grande = await crearSala('sim', 99);
+  const ana = await conectar(grande, 'cp-a', 'Ana');
+  const vista = await esperar(ana, (s) => s.players.length === 1, 'que entre Ana');
+  igual('el pedido se recorta al tope duro', vista.maxPlayers, 12);
+  igual('el cliente sabe hasta dónde se puede subir', vista.maxPlayersCap, 12);
+
+  // Sala armada para dos: el tercero rebota en la puerta.
+  const chica = await crearSala('sim', 2);
+  const beto = await conectar(chica, 'cp-b', 'Beto');
+  const cami = await conectar(chica, 'cp-c', 'Cami');
+  await esperar(beto, (s) => s.players.length === 2, 'que entren los dos');
+  igual('la sala respeta el cupo que se pidió', estado(beto).maxPlayers, 2);
+
+  const dani = await conectar(chica, 'cp-d', 'Dani');
+  const rebote = await esperarRechazo(dani);
+  chequear('el tercero no entra en una sala de dos', rebote.includes('llena'), rebote);
+  igual('y adentro siguen siendo dos', estado(beto).players.length, 2);
+
+  // El anfitrión lo cambia en la espera, pero nunca por debajo de los que ya
+  // están adentro: entraron de buena fe y no se los puede dejar afuera.
+  decir(beto, { t: 'setMax', max: 8 });
+  await esperar(beto, (s) => s.maxPlayers === 8, 'que suba el cupo');
+  decir(beto, { t: 'setMax', max: 1 });
+  await esperar(beto, (s) => s.maxPlayers === 2, 'que el cupo baje hasta el piso');
+  igual('no baja de los que ya entraron', estado(beto).maxPlayers, 2);
+
+  decir(cami, { t: 'setMax', max: 12 });
+  chequear(
+    'solo el anfitrión toca el cupo',
+    (await esperarError(cami, 1)).includes('anfitrión'),
+  );
+
+  [ana, beto, cami, dani].forEach((w) => w.close());
+}
+
 // ------------------------------------------------------------------ main
 
 console.log(`Probando contra ${BASE}`);
 try {
   await partidaPorTurnos();
   await partidaSimultanea();
+  await cupoDeLaSala();
 } catch (err) {
   fallos++;
   console.log(`\nError inesperado: ${err.message}`);

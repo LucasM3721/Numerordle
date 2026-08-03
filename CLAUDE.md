@@ -2,17 +2,15 @@
 
 > **Dónde quedamos** (última sesión: agosto 2026)
 >
-> El juego está terminado y en vivo, jugado y probado con gente real. Lo que
-> quedó a medio hacer:
+> El juego está terminado y en vivo, jugado y probado con gente real. El deploy
+> automático **ya funciona de punta a punta**: el secreto `CLOUDFLARE_API_TOKEN`
+> está cargado en GitHub y el workflow pasó entero, *Verificar* (sintaxis, build
+> y la partida de prueba en CI) y *Desplegar*. Se comprobó además que producción
+> sirve exactamente los mismos archivos que hay en `main`.
 >
-> 1. **Falta cargar el secreto `CLOUDFLARE_API_TOKEN` en GitHub.** Sin eso, el
->    trabajo *Desplegar* del workflow falla y hay que publicar con
->    `npm run deploy`. Los pasos están en el README, sección "Configurar el
->    deploy automático". Una vez cargado: pestaña **Actions** → última ejecución
->    → **Re-run failed jobs**.
-> 2. **Sin confirmar**: nadie miró todavía si la primera ejecución del workflow
->    pasó el trabajo *Verificar* en CI. Localmente pasa 20/20.
-> 3. **Pendiente menor**: las *preview URLs* quedaron activadas por defecto en el
+> Lo único pendiente:
+>
+> 1. **Pendiente menor**: las *preview URLs* quedaron activadas por defecto en el
 >    deploy. Cada versión publicada queda accesible en una URL pública aparte.
 >    Para este juego es inofensivo; se apaga con `"preview_urls": false` en
 >    `wrangler.jsonc` y un deploy.

@@ -5,7 +5,7 @@
 
 export const SECRET_LEN = 4;
 export const MIN_PLAYERS = 2;
-export const MAX_PLAYERS = 8;
+export const MAX_PLAYERS = 12; // tope duro de la aplicación
 export const MAX_NAME = 16;
 
 // Sin I, O, 0 ni 1: el código se dicta por teléfono sin ambigüedades.
@@ -25,6 +25,18 @@ export function normalizeCode(raw) {
 
 export function isValidCode(code) {
   return typeof code === 'string' && /^[A-Z2-9]{4,8}$/.test(code);
+}
+
+/**
+ * Cupo de una sala. Cada sala elige el suyo, pero nunca por encima del tope
+ * duro ni por debajo de `piso` (los que ya están adentro: bajarlo más los
+ * dejaría fuera de una sala en la que ya entraron).
+ * Un valor ausente o ilegible cae en el tope, que es el comportamiento viejo.
+ */
+export function clampMaxPlayers(value, piso = MIN_PLAYERS) {
+  const n = Math.trunc(Number(value));
+  if (!Number.isFinite(n) || n <= 0) return MAX_PLAYERS;
+  return Math.min(MAX_PLAYERS, Math.max(piso, n));
 }
 
 /** 4 dígitos, todos entre 1 y 9, ninguno repetido. */

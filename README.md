@@ -166,7 +166,9 @@ sola y no queda esperándolo.
 
 ## Detalles operativos
 
-- Hasta 8 jugadores por sala.
+- Hasta 12 jugadores por sala. El que la crea elige el cupo (de 2 a 12) y lo
+  puede cambiar en la sala de espera, pero nunca por debajo de los que ya
+  entraron.
 - Se puede entrar hasta que empieza el reparto de secretos; después la sala se
   cierra a los de afuera.
 - Recargar la página o cambiar de dispositivo no te saca: la identidad va en

@@ -54,6 +54,11 @@ const marks = {
   },
 };
 
+// Para armar el selector de la pantalla de inicio, donde todavía no hay sala
+// de la cual sacarlos. Quien manda es el servidor: recorta lo que le mandes.
+const CAP_JUGADORES = 12;
+const MIN_JUGADORES = 2;
+
 const MARK_CLASS = ['', 'no', 'pica', 'fijo'];
 const MARK_LABEL = ['sin marcar', 'no está', 'pica: está, pero en otro lugar', 'fijo: está justo acá'];
 
@@ -91,6 +96,25 @@ function flash(id, msg) {
     clearTimeout(node._t);
     node._t = setTimeout(() => node.classList.add('hidden'), 5000);
   }
+}
+
+/**
+ * Llena un <select> con un rango de números. Solo lo reconstruye si el rango
+ * cambió: rehacer las opciones en cada render cerraría la lista desplegada
+ * justo cuando alguien la está usando.
+ */
+function fillRange(select, min, max, value) {
+  if (select.dataset.min !== String(min) || select.dataset.max !== String(max)) {
+    select.dataset.min = min;
+    select.dataset.max = max;
+    select.replaceChildren();
+    for (let n = min; n <= max; n++) {
+      const opt = el('option', null, `${n} jugadores`);
+      opt.value = String(n);
+      select.appendChild(opt);
+    }
+  }
+  select.value = String(Math.min(max, Math.max(min, value)));
 }
 
 function randomSecret() {
@@ -301,7 +325,7 @@ async function createRoom() {
     const res = await fetch('/api/rooms', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({ mode, max: Number($('home-max').value) }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? 'No se pudo crear la sala.');
@@ -551,6 +575,15 @@ function renderLobby(isHost) {
   show('lobby-wait', !isHost);
   const radio = document.querySelector(`input[name="rmode"][value="${state.mode}"]`);
   if (radio) radio.checked = true;
+
+  // El cupo no puede bajar de los que ya están adentro: entraron de buena fe.
+  const piso = Math.max(state.minPlayers, state.players.length);
+  fillRange($('lobby-max'), piso, state.maxPlayersCap ?? state.maxPlayers, state.maxPlayers);
+  const libres = state.maxPlayers - state.players.length;
+  $('lobby-max-hint').textContent = libres > 0
+    ? `Son ${state.players.length} y todavía entran ${libres}.`
+    : 'La sala está llena: no entra nadie más.';
+
   $('btn-start').disabled = state.players.length < state.minPlayers;
 }
 
@@ -748,6 +781,7 @@ $('btn-leave').onclick = () => {
   goHome();
 };
 
+$('lobby-max').onchange = (e) => send({ t: 'setMax', max: Number(e.target.value) });
 $('btn-shuffle').onclick = () => send({ t: 'shuffle' });
 $('btn-start').onclick = () => send({ t: 'start' });
 document.querySelectorAll('input[name="rmode"]').forEach((r) => {
@@ -775,6 +809,7 @@ $('btn-end').onclick = () => {
 // -------------------------------------------------------------------- arranque
 
 $('home-name').value = store.name;
+fillRange($('home-max'), MIN_JUGADORES, CAP_JUGADORES, CAP_JUGADORES);
 
 const match = location.pathname.match(/^\/r\/([A-Za-z2-9]{4,8})\/?$/);
 if (match) {

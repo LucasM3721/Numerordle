@@ -167,6 +167,26 @@ Un aviso por experiencia: si el script dispara rondas más rápido de lo que se
 resuelven, los intentos nuevos pisan los pendientes y parece un bug que no existe.
 Dejale aire entre jugadas.
 
+## El cupo de la sala
+
+El tope duro es **12** (`MAX_PLAYERS`) y cada sala elige el suyo dentro de ese
+techo: el que la crea lo fija y lo puede mover mientras estén en la espera.
+
+Antes el tope era 8 y estaba fijo, con el argumento de que más arriba el
+historial se vuelve ilegible. Eso sigue siendo cierto —12 jugadores son 12
+intentos por ronda en el mismo feed—, pero es una molestia de lectura, no algo
+que rompa el juego, y la alternativa era que un grupo de 10 no pudiera jugar.
+Si alguna vez molesta de verdad, lo que hay que arreglar es el historial (por
+ejemplo plegando las rondas viejas), no bajar el tope.
+
+El cupo **no baja nunca por debajo de los que ya están adentro**: entraron de
+buena fe y dejarlos afuera con un cambio de configuración sería peor que tener
+uno de más. `clampMaxPlayers()` recibe ese piso y lo hace cumplir; el servidor
+recorta siempre, así que un cliente modificado no puede abrir una sala de 50.
+
+Se toca solo en la sala de espera: una vez repartidos los números la sala ya
+está cerrada a los de afuera y el número no significaría nada.
+
 ## Ideas que quedaron afuera
 
 - Arrastrar para reordenar el círculo: en el celular se pelea con el scroll. Las
@@ -174,5 +194,3 @@ Dejale aire entre jugadas.
 - Un ayudante que cuente los números todavía posibles (son 3024 permutaciones,
   se calcula en el cliente sin esfuerzo). Se descartó por ahora: le sacaría la
   gracia al juego. Si se agrega, que sea opcional y apagado por defecto.
-- Más de 8 jugadores por sala: el círculo funciona igual, pero el historial se
-  vuelve ilegible. El tope está en `MAX_PLAYERS`.
