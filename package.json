@@ -7,7 +7,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "check": "node --check src/game.js && node --check src/index.js && node --check src/room.js && node --check public/app.js && node --check scripts/smoke.mjs",
+    "check": "node --check src/game.js && node --check src/index.js && node --check src/room.js && node --check src/bot.js && node --check public/app.js && node --check scripts/smoke.mjs && node --check scripts/bot-medicion.mjs",
+    "bot": "node scripts/bot-medicion.mjs",
     "test": "node --experimental-websocket scripts/smoke.mjs"
   },
   "devDependencies": {
