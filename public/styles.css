@@ -142,11 +142,22 @@ select:focus {
 }
 .btn:hover:not(:disabled) { filter: brightness(1.25); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.ghost { background: transparent; }
 .btn.big { width: 100%; padding: 14px; font-size: 1.05rem; }
 .btn.small { padding: 6px 10px; font-size: 0.8rem; }
+
+/* Va después de las variantes a propósito: tienen la misma especificidad, así
+   que si esto fuera antes, .btn.primary le ganaría y el botón desactivado
+   quedaría ámbar desteñido en vez de apagado. Y uno que sigue pareciendo el
+   botón principal invita a insistir. */
+.btn:disabled {
+  background: #23262e;
+  border-color: var(--line);
+  color: #6b7280;
+  cursor: not-allowed;
+  filter: none;
+}
 
 /* ----------------------------------------------------------------- modos */
 

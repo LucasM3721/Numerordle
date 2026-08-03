@@ -8,6 +8,17 @@ import { MAX_PLAYERS, clampMaxPlayers, isValidCode, normalizeCode, randomCode } 
 
 export { GameRoom };
 
+// Cupo diario de requests del Worker en el plan gratis. Los archivos estáticos
+// no cuentan (los sirve el binding de assets sin invocar al Worker), así que
+// esto mide solo /api/*. Pasado el cupo, Cloudflare contesta el error 1027
+// hasta la medianoche UTC; no genera cobro, corta y ya.
+const CUPO_DIARIO = 100000;
+const AVISAR_DESDE = 0.5;
+
+// Tiene que coincidir con "name" en wrangler.jsonc: es como lo identifica la
+// API de analytics.
+const NOMBRE_WORKER = 'numerordle';
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -72,7 +83,79 @@ export default {
     // las dudas delegamos en los archivos estáticos.
     return env.ASSETS.fetch(request);
   },
+
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(revisarCupo(env));
+  },
 };
+
+/**
+ * Mira cuánto va consumido del cupo diario y avisa si está alto. Corre por
+ * Cron Trigger, no en el camino de nadie: si falla, no lo nota ningún jugador.
+ */
+async function revisarCupo(env) {
+  if (!env.CF_ANALYTICS_TOKEN || !env.CF_ACCOUNT_ID) return;
+
+  let usados;
+  try {
+    usados = await requestsDeHoy(env);
+  } catch (err) {
+    // Un token vencido o un cambio en la API dejarían esto mudo para siempre,
+    // que es peor que un aviso de más: mejor que se entere.
+    await avisar(env, `No pude leer el uso del día: ${err.message ?? err}`, 'cupo-error');
+    return;
+  }
+  if (usados == null) return;
+
+  const parte = usados / CUPO_DIARIO;
+  if (parte < AVISAR_DESDE) return;
+  await avisar(
+    env,
+    `Van ${usados.toLocaleString('es-AR')} requests de la API hoy: ${Math.round(parte * 100)}% del cupo diario. Se repone a la medianoche UTC.`,
+    'cupo',
+  );
+}
+
+/** Requests del Worker desde la medianoche UTC, según la API de analytics. */
+async function requestsDeHoy(env) {
+  const desde = new Date();
+  desde.setUTCHours(0, 0, 0, 0);
+
+  const res = await fetch('https://api.cloudflare.com/client/v4/graphql', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${env.CF_ANALYTICS_TOKEN}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      query: `query($cuenta: string!, $desde: string!, $script: string!) {
+        viewer {
+          accounts(filter: { accountTag: $cuenta }) {
+            workersInvocationsAdaptive(
+              limit: 1000
+              filter: { scriptName: $script, datetime_geq: $desde }
+            ) {
+              sum { requests }
+            }
+          }
+        }
+      }`,
+      variables: {
+        cuenta: env.CF_ACCOUNT_ID,
+        desde: desde.toISOString(),
+        script: NOMBRE_WORKER,
+      },
+    }),
+  });
+
+  if (!res.ok) throw new Error(`la API de analytics contestó HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.errors?.length) throw new Error(data.errors[0]?.message ?? 'error de GraphQL');
+
+  const filas = data?.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptive;
+  if (!Array.isArray(filas)) throw new Error('la respuesta no tiene la forma esperada');
+  return filas.reduce((total, f) => total + (f.sum?.requests ?? 0), 0);
+}
 
 /**
  * Límite por IP. Se cuenta por `CF-Connecting-IP`, que lo pone el borde de
@@ -95,10 +178,12 @@ async function dentroDelLimite(env, limitador, request) {
  * aviso amplificaría el ataque en vez de contarlo. No se manda la IP: es dato
  * personal de un tercero y no cambia lo que hay que hacer al respecto.
  */
-async function avisar(env, texto) {
+async function avisar(env, texto, clave = 'ritmo') {
   if (!env.DISCORD_WEBHOOK_URL || !env.AVISO) return;
   try {
-    const { success } = await env.AVISO.limit({ key: 'aviso' });
+    // Cada tipo de aviso tiene su propia cuenta: una tormenta de avisos por
+    // ritmo no puede tapar el del cupo diario, que es el que importa más.
+    const { success } = await env.AVISO.limit({ key: clave });
     if (!success) return;
     await fetch(env.DISCORD_WEBHOOK_URL, {
       method: 'POST',

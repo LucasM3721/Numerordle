@@ -17,9 +17,14 @@
 > Workers, en `wrangler.jsonc`) y no en el panel, así el cliente puede mostrar
 > un aviso decente en vez de una página de error de Cloudflare.
 >
-> **Lo único que falta cargar a mano** es el secreto `DISCORD_WEBHOOK_URL`, para
-> que avise cuando esté frenando. Sin él el límite funciona igual, en silencio.
-> Los pasos están en el README.
+> **Lo que falta cargar a mano** son tres secretos, todos opcionales y todos
+> con los pasos en el README: `DISCORD_WEBHOOK_URL` para que avise cuando esté
+> frenando, y `CF_ACCOUNT_ID` + `CF_ANALYTICS_TOKEN` para el chequeo diario de
+> cupo. Sin ellos todo funciona igual, nada más que en silencio.
+>
+> Ojo con una idea que quedó descartada: **una regla de Rate Limiting del WAF no
+> se puede usar acá.** Son de zona, y `workers.dev` no es una zona propia. Haría
+> falta un dominio propio agregado a Cloudflare.
 >
 > Ideas que se evaluaron y se descartaron (con el porqué) están al final de
 > [docs/DECISIONES.md](docs/DECISIONES.md).

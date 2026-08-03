@@ -186,6 +186,35 @@ El aviso a Discord pasa por su propio limitador de uno por minuto. Sin eso, el
 aviso amplificaría el ataque en vez de contarlo. No lleva la IP: es dato
 personal de un tercero y no cambia lo que hay que hacer al respecto.
 
+## Qué pasa si se agota el cupo del día
+
+El plan gratis da 100.000 requests diarios al Worker, y **no factura por
+exceso**: corta. El riesgo es quedarse sin juego, no un cobro.
+
+Corta menos de lo que parece. **Los requests a archivos estáticos son gratis e
+ilimitados y no cuentan**, y como `run_worker_first` deja al Worker corriendo
+solo en `/api/*`, el HTML, el CSS, el JS y el favicon los sirve el binding de
+assets sin invocarlo. Entonces, pasado el cupo:
+
+- La página sigue cargando normal.
+- Solo la API devuelve el error **1027** de Cloudflare.
+- Se repone a la medianoche UTC.
+
+El cliente lo distingue de su propio 429 **mirando si el cuerpo trae el número
+1027**, no por el código de estado: Cloudflare no documenta cuál usa, y el
+cuerpo de la página de error sí lo trae siempre. Cuando pasa, el botón de crear
+sala queda apagado con una cuenta regresiva y el cartel dice a qué hora vuelve
+—calculada en la zona horaria de quien mira, porque la medianoche UTC cae a
+distinta hora según dónde esté cada uno.
+
+Un botón que sigue pareciendo el principal invita a insistir, y cada insistencia
+es otro request. Por eso se apaga de verdad y no con opacidad.
+
+Hay un Cron Trigger que dos veces por día mira el consumo con la API de
+analytics y avisa por Discord si pasó la mitad. Es opcional: sin los secretos no
+corre. Lo importante es que **no está en el camino de ningún jugador**, así que
+si falla no lo nota nadie —y si falla, avisa, que es mejor que quedarse mudo.
+
 ## Otros topes
 
 Tres más, todos por la misma razón:

@@ -323,17 +323,54 @@ function goHome(message) {
 
 // -------------------------------------------------------------- acciones
 
-/**
- * El aviso de saturación no es un error del jugador y no se va solo: mientras
- * esté puesto, la sala no se puede crear. Entrar con un código sigue andando,
- * y eso hay que decirlo o parece que se rompió todo.
- */
+/** El aviso de saturación no es un error del jugador: va en su propio cartel. */
 function setBusy(msg) {
   const node = $('home-busy');
-  node.textContent = msg
-    ? `${msg} Si te pasaron un código, podés entrar igual.`
-    : '';
+  node.textContent = msg ?? '';
   node.classList.toggle('hidden', !msg);
+}
+
+/**
+ * Deja el botón apagado mientras no tenga sentido apretarlo, con la cuenta
+ * regresiva a la vista: un botón gris sin explicación se lee como "se rompió".
+ */
+let bloqueo = null;
+
+function bloquearCreacion(segundos, msg) {
+  const btn = $('btn-create');
+  setBusy(msg);
+  clearInterval(bloqueo);
+  let quedan = segundos;
+  btn.disabled = true;
+  const tick = () => {
+    if (quedan <= 0) {
+      clearInterval(bloqueo);
+      bloqueo = null;
+      btn.disabled = false;
+      btn.textContent = 'Crear sala';
+      setBusy('');
+      return;
+    }
+    btn.textContent = `Crear sala (${quedan})`;
+    quedan--;
+  };
+  tick();
+  bloqueo = setInterval(tick, 1000);
+}
+
+/**
+ * A qué hora local se repone el cupo diario del plan. Es medianoche UTC, que
+ * cae a distinta hora según dónde esté cada uno, así que se calcula acá en vez
+ * de escribir "a las 21" y errarle a la mitad de la gente.
+ */
+function horaDeReposicion() {
+  const hoy = new Date();
+  const reset = new Date(Date.UTC(
+    hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate() + 1, 0, 0, 0,
+  ));
+  // La hora es la local de cada uno, pero el formato va en el idioma de la
+  // interfaz: "21:00" y no "09:00 PM" en el medio de un texto en castellano.
+  return reset.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 async function createRoom() {
@@ -349,12 +386,24 @@ async function createRoom() {
       body: JSON.stringify({ mode, max: Number($('home-max').value) }),
     });
 
-    // El cuerpo puede no ser JSON: si algún día frena el borde de Cloudflare en
-    // vez del Worker, lo que llega es una página de error.
-    const data = await res.json().catch(() => ({}));
+    // Se lee como texto y después se intenta parsear: cuando el que corta es
+    // el borde de Cloudflare y no el Worker, lo que llega es una página HTML.
+    const texto = await res.text();
+    let data = {};
+    try {
+      data = JSON.parse(texto);
+    } catch {
+      /* no es una respuesta nuestra */
+    }
 
+    // El 1027 es el cupo diario del plan gratis agotado. No se distingue por el
+    // código de estado, pero la página de Cloudflare trae el número adentro.
+    if (!res.ok && texto.includes('1027')) {
+      bloquearCreacion(120, `El juego llegó a su límite de uso por hoy. Vuelve a andar a las ${horaDeReposicion()}. No es nada que hayas hecho vos.`);
+      return;
+    }
     if (res.status === 429) {
-      setBusy(data.error ?? 'Ahora mismo no se pueden crear salas nuevas. Probá de nuevo en un minuto.');
+      bloquearCreacion(60, `${data.error ?? 'Ahora mismo no se pueden crear salas nuevas.'} Si te pasaron un código, podés entrar igual.`);
       return;
     }
     setBusy('');
@@ -364,7 +413,8 @@ async function createRoom() {
   } catch (err) {
     flash('home-error', String(err.message ?? err));
   } finally {
-    $('btn-create').disabled = false;
+    // Si quedó bloqueado a propósito, la cuenta regresiva es la que manda.
+    if (!bloqueo) $('btn-create').disabled = false;
   }
 }
 

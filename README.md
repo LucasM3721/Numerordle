@@ -78,6 +78,33 @@ Sin ese secreto el límite funciona igual, nada más que en silencio. El aviso
 sale como mucho una vez por minuto —si no, el propio aviso amplificaría el
 problema— y no incluye la IP de nadie.
 
+### Aviso de cupo diario (opcional)
+
+El plan gratis da **100.000 requests por día** al Worker. Los archivos estáticos
+no cuentan, así que solo suma `/api/*`. Pasado el cupo, Cloudflare contesta el
+error **1027** hasta la medianoche UTC: la página sigue cargando, pero no se
+puede jugar. **No genera cobro**, corta y ya.
+
+Dos veces por día (12:00 y 22:00 UTC) el Worker puede mirar cuánto va consumido
+y avisarte por el mismo webhook si pasó la mitad. Necesita dos secretos más:
+
+```bash
+npx wrangler secret put CF_ACCOUNT_ID
+```
+
+```bash
+npx wrangler secret put CF_ANALYTICS_TOKEN
+```
+
+El id de la cuenta lo ves con `npx wrangler whoami`. El token se crea en
+**My Profile → API Tokens → Create Token → Create Custom Token**, con un único
+permiso: **Account → Account Analytics → Read**. No hace falta nada más; si le
+das de más, le estás dando de más a algo que solo lee un número.
+
+Si falta cualquiera de los dos, el chequeo no corre y no molesta. Si están pero
+la consulta falla —token vencido, cambio en la API— te avisa por Discord, que
+es mejor que quedarse mudo para siempre.
+
 > Al crear un subdominio `workers.dev` por primera vez, Cloudflare tarda en emitir
 > el certificado TLS. Mientras tanto el sitio da `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`
 > aunque el Worker ya esté sirviendo. Es esperar, no hay nada que configurar.

@@ -25,6 +25,11 @@
     { "tag": "v1", "new_sqlite_classes": ["GameRoom"] }
   ],
 
+  // Dos veces por día, en UTC. El cupo diario del plan gratis se repone a la
+  // medianoche UTC, así que las 22:00 son dos horas antes: el número todavía
+  // sirve para hacer algo. Las 12:00 son el control de mitad de día.
+  "triggers": { "crons": ["0 12,22 * * *"] },
+
   // Límites de ritmo, por IP. Ojo con dos cosas:
   //   - El período solo puede ser 10 o 60 segundos.
   //   - El conteo es *por centro de datos*, no global. Alguien distribuido lo
