@@ -35,9 +35,9 @@ export const NIVELES = {
   // Fácil también cambia de a un dígito: sin eso no aprende nada y no termina
   // nunca. Un jugador malo es lento, no inmortal. Lo que lo hace malo es que se
   // olvida de la mitad de lo que dedujo y que al ordenar prueba de memoria.
-  facil: { olvido: 0.45, deduceCambio: true, repasa: false },
-  normal: { olvido: 0.15, deduceCambio: true, repasa: true },
-  dificil: { olvido: 0.02, deduceCambio: true, repasa: true },
+  facil: { olvido: 0.45, deduceCambio: true, repasa: false, grupos: false },
+  normal: { olvido: 0.28, deduceCambio: true, repasa: true, grupos: false },
+  dificil: { olvido: 0.02, deduceCambio: true, repasa: true, grupos: true },
 };
 
 export function nuevoCuaderno(nivel = 'normal') {
@@ -105,9 +105,14 @@ export function anotarResultado(c, intento, fijos, picas, azar = azarPorDefecto)
       } else if (delta === -1) {
         c.dentro.add(antes[i]);
         c.fuera.add(digitos[i]);
+      } else if (nivel.grupos && c.fuera.has(digitos[i])) {
+        // Metí a propósito uno que ya sabía que no estaba y el total no se
+        // movió: el que saqué tampoco estaba. Cambiar contra un descarte
+        // conocido es lo que vuelve concluyente hasta el empate.
+        c.fuera.add(antes[i]);
       }
-      // delta 0 no dice nada: o los dos están, o ninguno. Tampoco lo sabría
-      // una persona, así que el bot se queda igual de colgado.
+      // Con un dígito sin probar, en cambio, delta 0 no dice nada: o están los
+      // dos o ninguno. Tampoco lo sabría una persona.
     }
   }
 
@@ -119,6 +124,21 @@ export function anotarResultado(c, intento, fijos, picas, azar = azarPorDefecto)
 
   c.historia.push({ intento, fijos, picas });
   c.ultimo = { intento, fijos, picas };
+
+  // Dos tandas de cuatro dígitos distintos cubren ocho de los nueve, y el que
+  // falta sale por resta: si entre las dos suman cuatro, el noveno no está; si
+  // suman tres, el noveno es justamente el que falta. Es la cuenta que hace
+  // alguien que juega en serio, y no pide más que sumar.
+  if (nivel.grupos && c.historia.length === 2 && recuerda()) {
+    const [a, b] = c.historia;
+    const vistos = new Set([...a.intento, ...b.intento]);
+    if (vistos.size === 2 * SECRET_LEN) {
+      const noveno = DIGITOS.find((d) => !vistos.has(d));
+      const suma = a.fijos + a.picas + b.fijos + b.picas;
+      if (suma === SECRET_LEN) c.fuera.add(noveno);
+      else if (suma === SECRET_LEN - 1) c.dentro.add(noveno);
+    }
+  }
   // Si un desliz dejó un dígito en las dos listas, vale que está.
   for (const d of c.dentro) c.fuera.delete(d);
 }
@@ -187,9 +207,31 @@ function intentoDeOrden(c, azar) {
  * Ahí está toda la gracia: si el total se mueve, el resultado significa algo.
  */
 function intentoDeBusqueda(c, azar) {
+  const nivel = NIVELES[c.nivel];
   if (!c.ultimo) return colocar(cuatroDigitos(c, azar), c, azar);
 
+  // Segunda tanda: cuatro dígitos nuevos de golpe. Entre las dos tandas quedan
+  // cubiertos ocho de los nueve, y el noveno sale por resta.
+  if (nivel.grupos && c.historia.length === 1) {
+    const usados = new Set(c.ultimo.intento);
+    const nuevos = mezclar(DIGITOS.filter((d) => !usados.has(d)), azar).slice(0, SECRET_LEN);
+    if (nuevos.length === SECRET_LEN) return colocar(nuevos, c, azar);
+  }
+
   const actual = c.ultimo.intento.split('');
+
+  // Cambiar un dudoso por uno que ya sé que no está: el resultado nunca queda
+  // ambiguo. Si el total baja, el que saqué estaba; si no se mueve, tampoco.
+  // Contra un dígito sin probar, el empate no dice nada.
+  const dudosos = actual
+    .map((_, i) => i)
+    .filter((i) => !c.dentro.has(actual[i]) && !c.fuera.has(actual[i]));
+  const descartados = [...c.fuera].filter((d) => !actual.includes(d));
+  if (nivel.grupos && dudosos.length > 0 && descartados.length > 0) {
+    const salida = [...actual];
+    salida[alAzar(dudosos, azar)] = alAzar(descartados, azar);
+    return salida.join('');
+  }
   const sinProbar = DIGITOS.filter(
     (d) => !c.dentro.has(d) && !c.fuera.has(d) && !actual.includes(d),
   );
