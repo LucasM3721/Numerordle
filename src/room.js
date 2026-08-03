@@ -18,6 +18,16 @@ import {
 const IDLE_TTL_MS = 1000 * 60 * 60 * 24; // la sala se borra tras 24 h sin uso
 const GRACE_MS = 1000 * 90; // margen para recargar la página o cambiar de red
 
+// Una sala que se creó y a la que nunca entró nadie no tiene por qué ocupar un
+// Durable Object un día entero: el que la crea se conecta en el acto. Sin esto,
+// un `for` con fetch deja miles de salas vacías dando vueltas 24 horas.
+const EMPTY_TTL_MS = 1000 * 60 * 10;
+
+// Las pestañas múltiples son a propósito, pero sin tope cada cambio de estado
+// se multiplica por la cantidad de sockets abiertos. Cinco por jugador deja
+// aire para una reconexión con el socket viejo todavía sin cerrar.
+const MAX_SOCKETS_JUGADOR = 5;
+
 // Todo el estado de la sala se guarda en una sola clave y se reescribe entero
 // en cada jugada, así que el historial es lo único que puede crecer sin freno.
 // 600 entradas son unas 50 rondas con la sala llena: de sobra para una partida
@@ -412,6 +422,18 @@ export class GameRoom {
       }
       const pid = url.searchParams.get('pid') ?? '';
       const name = url.searchParams.get('name') ?? '';
+
+      // Se rechaza antes de aceptar el socket: un socket abierto para decirle
+      // que no hay lugar sería justo el recurso que se está protegiendo. Como
+      // el cierre pasa antes del `open`, el cliente lo trata como una caída
+      // normal y reintenta con espera creciente, sin bucle.
+      const abiertos = this.ctx
+        .getWebSockets()
+        .filter((s) => (s.deserializeAttachment() ?? {}).pid === pid).length;
+      if (abiertos >= MAX_SOCKETS_JUGADOR) {
+        return new Response('Demasiadas conexiones abiertas', { status: 429 });
+      }
+
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
       this.ctx.acceptWebSocket(server);
@@ -492,7 +514,18 @@ export class GameRoom {
     const { pid } = ws.deserializeAttachment() ?? {};
     const cuantos = this.contar(pid);
     if (cuantos > MSG_CORTE) {
-      ws.close(4004, 'demasiados mensajes');
+      // El aviso antes de cerrar no es cortesía: sin él, el cliente ve un
+      // cierre pelado, reintenta y vuelve a caer acá. Con el `kicked` se va
+      // a la pantalla de inicio y deja de golpear la puerta.
+      try {
+        ws.send(JSON.stringify({
+          t: 'kicked',
+          reason: 'Se mandaron demasiados mensajes desde tu sesión. Volvé a entrar en un momento.',
+        }));
+        ws.close(4004, 'demasiados mensajes');
+      } catch {
+        /* ya estaba cerrado */
+      }
       return;
     }
     // Se descarta en silencio: contestar cada mensaje de más sería justamente
@@ -756,10 +789,15 @@ export class GameRoom {
     await this.ctx.storage.setAlarm(this.nextAlarmAt());
   }
 
+  /** Cuánto vive esta sala sin actividad: poco si nunca entró nadie. */
+  ttl() {
+    return this.state.players.length === 0 ? EMPTY_TTL_MS : IDLE_TTL_MS;
+  }
+
   /** La alarma sirve para dos cosas: barrer ausentes y vencer la sala. */
   nextAlarmAt() {
     const s = this.state;
-    let soonest = s.lastActivity + IDLE_TTL_MS;
+    let soonest = s.lastActivity + this.ttl();
     for (const p of s.players) {
       if (sweepable(s, p)) soonest = Math.min(soonest, p.disconnectedAt + GRACE_MS);
     }
@@ -782,7 +820,7 @@ export class GameRoom {
     if (!this.state) return;
     const now = Date.now();
 
-    if (now - this.state.lastActivity >= IDLE_TTL_MS) {
+    if (now - this.state.lastActivity >= this.ttl()) {
       await this.demolish('La sala venció por inactividad.');
       return;
     }

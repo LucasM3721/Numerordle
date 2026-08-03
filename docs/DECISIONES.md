@@ -155,6 +155,24 @@ silencio (contestar sería justo el trabajo que se quiere evitar) y a los 300 se
 corta la conexión, porque a esa altura no es una pestaña colgada. Una partida
 entera son decenas de mensajes: nadie que juegue lo va a notar.
 
+Tres topes más, todos por la misma razón:
+
+- **Una sala vacía vence a los 10 minutos**, no a las 24 horas. El que crea una
+  sala se conecta en el acto, así que `players: []` significa que nadie llegó a
+  entrar. Sin esto, un `for` con `fetch` deja miles de Durable Objects ocupados
+  un día entero, que es el ataque más barato contra este proyecto.
+- **Cinco sockets por jugador.** Las pestañas múltiples son a propósito, pero
+  sin tope cada cambio de estado se multiplica por la cantidad de sockets
+  abiertos. Cinco deja aire para una reconexión con el socket viejo todavía sin
+  cerrar. Se rechaza *antes* de aceptar el socket: abrir uno para avisar que no
+  hay lugar sería gastar justo lo que se está cuidando.
+- **Antes de cerrar por avalancha se manda un `kicked`.** No es cortesía. El
+  cliente pone su contador de reintentos en cero al abrir, así que ante un
+  cierre pelado —con el socket ya abierto— reconectaría cada segundo para
+  siempre. El aviso lo manda a la pantalla de inicio; el cliente además ignora
+  cualquier cierre con código 4xxx, que son los que pone el servidor a
+  propósito.
+
 El historial también está acotado, en **600 entradas**. El estado de la sala se
 guarda entero en una sola clave y se reescribe en cada jugada, así que el log
 es lo único que puede crecer sin freno. 600 son unas 50 rondas con la sala

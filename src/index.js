@@ -36,7 +36,14 @@ export default {
     // No lo usaba el cliente y servía para barrer códigos a ver qué aparecía.
     const match = url.pathname.match(/^\/api\/rooms\/([^/]+)\/ws$/);
     if (match) {
-      const code = normalizeCode(decodeURIComponent(match[1]));
+      // decodeURIComponent tira URIError con cosas como `/api/rooms/%/ws`, que
+      // matchean la ruta igual. Sin esto el Worker contesta 500.
+      let code;
+      try {
+        code = normalizeCode(decodeURIComponent(match[1]));
+      } catch {
+        return json({ error: 'Código inválido.' }, 400);
+      }
       if (!isValidCode(code)) return json({ error: 'Código inválido.' }, 400);
 
       const qs = new URLSearchParams({

@@ -328,6 +328,11 @@ async function limitesYRuido() {
   await esperar(ana, (s) => s.players[0].name !== 'Ana', 'el cambio de nombre');
   igual('el nombre queda sin marcas de dirección', estado(ana).players[0].name, 'Beto');
 
+  // Una ruta que matchea pero no se puede decodificar tiene que dar 400, no
+  // reventar el Worker con un 500.
+  const rota = await fetch(`${BASE}/api/rooms/%/ws`);
+  igual('un código que no se puede decodificar da 400', rota.status, 400);
+
   // Y una avalancha corta la conexión en vez de seguir facturando requests.
   const cerro = new Promise((ok) => ana.addEventListener('close', (e) => ok(e.code)));
   for (let i = 0; i < 400; i++) decir(ana, { t: 'ping' });
@@ -336,6 +341,34 @@ async function limitesYRuido() {
     new Promise((_, no) => setTimeout(() => no(new Error('no cortó la conexión')), TIMEOUT_MS)),
   ]);
   igual('una avalancha de mensajes corta la conexión', codigo, 4004);
+  // Sin este aviso el cliente ve un cierre pelado, reintenta, y como el socket
+  // llegó a abrirse reconecta cada segundo para siempre.
+  chequear('y avisa por qué, así el cliente no reintenta en bucle', !!ana.rechazo, String(ana.rechazo));
+}
+
+async function topeDeConexiones() {
+  console.log('\nTope de conexiones por jugador');
+  const code = await crearSala('sim');
+  const abiertos = [];
+  for (let i = 0; i < 5; i++) abiertos.push(await conectar(code, 'tope-ana', 'Ana'));
+  await esperar(abiertos[0], (s) => s.players.length === 1, 'que entre Ana');
+  igual('cinco pestañas del mismo jugador son un solo jugador', estado(abiertos[0]).players.length, 1);
+
+  // La sexta se rechaza antes del upgrade, así que ni llega a abrirse.
+  let sexta = 'abrió';
+  try {
+    await conectar(code, 'tope-ana', 'Ana');
+  } catch {
+    sexta = 'rechazada';
+  }
+  igual('la sexta conexión del mismo jugador se rechaza', sexta, 'rechazada');
+
+  // Y no es un tope de la sala: otro jugador entra sin problema.
+  const beto = await conectar(code, 'tope-beto', 'Beto');
+  await esperar(beto, (s) => s.players.length === 2, 'que entre Beto');
+  igual('otro jugador entra igual', estado(beto).players.length, 2);
+
+  [...abiertos, beto].forEach((w) => w.close());
 }
 
 // ------------------------------------------------------------------ main
@@ -347,6 +380,7 @@ try {
   await cupoDeLaSala();
   await identidadPublica();
   await limitesYRuido();
+  await topeDeConexiones();
 } catch (err) {
   fallos++;
   console.log(`\nError inesperado: ${err.message}`);

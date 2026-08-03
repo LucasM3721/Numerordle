@@ -282,10 +282,18 @@ function connect(code) {
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = (ev) => {
     clearInterval(pingTimer);
     setConn('off');
     if (leaving) return;
+    // Los códigos 4xxx los cierra el servidor a propósito. Reintentar es
+    // discutir con una decisión ya tomada, y como el socket llegó a abrirse
+    // el contador de intentos volvió a cero: reconectaríamos cada segundo,
+    // para siempre, y cada intento cuesta un request.
+    if (ev.code >= 4000) {
+      goHome('Se cerró la conexión con la sala. Volvé a entrar en un momento.');
+      return;
+    }
     retries++;
     const wait = Math.min(1000 * 2 ** (retries - 1), 15000);
     reconnectTimer = setTimeout(() => connect(code), wait);
