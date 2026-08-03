@@ -36,16 +36,20 @@ export function randomPublicId() {
 /**
  * El pid lo elige el cliente y termina usándose como clave de objetos (los
  * intentos pendientes), así que conviene que sea un identificador y no
- * cualquier cosa. `__proto__` y compañía quedan afuera aparte: pasan el patrón
- * pero no se comportan como claves normales de un objeto plano.
+ * cualquier cosa.
+ *
+ * El `in` de la segunda condición saca todo lo que un objeto plano ya contesta
+ * por herencia: `toString`, `hasOwnProperty`, `__proto__`. No alcanza con
+ * listarlos a mano —`toString` mide 8 y pasa el patrón sin despeinarse— y el
+ * daño es concreto: `state.pending['toString']` da una función, o sea que ese
+ * jugador contaría como que ya jugó sin haber mandado nada, y la ronda se
+ * cerraría sola con un intento que no existe.
  */
-const PID_RESERVADOS = new Set(['__proto__', 'constructor', 'prototype']);
-
 export function isValidPid(pid) {
   return (
     typeof pid === 'string'
     && /^[A-Za-z0-9_-]{8,64}$/.test(pid)
-    && !PID_RESERVADOS.has(pid)
+    && !(pid in {})
   );
 }
 

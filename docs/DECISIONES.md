@@ -80,8 +80,13 @@ jugador (mover, coronar, echar) traen ids públicos y se resuelven con
 espacio es.
 
 El pid además se valida (`isValidPid`): tiene que parecer un identificador, y
-`__proto__` y compañía quedan afuera porque terminan usándose como clave en
-`state.pending` y ahí no se comportan como una clave normal.
+**queda afuera todo lo que un objeto plano ya contesta por herencia** —
+`toString`, `hasOwnProperty`, `__proto__`—, porque el pid se usa como clave en
+`state.pending`. No alcanza con listarlos a mano: `toString` mide 8 caracteres
+y pasa cualquier patrón razonable. Y el daño es concreto: `pending['toString']`
+devuelve una función, o sea que ese jugador contaría como que ya jugó sin haber
+mandado nada y la ronda se cerraría sola con un intento inexistente. La
+condición es `!(pid in {})`, que los agarra a todos.
 
 ## Los dos modos
 

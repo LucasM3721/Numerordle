@@ -67,6 +67,20 @@ function pubOf(state, id) {
 }
 
 /**
+ * Un id público que no esté en uso en esta sala. Con 72 bits y doce jugadores
+ * la colisión es astronómicamente improbable, pero de `pub` cuelga a quién
+ * echás y a quién coronás: mejor que la unicidad sea un hecho comprobado y no
+ * un cálculo de probabilidades.
+ */
+function nuevoPub(state) {
+  let pub;
+  do {
+    pub = randomPublicId();
+  } while (state.players.some((p) => p.pub === pub));
+  return pub;
+}
+
+/**
  * Salas guardadas antes de que existiera el id público: se les inventa uno y
  * se traduce lo que ya quedó escrito, para que una partida en curso no pierda
  * el historial ni a sus ganadores al desplegar.
@@ -75,7 +89,7 @@ function ensurePublicIds(state) {
   if (!state || state.players.every((p) => p.pub)) return;
   const mapa = new Map();
   for (const p of state.players) {
-    if (!p.pub) p.pub = randomPublicId();
+    if (!p.pub) p.pub = nuevoPub(state);
     mapa.set(p.id, p.pub);
   }
   const tr = (id) => mapa.get(id) ?? id;
@@ -428,7 +442,7 @@ export class GameRoom {
       }
       this.state.players.push({
         id: pid,
-        pub: randomPublicId(),
+        pub: nuevoPub(this.state),
         name: uniqueName(this.state, rawName, pid),
         secret: null,
         connected: true,

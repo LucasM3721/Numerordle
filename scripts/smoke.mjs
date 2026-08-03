@@ -292,14 +292,23 @@ async function identidadPublica() {
   igual('el impostor no recibió ni un estado', impostor.estados.length, 0);
   igual('y la sala sigue siendo de dos', estado(ana).players.length, 2);
 
-  // Un pid que no parece un identificador ni siquiera se considera.
-  const raro = await conectar(code, '__proto__', 'Raro');
+  // Un pid que no parece un identificador ni siquiera se considera. `toString`
+  // es el caso peligroso: pasa cualquier patrón razonable, pero como clave de
+  // un objeto plano ya viene con valor, así que ese jugador contaría como que
+  // ya jugó sin haber mandado nada.
+  const rechazados = [];
+  for (const pid of ['__proto__', 'toString', 'hasOwnProperty', 'corto']) {
+    const raro = await conectar(code, pid, 'Raro');
+    rechazados.push(await esperarRechazo(raro));
+    raro.close();
+  }
   chequear(
-    'un pid con formato inválido se rechaza',
-    (await esperarRechazo(raro)).includes('Identificador'),
+    'los pid que son claves de Object.prototype se rechazan',
+    rechazados.every((r) => r.includes('Identificador')),
+    JSON.stringify(rechazados),
   );
 
-  [ana, beto, impostor, raro].forEach((w) => w.close());
+  [ana, beto, impostor].forEach((w) => w.close());
 }
 
 // ------------------------------------------------------------------ main
