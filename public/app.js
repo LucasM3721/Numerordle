@@ -688,11 +688,14 @@ function playerEl(p, opts = {}) {
     // sacarlo del círculo cambiaría a quién le adivina cada uno.
     const enJuego = state.phase === 'playing' || state.phase === 'intermission';
     const btn = el('button', 'kick', '✕');
-    btn.title = enJuego ? `Retirar a ${p.name} de la partida` : `Sacar a ${p.name} de la sala`;
+    // A la máquina se la nombra por lo que es y no como un nombre propio:
+    // "sacar a la máquina", no "sacar a La máquina".
+    const quien = p.bot ? p.name.charAt(0).toLowerCase() + p.name.slice(1) : p.name;
+    btn.title = enJuego ? `Retirar a ${quien} de la partida` : `Sacar a ${quien} de la sala`;
     btn.onclick = () => {
       const aviso = enJuego
-        ? `¿Retirar a ${p.name} de la partida? Deja de jugar, pero su número sigue en el círculo.`
-        : `¿Sacar a ${p.name} de la sala?`;
+        ? `¿Retirar a ${quien} de la partida? Deja de jugar, pero su número sigue en el círculo.`
+        : `¿Sacar a ${quien} de la sala?`;
       if (confirm(aviso)) send({ t: 'kick', id: p.id });
     };
     tag.appendChild(btn);
@@ -865,6 +868,20 @@ function renderLobby(isHost) {
   $('lobby-max-hint').textContent = libres > 0
     ? `Son ${state.players.length} y todavía entran ${libres}.`
     : 'La sala está llena: no entra nadie más.';
+
+  // El motivo por el que no se puede sumar una máquina no es el mismo, así que
+  // no alcanza con apagar el botón: un botón gris sin explicación se lee como
+  // que algo se rompió.
+  const maquinas = state.players.filter((p) => p.bot).length;
+  const tope = state.maxBots ?? 3;
+  $('btn-add-bot').disabled = maquinas >= tope || libres <= 0;
+  if (maquinas >= tope) {
+    $('lobby-bot-hint').textContent = `Ya hay ${maquinas} y son todas las que entran.`;
+  } else if (libres <= 0) {
+    $('lobby-bot-hint').textContent = 'No hay lugar: subí el cupo para sumar una máquina.';
+  } else {
+    $('lobby-bot-hint').textContent = 'Ocupa un lugar de la sala y juega sola. La sacás con la ✕, como a cualquiera.';
+  }
 
   $('btn-start').disabled = state.players.length < state.minPlayers;
 }
@@ -1080,6 +1097,7 @@ $('btn-leave').onclick = () => {
 
 $('lobby-max').onchange = (e) => send({ t: 'setMax', max: Number(e.target.value) });
 $('btn-shuffle').onclick = () => send({ t: 'shuffle' });
+$('btn-add-bot').onclick = () => send({ t: 'addBot', nivel: $('lobby-bot').value });
 $('btn-start').onclick = () => send({ t: 'start' });
 document.querySelectorAll('input[name="rmode"]').forEach((r) => {
   r.onchange = () => send({ t: 'setMode', mode: r.value });

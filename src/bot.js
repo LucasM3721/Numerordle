@@ -63,9 +63,21 @@ export const NIVELES = {
   dificil: { olvido: 0.25, deduceCambio: true, repasa: true, grupos: true, verifica: 400, imagina: true },
 };
 
+/**
+ * `NIVELES[nivel]` contesta que sí para `toString` o `__proto__`: los hereda de
+ * Object.prototype y no son niveles. Importa porque el nivel viene de afuera
+ * —de la query al crear la sala y del mensaje que suma una máquina—, y con uno
+ * de esos la máquina queda con un nivel que no existe: `NIVELES[c.nivel].olvido`
+ * da undefined, todas las comparaciones contra él son falsas y juega cualquier
+ * cosa. Es el mismo agujero que ya se tapó en `isValidPid`.
+ */
+export function esNivel(nivel) {
+  return typeof nivel === 'string' && Object.hasOwn(NIVELES, nivel);
+}
+
 export function nuevoCuaderno(nivel = 'normal') {
   return {
-    nivel: NIVELES[nivel] ? nivel : 'normal',
+    nivel: esNivel(nivel) ? nivel : 'normal',
     fuera: new Set(), // dígitos que sé que no están
     dentro: new Set(), // dígitos que sé que están, sin saber dónde
     prohibido: Array.from({ length: SECRET_LEN }, () => new Set()),

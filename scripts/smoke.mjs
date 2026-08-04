@@ -440,6 +440,112 @@ async function contraLaMaquina() {
   ana.close();
 }
 
+// ------------------------------------------ máquinas en una sala normal
+
+/**
+ * La máquina dejó de ser exclusiva del uno a uno: el anfitrión puede sumarlas
+ * a una sala cualquiera. Como es un jugador más del círculo, lo que se
+ * verifica es justamente que no tenga nada especial —ocupa cupo, se saca con
+ * el mismo kick— salvo los límites que sí tiene.
+ */
+async function maquinasEnLaSala() {
+  console.log('\nMáquinas en una sala normal');
+  const code = await crearSala('sim', 6);
+  const ana = await conectar(code, 'bots-ana', 'Ana');
+  const beto = await conectar(code, 'bots-beto', 'Beto');
+  await esperar(ana, (s) => s.players.length === 2, 'que entren Ana y Beto');
+
+  decir(beto, { t: 'addBot', nivel: 'normal' });
+  chequear(
+    'sumar máquinas es del anfitrión, no de cualquiera que esté adentro',
+    (await esperarError(beto, 1)).includes('anfitrión'),
+  );
+
+  decir(ana, { t: 'addBot', nivel: 'facil' });
+  decir(ana, { t: 'addBot', nivel: 'dificil' });
+  const dos = await esperar(ana, (s) => s.players.length === 4, 'que se sumen dos máquinas');
+  igual(
+    'se suman con el nivel que se pidió',
+    dos.players.filter((p) => p.bot).map((p) => p.bot),
+    ['facil', 'dificil'],
+  );
+  // Dos filas que dicen "La máquina" no se distinguen ni en el círculo ni en
+  // el historial, que es donde después se lee quién le adivinó a quién.
+  chequear(
+    'y con nombres distintos entre sí',
+    new Set(nombres(dos)).size === 4,
+    JSON.stringify(nombres(dos)),
+  );
+
+  decir(ana, { t: 'addBot', nivel: 'poliglota' });
+  chequear('un nivel que no existe se rechaza', (await esperarError(ana, 1)).includes('nivel'));
+
+  decir(ana, { t: 'addBot', nivel: 'normal' });
+  await esperar(ana, (s) => s.players.length === 5, 'la tercera máquina');
+  decir(ana, { t: 'addBot', nivel: 'normal' });
+  chequear('hay un tope de máquinas por sala', (await esperarError(ana, 2)).includes('máquinas'));
+
+  const sobrante = estado(ana).players.filter((p) => p.bot).at(-1);
+  decir(ana, { t: 'kick', id: sobrante.id });
+  const menos = await esperar(ana, (s) => s.players.length === 4, 'que se vaya una máquina');
+  igual('se sacan con el mismo kick que a una persona', menos.players.filter((p) => p.bot).length, 2);
+
+  decir(ana, { t: 'start' });
+  await esperar(ana, (s) => s.phase === 'secret', 'el reparto de números');
+  decir(ana, { t: 'addBot', nivel: 'normal' });
+  chequear(
+    'empezada la partida ya no se suman: le cambiaría el objetivo a alguien',
+    (await esperarError(ana, 3)).includes('antes de empezar'),
+  );
+
+  ana.close();
+  beto.close();
+}
+
+/**
+ * Dos máquinas en la misma sala. El bucle de `turnoDeBots` está escrito para
+ * esto —una jugada suya destraba la siguiente— pero hasta ahora nunca había
+ * más de una para probarlo.
+ */
+async function dosMaquinasEnElCirculo() {
+  console.log('\nDos máquinas en el mismo círculo');
+  const code = await crearSala('strict', 3);
+  const ana = await conectar(code, 'bots2-ana', 'Ana');
+  await esperar(ana, (s) => s.players.length === 1, 'que entre Ana');
+
+  decir(ana, { t: 'addBot', nivel: 'normal' });
+  decir(ana, { t: 'addBot', nivel: 'dificil' });
+  const llena = await esperar(ana, (s) => s.players.length === 3, 'que se sumen las dos');
+
+  decir(ana, { t: 'addBot', nivel: 'normal' });
+  chequear('con la sala llena no entra una más', (await esperarError(ana, 1)).includes('lugar'));
+
+  decir(ana, { t: 'start' });
+  await esperar(ana, (s) => s.phase === 'secret', 'el reparto de números');
+  decir(ana, { t: 'setSecret', secret: '1234' });
+  const jugando = await esperar(ana, (s) => s.phase === 'playing', 'que arranque la partida');
+  igual('las dos eligen su número solas', jugando.players.every((p) => p.ready), true);
+
+  // Ana va primera en el círculo, así que hasta que no juegue no se mueve
+  // nadie. Después tienen que jugar las dos, una atrás de la otra.
+  decir(ana, { t: 'guess', guess: '5678' });
+  const vuelta = await esperar(ana, (s) => s.log.length >= 3, 'una vuelta entera del círculo');
+  const ids = new Set(llena.players.filter((p) => p.bot).map((p) => p.id));
+  const suyas = vuelta.log.filter((e) => ids.has(e.playerId));
+  chequear(
+    'las dos juegan solas cuando les toca',
+    new Set(suyas.map((e) => e.playerId)).size === 2,
+    JSON.stringify(suyas.map((e) => `${e.playerName} ${e.guess}`)),
+  );
+  chequear(
+    'y las dos tiran números válidos',
+    suyas.every((e) => /^[1-9]{4}$/.test(e.guess) && new Set(e.guess).size === 4),
+    JSON.stringify(suyas.map((e) => e.guess)),
+  );
+
+  ana.close();
+}
+
 // ------------------------------------------- desconexión en plena partida
 
 /**
@@ -534,6 +640,8 @@ try {
   await limitesYRuido();
   await topeDeConexiones();
   await contraLaMaquina();
+  await maquinasEnLaSala();
+  await dosMaquinasEnElCirculo();
   await desconexionEnPartida();
   await anfitrionSeCae();
 } catch (err) {
