@@ -54,8 +54,6 @@
 >    juntando datos, se leen con `npm run tail`.
 > 2. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
-> 3. GitHub avisa que las acciones del workflow apuntan a Node 20, que está
->    quedando obsoleto. Anda igual; es subir las versiones de las acciones.
 >
 > Ideas que se evaluaron y se descartaron (con el porqué) están al final de
 > [docs/DECISIONES.md](docs/DECISIONES.md).
