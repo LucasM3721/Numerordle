@@ -87,7 +87,7 @@ createServer((req, res) => {
   // es exactamente así como pasan las cosas.
   const pedido = normalize(join(RAIZ, decodeURIComponent(url.pathname)));
   const dentro = pedido.startsWith(normalize(RAIZ));
-  // Fallback de página única: /r/ABC12 tiene que devolver el index, igual que
+  // Fallback de página única: /r/K7Q4Z tiene que devolver el index, igual que
   // en producción con `not_found_handling`.
   const ruta = dentro && existsSync(pedido) && extname(pedido) ? pedido : join(RAIZ, 'index.html');
 
