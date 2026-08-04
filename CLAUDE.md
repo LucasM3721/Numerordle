@@ -165,6 +165,11 @@ Detalles que ahorran tiempo:
   `bot-error`, `join-error`, `name-error`); `home-error` y `home-busy` quedan
   arriba de todo y son solo para lo que no cuelga de ningún botón. Un cartel
   fuera de la vista se lee como que el botón no hizo nada.
+- **Entrar con un código no cambia de pantalla hasta que el servidor confirma.**
+  La confirmación es el primer `state`; si en vez de eso llega un `kicked`, el
+  motivo va al cartel del código y nunca se salió del inicio. No hay una
+  consulta previa que diga si una sala existe, y no hay que agregarla: la hubo
+  (`/exists`) y se sacó porque servía para barrer códigos a ver cuáles había.
 - Sin dependencias en el cliente y sin paso de build. Si algo necesita un bundler,
   probablemente no haga falta.
 - Los comentarios explican decisiones, no mecánica. Si el código ya lo dice, sobra.
