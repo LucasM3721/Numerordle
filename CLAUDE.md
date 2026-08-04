@@ -56,12 +56,24 @@
 > validan por su forma real (5 caracteres, sin I, O, 0 ni 1). Después,
 > **las máquinas se pueden sumar a una sala cualquiera**, hasta tres.
 >
+> **El estilo se rehizo** contra dos referencias que dio Lucas
+> (potrerofutbol.ar/el-idolo y copero.com.ar/juegos/simulador-carrera). Se les
+> midieron los tokens: las dos usan negro **neutro** —`#040505` y `#09090b`—,
+> bordes de un pelo al 6-8%, píldoras para los estados y una fuente cargada.
+> Ninguna tiene el resplandor radial: Potrero incluso dejó
+> `--page-bg-gradient: var(--page-bg-solid)` para colapsarlo a propósito.
+>
+> De ahí salieron los grises neutros, los bordes al 7%, los radios (8 tarjeta,
+> 6 interior, píldora estado) y después el tono, que Lucas eligió comparando
+> tres versiones: **base callada y una sola display, solo en el título de la
+> portada**. Los números van con una grotesca condensada.
+>
 > **Lo que queda por hacer**, en este orden:
 >
-> 1. **Cambiar el estilo**: colores y formas. Hoy se nota demasiado que lo armó
->    una IA (fondo azul-pizarra, un solo acento, esquinas de 14 px en todo,
->    `system-ui`, una columna de tarjetas iguales). Referencias que dio Lucas:
->    potrerofutbol.ar/el-idolo y copero.com.ar/juegos/simulador-carrera.
+> 1. **Decidir si se sirve una fuente propia desde `public/`.** Hoy el título y
+>    los números salen de la familia del sistema (Impact / Bahnschrift), así que
+>    en Android y en Linux se ven distintos. Cargar Anton y una condensada como
+>    `.woff2` es lo único que falta para que el tono sea el mismo en todos lados.
 > 2. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
 >    grande: no hay círculo ni rival. El número del día **no puede viajar al
 >    cliente**, se valida en el servidor o el desafío se muere solo.
@@ -206,6 +218,11 @@ Detalles que ahorran tiempo:
   (`/exists`) y se sacó porque servía para barrer códigos a ver cuáles había.
 - Sin dependencias en el cliente y sin paso de build. Si algo necesita un bundler,
   probablemente no haga falta.
+- **La fuente display va en un solo lugar: el `h1` de la portada.** En los `h2` y
+  en los resúmenes de los plegables cansa, porque ahí se lee y no se mira. Los
+  números —el pad, la fila de intentos, tu número, fijos y picas— van con
+  `--fuente-num`, una condensada con dígitos del mismo ancho; si se cambia, que
+  la que entre también los tenga o los intentos dejan de alinearse en vertical.
 - **La forma del código de sala está escrita dos veces** —`CODE_LEN` y el
   alfabeto en `src/game.js`, `CODIGO_RE` en `public/app.js`— porque el cliente
   no importa nada del servidor. Si cambia una, cambia la otra: el servidor la

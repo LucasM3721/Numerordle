@@ -28,6 +28,21 @@
   --radius: 8px;
   --radius-sm: 6px;
   --pill: 999px;
+
+  --fuente: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /**
+   * La display va en un solo lugar: el título de la portada. En los h2 y en los
+   * resúmenes de los plegables cansaría, porque ahí se lee, no se mira.
+   */
+  --fuente-titulo: Impact, Haettenschweiler, "Arial Narrow Bold", Bahnschrift, var(--fuente);
+
+  /**
+   * Los números. Una grotesca condensada donde exista, y la monoespaciada de
+   * siempre donde no: las dos tienen los dígitos del mismo ancho, que es lo
+   * único que no se puede perder cuando se comparan intentos en vertical.
+   */
+  --fuente-num: Bahnschrift, "DIN Alternate", "Liberation Sans Narrow", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -36,7 +51,7 @@ html, body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 16px/1.5 var(--fuente);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -54,10 +69,28 @@ body { min-height: 100vh; }
 
 /* ------------------------------------------------------------- tipografía */
 
+/**
+ * El único lugar con voz propia. En mayúsculas porque la display se lee así:
+ * las condensadas pesadas están dibujadas para titular, no para una minúscula
+ * con bastones largos.
+ *
+ * El peso es 700 y no 400 por las dudas de que no haya ninguna display: Impact
+ * y las de su familia tienen un solo grosor y lo usan igual, pero si se cae
+ * hasta la fuente del sistema, un título en 400 se lee flaco y deja de ser un
+ * título. `font-synthesis-weight: none` es para que nadie la engorde a la
+ * fuerza cuando ya viene gorda.
+ */
 h1 {
-  font-size: 2.2rem;
+  font-family: var(--fuente-titulo);
+  /* En un celular de 375 px "FIJOS Y PICAS" en Impact entra justo, y cualquier
+     otra fuente es más ancha. Que se acomode al ancho en vez de partirse. */
+  font-size: clamp(2.1rem, 11vw, 2.8rem);
+  font-weight: 700;
+  font-synthesis-weight: none;
+  text-transform: uppercase;
   margin: 0 0 6px;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.01em;
+  line-height: 1.05;
 }
 h1 .amp { color: var(--accent); }
 h2 { font-size: 1.05rem; margin: 0 0 4px; letter-spacing: 0.01em; }
@@ -279,7 +312,8 @@ details.card[open] > summary { margin-bottom: 14px; }
 .player .tag > span.num {
   border: 0;
   padding: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--fuente-num);
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0.14em;
   color: var(--accent);
   font-weight: 700;
@@ -316,7 +350,8 @@ details.card[open] > summary { margin-bottom: 14px; }
   text-align: center;
   font-size: 2rem;
   font-weight: 700;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--fuente-num);
+  font-variant-numeric: tabular-nums;
   background: var(--bg-soft);
   border: 2px solid var(--line-strong);
   border-radius: var(--radius);
@@ -362,7 +397,8 @@ details.card[open] > summary { margin-bottom: 14px; }
   text-align: center;
   font-size: 1.25rem;
   font-weight: 700;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--fuente-num);
+  font-variant-numeric: tabular-nums;
   background: var(--bg);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
@@ -386,13 +422,18 @@ details.card[open] > summary { margin-bottom: 14px; }
 }
 .try .idx { color: var(--faint); font-size: 0.75rem; width: 22px; flex: none; }
 .try .digits {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--fuente-num);
+  font-variant-numeric: tabular-nums;
   font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 0.22em;
 }
 .try .marks { margin-left: auto; display: flex; gap: 6px; }
+/* Los fijos y las picas también son números: van con la misma fuente que el
+   resto, o la fila queda con dos cifras dibujadas de dos maneras distintas. */
 .mark {
+  font-family: var(--fuente-num);
+  font-variant-numeric: tabular-nums;
   font-size: 0.8rem;
   font-weight: 700;
   padding: 3px 9px;
@@ -412,7 +453,8 @@ details.card[open] > summary { margin-bottom: 14px; }
   height: 40px;
   padding: 0;
   font: inherit;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--fuente-num);
+  font-variant-numeric: tabular-nums;
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--text);
@@ -451,7 +493,8 @@ details.card[open] > summary { margin-bottom: 14px; }
 /* --------------------------------------------------------- tu propio número */
 
 .secret-num {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--fuente-num);
+  font-variant-numeric: tabular-nums;
   font-size: 2rem;
   font-weight: 700;
   letter-spacing: 0.3em;
@@ -481,7 +524,8 @@ details.card[open] > summary { margin-bottom: 14px; }
 }
 .feed .line .arrow { color: var(--faint); }
 .feed .line .digits {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--fuente-num);
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0.12em;
   font-weight: 700;
 }
@@ -501,7 +545,8 @@ details.card[open] > summary { margin-bottom: 14px; }
 }
 .winner b { color: var(--fijo); }
 .winner .num {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--fuente-num);
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0.15em;
   font-weight: 700;
 }
