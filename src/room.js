@@ -16,9 +16,9 @@ import {
   shuffled,
 } from './game.js';
 import {
-  NIVELES,
   anotarResultado,
   cargarCuaderno,
+  esNivel,
   guardarCuaderno,
   nuevoCuaderno,
   proponerIntento,
@@ -36,6 +36,12 @@ const EMPTY_TTL_MS = 1000 * 60 * 10;
 // se multiplica por la cantidad de sockets abiertos. Cinco por jugador deja
 // aire para una reconexión con el socket viejo todavía sin cerrar.
 const MAX_SOCKETS_JUGADOR = 5;
+
+// Tope de máquinas por sala. El cupo ya las acota, pero una sala que es más
+// máquinas que gente dejó de ser un juego con amigos, y cada una es trabajo
+// extra en cada mensaje que entra: el bucle de `turnoDeBots` las recorre a
+// todas. Tres alcanzan para llenar una partida chica.
+const MAX_BOTS = 3;
 
 // Todo el estado de la sala se guarda en una sola clave y se reescribe entero
 // en cada jugada, así que el historial es lo único que puede crecer sin freno.
@@ -109,9 +115,13 @@ function nuevoBot(state, nivel) {
   return {
     id: `bot-${randomPublicId()}`,
     pub: nuevoPub(state),
-    bot: NIVELES[nivel] ? nivel : 'normal',
+    bot: esNivel(nivel) ? nivel : 'normal',
     cuaderno: guardarCuaderno(nuevoCuaderno(nivel)),
-    name: 'La máquina',
+    // Por el mismo desempatador que las personas: con dos máquinas en la sala,
+    // dos filas que dicen lo mismo no se pueden distinguir en el círculo ni en
+    // el historial. Todavía no está en `players`, así que no se cuenta a sí
+    // misma. El nivel va aparte, como etiqueta.
+    name: uniqueName(state, 'La máquina', null),
     secret: null,
     connected: true,
     disconnectedAt: null,
@@ -544,6 +554,7 @@ function viewFor(state, pid) {
     minPlayers: MIN_PLAYERS,
     maxPlayers: roomLimit(state), // el cupo de esta sala
     maxPlayersCap: MAX_PLAYERS, // el techo hasta donde el anfitrión lo puede subir
+    maxBots: MAX_BOTS, // así el cliente apaga el botón en vez de dejar fallar
     players: state.players.map((p, i) => ({
       id: p.pub,
       name: p.name,
@@ -614,7 +625,7 @@ export class GameRoom {
       // La máquina entra al crearse la sala, antes que nadie, así ya está en el
       // círculo cuando llega el primero. Con dos jugadores el objetivo es mutuo.
       const nivel = url.searchParams.get('bot');
-      if (nivel && NIVELES[nivel]) this.state.players.push(nuevoBot(this.state, nivel));
+      if (esNivel(nivel)) this.state.players.push(nuevoBot(this.state, nivel));
       await this.save();
       return json({ ok: true, code: this.state.code });
     }
@@ -857,6 +868,28 @@ export class GameRoom {
           throw new Error('No le podés dejar la sala a alguien sin conexión.');
         }
         s.hostId = nuevo.id;
+        return true;
+      }
+
+      /**
+       * Una máquina más en el círculo. No hay un `removeBot`: se saca con el
+       * mismo `kick` que a cualquiera, porque para todo lo demás ya es un
+       * jugador igual (ocupa cupo, tiene lugar en el orden y su historial).
+       *
+       * Solo en la espera: entrando después le cambiaría el objetivo a alguien,
+       * que es el primer invariante de la sala.
+       */
+      case 'addBot': {
+        requireHost();
+        if (s.phase !== 'lobby') throw new Error('Las máquinas se suman antes de empezar.');
+        if (!esNivel(msg.nivel)) throw new Error('Ese nivel de máquina no existe.');
+        if (s.players.filter(esBot).length >= MAX_BOTS) {
+          throw new Error(`No se pueden sumar más de ${MAX_BOTS} máquinas a una sala.`);
+        }
+        if (s.players.length >= roomLimit(s)) {
+          throw new Error('No hay lugar: subí el cupo de la sala o sacá a alguien.');
+        }
+        s.players.push(nuevoBot(s, msg.nivel));
         return true;
       }
 

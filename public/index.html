@@ -169,6 +169,18 @@
             <select id="lobby-max" aria-label="Cuántos jugadores entran a la sala"></select>
             <small id="lobby-max-hint" class="hint"></small>
           </div>
+          <div class="field">
+            <span>Sumar una máquina</span>
+            <div class="row">
+              <select id="lobby-bot" aria-label="Nivel de la máquina que se suma">
+                <option value="facil">Distraída — unos 16 intentos</option>
+                <option value="normal" selected>Atenta — unos 12 intentos</option>
+                <option value="dificil">Metódica — unos 8 intentos</option>
+              </select>
+              <button id="btn-add-bot" class="btn">Sumar</button>
+            </div>
+            <small id="lobby-bot-hint" class="hint"></small>
+          </div>
           <div class="row">
             <button id="btn-shuffle" class="btn">Mezclar orden</button>
             <button id="btn-start" class="btn primary">Empezar</button>

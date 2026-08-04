@@ -47,13 +47,34 @@
 > borrarla. Cambiar el cron a cada minuto es más lento de propagar y menos
 > controlable.
 >
-> **Lo que queda por hacer**, sin urgencia:
+> En agosto de 2026 se ordenó la pantalla de inicio (el nombre en su propio
+> bloque, "Cómo se juega" arriba, "Contra la máquina" plegado), **cada aviso
+> pasó al bloque donde se apretó el botón**, entrar con un código dejó de
+> cambiar de pantalla hasta que el servidor confirma, y los códigos se
+> validan por su forma real (5 caracteres, sin I, O, 0 ni 1). Después,
+> **las máquinas se pueden sumar a una sala cualquiera**, hasta tres.
 >
-> 1. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
+> **Lo que queda por hacer**, en este orden:
+>
+> 1. **Cambiar el estilo**: colores y formas. Hoy se nota demasiado que lo armó
+>    una IA (fondo azul-pizarra, un solo acento, esquinas de 14 px en todo,
+>    `system-ui`, una columna de tarjetas iguales). Referencias que dio Lucas:
+>    potrerofutbol.ar/el-idolo y copero.com.ar/juegos/simulador-carrera.
+> 2. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
+>    grande: no hay círculo ni rival. El número del día **no puede viajar al
+>    cliente**, se valida en el servidor o el desafío se muere solo.
+> 3. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
 >    partidas reales. Hoy son una hipótesis; el registro de partidas ya está
 >    juntando datos, se leen con `npm run tail`.
-> 2. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
+> 4. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
+>
+> **`wrangler dev` no arranca en la máquina de Lucas** (agosto 2026): el runtime
+> tira "access violation", que apunta a un Visual C++ Redistributable viejo. O
+> sea que `npm test` no corre local y la verificación real es la del pull
+> request. Para mirar la interfaz, `npm run estatico`; para probar lógica del
+> cliente que depende del websocket, se pisa `window.WebSocket` con un doble
+> desde la consola (`app.js` resuelve el global recién al hacer `new`).
 >
 > Ideas que se evaluaron y se descartaron (con el porqué) están al final de
 > [docs/DECISIONES.md](docs/DECISIONES.md).
@@ -96,6 +117,7 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 | `src/game.js` | reglas puras: validar un número, contar fijos y picas |
 | `src/room.js` | el Durable Object: máquina de estados de la sala |
 | `src/index.js` | Worker de entrada: crea salas, enruta el websocket |
+| `src/bot.js` | la cabeza de la máquina: su cuaderno y los tres niveles |
 | `public/` | cliente completo: un HTML, un CSS, un JS. Sin build ni dependencias |
 
 ## Invariantes que no hay que romper
@@ -116,6 +138,14 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 5. **La ronda se juega entera aunque alguien ya haya ganado**, para que pueda haber
    empate en la misma vuelta. Los ganadores se resuelven en `endRound()`.
 6. **Nada se encola si se corta la conexión.** `send()` avisa y pide repetir.
+7. **La máquina es un jugador más del círculo.** Tiene su `pub`, su lugar en el
+   orden y su historial; lo único que la distingue es que no hay un websocket
+   del otro lado. Por eso se suma solo en la espera (`addBot`, del anfitrión,
+   hasta tres por sala) y no hay un `removeBot`: se saca con el mismo `kick`.
+   Nunca es anfitriona y el barrido de ausentes no la toca.
+8. **El nivel de la máquina viene de afuera**, así que se pregunta con
+   `esNivel()` y no con `NIVELES[x]`: `toString` y `__proto__` contestan que sí
+   por herencia y dejarían una máquina con un nivel que no existe.
 
 ## Cómo probar
 
