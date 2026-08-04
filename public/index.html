@@ -20,12 +20,41 @@
       <p class="sub">Cada uno anota un número de 4 dígitos. Adivinale el suyo al de al lado antes de que te lo adivinen a vos.</p>
     </header>
 
+    <!-- Los avisos que no son de ningún bloque en particular: te sacaron de una
+         sala, o el servidor no está tomando salas nuevas por ninguna de las dos
+         puertas. Van arriba de todo porque no cuelgan de ningún botón. -->
+    <p id="home-error" class="error hidden"></p>
+    <p id="home-busy" class="notice hidden" role="status"></p>
+
+    <details class="card rules">
+      <summary>Cómo se juega</summary>
+      <ol>
+        <li>Cada jugador elige un número secreto de <b>4 dígitos del 1 al 9</b>, sin repetir ninguno.</li>
+        <li>Se arma un círculo: a cada uno le toca adivinarle el número al siguiente, y el último al primero.</li>
+        <li>En tu turno arriesgás un número (también 4 dígitos sin repetir) y te responden dos cifras:
+          <ul>
+            <li><b class="fijo">Fijos</b> — dígitos que acertaste <i>en su posición</i>.</li>
+            <li><b class="pica">Picas</b> — dígitos que están en el número, pero <i>en otro lugar</i>.</li>
+          </ul>
+          Nunca se dice <i>cuáles</i>: solo cuántos.
+        </li>
+        <li>4 fijos y ganaste. La ronda se termina igual, así que puede haber empate.</li>
+        <li>Después, el que quiera puede seguir jugando hasta encontrar su número.</li>
+      </ol>
+    </details>
+
+    <!-- El nombre no es de crear salas: es con el que te ven por cualquiera de
+         las tres puertas, así que va en su propio bloque y antes que todas. -->
     <div class="card">
       <label class="field">
         <span>Tu nombre</span>
         <input id="home-name" type="text" maxlength="16" placeholder="Lucas" autocomplete="nickname" />
+        <small class="hint">Con este te van a ver los demás, juegues como juegues.</small>
       </label>
+      <p id="name-error" class="error hidden"></p>
+    </div>
 
+    <div class="card">
       <div class="field">
         <span>Modo de juego</span>
         <div class="modes">
@@ -53,11 +82,14 @@
       </label>
 
       <button id="btn-create" class="btn primary big">Crear sala</button>
+      <p id="create-error" class="error hidden"></p>
     </div>
 
-    <div class="card">
+    <!-- Cerrado por defecto: es la puerta menos usada y desplegada empuja el
+         código de sala fuera de la pantalla. -->
+    <details class="card">
+      <summary>Contra la máquina</summary>
       <div class="field">
-        <span>Contra la máquina</span>
         <p class="hint">Uno a uno, por turnos. Ella también anota un número y te lo tenés que sacar antes de que te lo saque.</p>
         <div class="modes">
           <label class="mode">
@@ -84,7 +116,8 @@
         </div>
       </div>
       <button id="btn-bot" class="btn primary big">Jugar contra la máquina</button>
-    </div>
+      <p id="bot-error" class="error hidden"></p>
+    </details>
 
     <div class="card">
       <label class="field">
@@ -94,27 +127,8 @@
           <button id="btn-join" class="btn">Entrar</button>
         </div>
       </label>
+      <p id="join-error" class="error hidden"></p>
     </div>
-
-    <details class="card rules">
-      <summary>Cómo se juega</summary>
-      <ol>
-        <li>Cada jugador elige un número secreto de <b>4 dígitos del 1 al 9</b>, sin repetir ninguno.</li>
-        <li>Se arma un círculo: a cada uno le toca adivinarle el número al siguiente, y el último al primero.</li>
-        <li>En tu turno arriesgás un número (también 4 dígitos sin repetir) y te responden dos cifras:
-          <ul>
-            <li><b class="fijo">Fijos</b> — dígitos que acertaste <i>en su posición</i>.</li>
-            <li><b class="pica">Picas</b> — dígitos que están en el número, pero <i>en otro lugar</i>.</li>
-          </ul>
-          Nunca se dice <i>cuáles</i>: solo cuántos.
-        </li>
-        <li>4 fijos y ganaste. La ronda se termina igual, así que puede haber empate.</li>
-        <li>Después, el que quiera puede seguir jugando hasta encontrar su número.</li>
-      </ol>
-    </details>
-
-    <p id="home-error" class="error hidden"></p>
-    <p id="home-busy" class="notice hidden" role="status"></p>
   </section>
 
   <!-- -------------------------------------------------------------- SALA -->
