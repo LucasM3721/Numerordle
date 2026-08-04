@@ -79,6 +79,79 @@ let lastRound = -1;
 let lastGame = -1;
 let lastPhase = null;
 
+/**
+ * La pausa de la máquina.
+ *
+ * El servidor resuelve su jugada en el mismo instante que la tuya, así que las
+ * dos llegan en el mismo estado y aparecían en el mismo parpadeo: se sentía un
+ * `console.log`, no un rival. Acá se retiene **solo lo suyo** un momento —tu
+ * resultado se ve al toque— y después se revela.
+ *
+ * Es maquillaje del cliente y nada más: el resultado ya está decidido del lado
+ * del servidor y esto no lo puede alterar. Si algo falla, lo peor que pasa es
+ * que la jugada aparezca antes de tiempo.
+ */
+const DEMORA_BOT_MS = 700;
+
+let mostrados = new Set(); // entradas del historial ya reveladas
+let retenidos = new Set(); // entradas de la máquina esperando su momento
+let timerBot = null;
+
+/** El historial como lo tiene que ver la persona en este instante. */
+function logVisible() {
+  if (!retenidos.size) return state.log;
+  return state.log.filter((e) => !retenidos.has(e.n));
+}
+
+function soltarRetenidos() {
+  clearTimeout(timerBot);
+  timerBot = null;
+  for (const n of retenidos) mostrados.add(n);
+  retenidos.clear();
+}
+
+function aplicarEstado(nuevo) {
+  const previo = state;
+  const idsBot = new Set(nuevo.players.filter((p) => p.bot).map((p) => p.id));
+
+  // No se dosifica al entrar, sin máquina, en otra partida, ni cuando la ronda
+  // cerró la fase: retener la jugada ganadora mientras la pantalla ya cambió
+  // sería peor que mostrarla.
+  const dosificar =
+    idsBot.size > 0 &&
+    previo &&
+    previo.game === nuevo.game &&
+    previo.phase === 'playing' &&
+    nuevo.phase === 'playing';
+
+  soltarRetenidos();
+  state = nuevo;
+
+  if (!dosificar) {
+    mostrados = new Set(nuevo.log.map((e) => e.n));
+    render();
+    return;
+  }
+
+  const suyos = nuevo.log.filter((e) => idsBot.has(e.playerId) && !mostrados.has(e.n));
+  for (const e of nuevo.log) if (!idsBot.has(e.playerId)) mostrados.add(e.n);
+
+  if (!suyos.length) {
+    render();
+    return;
+  }
+
+  retenidos = new Set(suyos.map((e) => e.n));
+  render();
+  timerBot = setTimeout(() => {
+    soltarRetenidos();
+    render();
+  }, DEMORA_BOT_MS);
+}
+
+/** ¿La máquina está por mostrar una jugada? Para el cartelito de "pensando". */
+const maquinaPensando = () => retenidos.size > 0;
+
 // -------------------------------------------------------------- utilidades
 
 function el(tag, cls, text) {
@@ -276,8 +349,7 @@ function connect(code) {
       return;
     }
     if (msg.t === 'state') {
-      state = msg;
-      render();
+      aplicarEstado(msg);
     } else if (msg.t === 'error') {
       flash('room-error', msg.msg);
     } else if (msg.t === 'kicked') {
@@ -589,14 +661,15 @@ function renderBoard(container, entries, { annotate = false, empty = 'Todavía n
 
 function renderFeed(container) {
   container.replaceChildren();
-  const rounds = [...new Set(state.log.map((e) => e.round))].sort((a, b) => b - a);
+  const visible = logVisible();
+  const rounds = [...new Set(visible.map((e) => e.round))].sort((a, b) => b - a);
   if (!rounds.length) {
     container.appendChild(el('p', 'empty hint', 'Sin intentos todavía.'));
     return;
   }
   for (const r of rounds) {
     container.appendChild(el('div', 'round-sep', `Ronda ${r}`));
-    for (const e of state.log.filter((x) => x.round === r)) {
+    for (const e of visible.filter((x) => x.round === r)) {
       const line = el('div', 'line');
       if (e.fijos === 4) line.classList.add('hit');
       if (e.playerId === state.you.id) line.classList.add('mine');
@@ -744,7 +817,7 @@ function renderPlaying(me) {
   if (you.pending && guessPad.value !== you.pending) guessPad.value = you.pending;
 
   // La fila de entrada solo existe mientras te quede algo por arriesgar.
-  const mine = state.log.filter((e) => e.playerId === you.id);
+  const mine = logVisible().filter((e) => e.playerId === you.id);
   const playing = me?.status === 'playing';
   show('guess-row', playing);
   show('btn-guess', playing);
@@ -766,6 +839,8 @@ function renderPlaying(me) {
     let tag = '';
     if (p.status === 'won') tag = `ganó en la ronda ${p.wonRound}`;
     else if (p.status === 'quit') tag = 'se retiró';
+    // Sin esto la pausa de la máquina se lee como que se colgó.
+    else if (p.bot && maquinaPensando()) tag = 'pensando…';
     else if (state.mode === 'sim') tag = state.waitingOn.includes(p.id) ? 'pensando…' : 'ya mandó';
     else if (state.turnId === p.id) tag = 'juega';
     scoreboard.appendChild(
@@ -784,7 +859,7 @@ function renderPlaying(me) {
   $('my-secret').textContent = you.secret ?? '····';
   const rival = state.players.find((p) => p.targetId === you.id);
   $('against-hint').textContent = rival ? `Lo que te viene arriesgando ${rival.name}:` : '';
-  renderBoard($('against-me'), state.log.filter((e) => e.targetId === you.id), {
+  renderBoard($('against-me'), logVisible().filter((e) => e.targetId === you.id), {
     empty: 'Todavía no te tiraron nada.',
   });
 

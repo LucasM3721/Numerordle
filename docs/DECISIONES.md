@@ -205,6 +205,29 @@ con la del bot y correr los objetivos a donde estén de verdad.
 Se lee con `npm run tail` en vivo, o en el panel de Cloudflare, que ya tiene la
 observabilidad prendida en `wrangler.jsonc`.
 
+## La pausa de la máquina
+
+El servidor resuelve la jugada del bot en el mismo instante que la tuya, así que
+las dos llegan en el mismo estado y aparecían en el mismo parpadeo. Funcionaba,
+pero se sentía un `console.log` y no un rival.
+
+El cliente retiene **solo lo suyo** unos 700 ms (`DEMORA_BOT_MS` en `app.js`) y
+mientras tanto le pone "pensando…" en la mesa. Tu resultado se ve al instante:
+medido, aparece a los 10 ms y el de la máquina a los 718.
+
+Tres decisiones que importan más que el número:
+
+- **Es maquillaje del cliente, no del servidor.** Hacer esperar al bot del lado
+  del Durable Object costaría tiempo facturable y, en una sala con gente, haría
+  esperar a todos. Acá el resultado ya está decidido y esto no lo puede alterar:
+  si el temporizador falla, lo peor que pasa es que la jugada aparezca antes.
+- **No se dosifica la jugada con la que gana.** Cuando la ronda cierra la fase,
+  la pantalla cambia sola y retener el intento ganador mientras ya se ve el
+  cartel de "alguien lo sacó" sería peor que mostrarlo.
+- **Se retiene por entrada del historial, no por estado entero.** Si se
+  retuviera el estado completo también se demoraría *tu* resultado, que es lo
+  contrario de lo que se busca.
+
 ## Qué pasa si se agota el cupo del día
 
 El plan gratis da 100.000 requests diarios al Worker, y **no factura por
