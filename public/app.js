@@ -2,6 +2,18 @@
 
 const $ = (id) => document.getElementById(id);
 
+/**
+ * La misma forma que `isValidCode` en src/game.js: cinco caracteres del
+ * alfabeto que genera los códigos, sin I, O, 0 ni 1 —se dictan por teléfono—.
+ * Acá no hay imports, así que la copia se mantiene a mano; si allá cambia el
+ * largo o el alfabeto, cambia acá.
+ *
+ * Vale la pena tenerla: un código imposible rechazado en el navegador no abre
+ * un websocket, y cada apertura cuesta un request y come del límite por IP.
+ */
+const CODIGO_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}$/;
+const CODIGO_MAL = 'Los códigos son de 5 caracteres, y no llevan I, O, 0 ni 1.';
+
 // --------------------------------------------------------------- guardado
 
 const store = {
@@ -166,12 +178,17 @@ function show(id, visible) {
   $(id).classList.toggle('hidden', !visible);
 }
 
-function flash(id, msg) {
+/**
+ * `persistente` es para los avisos que ya están cuando se abre la página: esos
+ * no los disparó un gesto de nadie, así que no sabemos cuándo los van a mirar
+ * y no pueden vencerse a los 5 segundos. Se van cuando dejan de ser ciertos.
+ */
+function flash(id, msg, persistente = false) {
   const node = $(id);
   node.textContent = msg;
   node.classList.toggle('hidden', !msg);
-  if (msg) {
-    clearTimeout(node._t);
+  clearTimeout(node._t);
+  if (msg && !persistente) {
     node._t = setTimeout(() => node.classList.add('hidden'), 5000);
   }
 }
@@ -591,7 +608,7 @@ function joinRoom() {
   const name = $('home-name').value.trim();
   if (!name) return faltaElNombre('join-error');
   const code = $('home-code').value.trim().toUpperCase();
-  if (!/^[A-Z2-9]{4,8}$/.test(code)) return flash('join-error', 'Ese código no parece válido.');
+  if (!CODIGO_RE.test(code)) return flash('join-error', CODIGO_MAL);
   store.name = name;
   // Sin pushState: la URL cambia recién cuando el servidor confirma la sala.
   connect(code, 'join-error');
@@ -1036,6 +1053,11 @@ $('btn-join').onclick = joinRoom;
 $('home-code').addEventListener('keydown', (e) => e.key === 'Enter' && joinRoom());
 $('home-name').addEventListener('keydown', (e) => e.key === 'Enter' && ($('home-code').value ? joinRoom() : createRoom()));
 
+// Un reproche que sigue en pantalla mientras lo estás corrigiendo es ruido: el
+// aviso se va en cuanto la persona empieza a hacer lo que le pedimos.
+$('home-name').addEventListener('input', () => flash('name-error', ''));
+$('home-code').addEventListener('input', () => flash('join-error', ''));
+
 $('btn-copy').onclick = async () => {
   const link = `${location.origin}/r/${roomCode}`;
   try {
@@ -1086,16 +1108,23 @@ $('btn-end').onclick = () => {
 $('home-name').value = store.name;
 fillRange($('home-max'), MIN_JUGADORES, CAP_JUGADORES, CAP_JUGADORES);
 
-const match = location.pathname.match(/^\/r\/([A-Za-z2-9]{4,8})\/?$/);
+// El patrón de la ruta es más ancho que el de un código válido a propósito: un
+// link mal copiado tiene que caer acá adentro para poder explicarlo, y no
+// pasar de largo hacia una pantalla de inicio que no dice nada.
+const match = location.pathname.match(/^\/r\/([A-Za-z0-9]{1,12})\/?$/);
 if (match) {
   const code = match[1].toUpperCase();
-  if (store.name) {
+  if (!CODIGO_RE.test(code)) {
+    history.replaceState({}, '', '/');
+    $('home-code').value = code.slice(0, 5);
+    flash('join-error', CODIGO_MAL, true);
+  } else if (store.name) {
     connect(code);
   } else {
     $('home-code').value = code;
     // Acá no apretó ningún botón: llegó por el link. El aviso va pegado al
     // campo que le falta llenar.
-    flash('name-error', `Poné tu nombre para entrar a la sala ${code}.`);
+    flash('name-error', `Poné tu nombre para entrar a la sala ${code}.`, true);
     $('home-name').focus();
   }
 }

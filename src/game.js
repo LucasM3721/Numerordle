@@ -10,9 +10,13 @@ export const MAX_NAME = 16;
 
 // Sin I, O, 0 ni 1: el código se dicta por teléfono sin ambigüedades.
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const CODE_LEN = 5;
+// Se arma con el alfabeto y el largo de arriba para que validar y generar no
+// puedan discrepar: aceptar una forma que no generamos es aceptar basura.
+const CODE_RE = new RegExp(`^[${CODE_ALPHABET}]{${CODE_LEN}}$`);
 const SECRET_RE = new RegExp(`^[1-9]{${SECRET_LEN}}$`);
 
-export function randomCode(len = 5) {
+export function randomCode(len = CODE_LEN) {
   const bytes = crypto.getRandomValues(new Uint8Array(len));
   let out = '';
   for (const b of bytes) out += CODE_ALPHABET[b % CODE_ALPHABET.length];
@@ -53,8 +57,13 @@ export function isValidPid(pid) {
   );
 }
 
+/**
+ * Aceptaba de 4 a 8 caracteres y dejaba pasar la I y la O, que el alfabeto no
+ * genera nunca. Un código imposible llegaba igual a `idFromName` y despertaba
+ * un Durable Object para no encontrar nada: se paga por descartar basura.
+ */
 export function isValidCode(code) {
-  return typeof code === 'string' && /^[A-Z2-9]{4,8}$/.test(code);
+  return typeof code === 'string' && CODE_RE.test(code);
 }
 
 /**

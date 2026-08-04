@@ -339,6 +339,15 @@ async function limitesYRuido() {
   const rota = await fetch(`${BASE}/api/rooms/%/ws`);
   igual('un código que no se puede decodificar da 400', rota.status, 400);
 
+  // Formas que el alfabeto no genera nunca: la I y la O no existen (se dictan
+  // por teléfono) y todos los códigos miden 5. Se descartan antes del límite
+  // por IP y antes de `idFromName`: despertar un Durable Object para no
+  // encontrar nada se paga igual que encontrarlo.
+  for (const imposible of ['ABCI9', 'ABC2', 'ABC23X', 'ABC01']) {
+    const r = await fetch(`${BASE}/api/rooms/${imposible}/ws`);
+    igual(`el código imposible ${imposible} da 400`, r.status, 400);
+  }
+
   // Y una avalancha corta la conexión en vez de seguir facturando requests.
   const cerro = new Promise((ok) => ana.addEventListener('close', (e) => ok(e.code)));
   for (let i = 0; i < 400; i++) decir(ana, { t: 'ping' });

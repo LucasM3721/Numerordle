@@ -46,7 +46,7 @@ export default {
       }
       // 32^5 combinaciones: la colisión es remotísima, pero se chequea igual.
       for (let intento = 0; intento < 5; intento++) {
-        const code = randomCode(5);
+        const code = randomCode();
         const res = await roomFetch(
           env,
           code,

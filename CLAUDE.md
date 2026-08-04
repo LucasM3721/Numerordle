@@ -172,4 +172,9 @@ Detalles que ahorran tiempo:
   (`/exists`) y se sacó porque servía para barrer códigos a ver cuáles había.
 - Sin dependencias en el cliente y sin paso de build. Si algo necesita un bundler,
   probablemente no haga falta.
+- **La forma del código de sala está escrita dos veces** —`CODE_LEN` y el
+  alfabeto en `src/game.js`, `CODIGO_RE` en `public/app.js`— porque el cliente
+  no importa nada del servidor. Si cambia una, cambia la otra: el servidor la
+  usa para no despertar un Durable Object al pedo, y el cliente para no abrir
+  un websocket que va a ser rechazado.
 - Los comentarios explican decisiones, no mecánica. Si el código ya lo dice, sobra.
