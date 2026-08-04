@@ -320,13 +320,62 @@ function setConn(cls) {
   $('conn-text').textContent = cls === 'wait' ? 'conectando…' : 'reconectando…';
 }
 
-function connect(code) {
-  roomCode = code;
-  leaving = false;
-  clearTimeout(reconnectTimer);
-  setConn('wait');
+/**
+ * Mientras tenga el id de un cartel, todavía no entramos a la sala: es dónde
+ * va a caer el "no existe" si el servidor rechaza. Se apaga con el primer
+ * estado, que es el único momento en que sabemos que estamos adentro.
+ *
+ * No hay una consulta previa que pregunte si el código existe: la hubo, y se
+ * sacó porque servía para barrer códigos a ver cuáles había (ver src/index.js).
+ * El websocket ya trae la respuesta; lo único que hacía falta era esperarla
+ * antes de cambiar de pantalla.
+ */
+let esperandoEntrar = null;
+
+/** El primer estado es la confirmación: recién ahí se cambia de pantalla. */
+function entrar(code) {
+  if (!esperandoEntrar) return;
+  flash(esperandoEntrar, ''); // el rechazo anterior ya no describe nada
+  esperandoEntrar = null;
+  botonEntrar(true);
+  history.pushState({}, '', `/r/${code}`);
   show('screen-home', false);
   show('screen-room', true);
+}
+
+function botonEntrar(listo) {
+  $('btn-join').disabled = !listo;
+  $('btn-join').textContent = listo ? 'Entrar' : 'Entrando…';
+}
+
+/**
+ * Rechazados antes de entrar: seguimos en la pantalla de inicio, así que el
+ * motivo va al cartel del bloque donde se escribió el código y no hay a dónde
+ * volver. No se reintenta: un código que no existe no mejora con insistir, y
+ * cada intento cuesta un request.
+ */
+function noSePudoEntrar(motivo) {
+  const destino = esperandoEntrar;
+  esperandoEntrar = null;
+  roomCode = null;
+  clearInterval(pingTimer);
+  botonEntrar(true);
+  flash(destino, motivo);
+}
+
+function connect(code, avisarEn = null) {
+  roomCode = code;
+  leaving = false;
+  esperandoEntrar = avisarEn;
+  clearTimeout(reconnectTimer);
+  setConn('wait');
+  if (avisarEn) {
+    flash(avisarEn, '');
+    botonEntrar(false);
+  } else {
+    show('screen-home', false);
+    show('screen-room', true);
+  }
   $('room-code').textContent = code;
 
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -350,12 +399,14 @@ function connect(code) {
       return;
     }
     if (msg.t === 'state') {
+      entrar(code);
       aplicarEstado(msg);
     } else if (msg.t === 'error') {
       flash('room-error', msg.msg);
     } else if (msg.t === 'kicked') {
       leaving = true;
-      goHome(msg.reason);
+      if (esperandoEntrar) noSePudoEntrar(msg.reason);
+      else goHome(msg.reason);
     }
   };
 
@@ -363,6 +414,12 @@ function connect(code) {
     clearInterval(pingTimer);
     setConn('off');
     if (leaving) return;
+    // Se cayó sin haber llegado a entrar: no hay sala de la cual volver, y el
+    // motivo no viajó (un 429 en el handshake no deja leer el cuerpo).
+    if (esperandoEntrar) {
+      noSePudoEntrar('No se pudo entrar a la sala. Probá de nuevo en un momento.');
+      return;
+    }
     // Los códigos 4xxx los cierra el servidor a propósito. Reintentar es
     // discutir con una decisión ya tomada, y como el socket llegó a abrirse
     // el contador de intentos volvió a cero: reconectaríamos cada segundo,
@@ -379,6 +436,8 @@ function connect(code) {
 
 function goHome(message) {
   leaving = true;
+  esperandoEntrar = null;
+  botonEntrar(true);
   clearTimeout(reconnectTimer);
   clearInterval(pingTimer);
   try {
@@ -534,8 +593,8 @@ function joinRoom() {
   const code = $('home-code').value.trim().toUpperCase();
   if (!/^[A-Z2-9]{4,8}$/.test(code)) return flash('join-error', 'Ese código no parece válido.');
   store.name = name;
-  history.pushState({}, '', `/r/${code}`);
-  connect(code);
+  // Sin pushState: la URL cambia recién cuando el servidor confirma la sala.
+  connect(code, 'join-error');
 }
 
 function submitSecret() {
