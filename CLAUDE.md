@@ -70,17 +70,44 @@
 >
 > **Lo que queda por hacer**, en este orden:
 >
-> 1. **Decidir si se sirve una fuente propia desde `public/`.** Hoy el título y
+> 1. **BUG: el cliente se reconecta solo a la sala anterior.** Lo vio Lucas:
+>    creó una sala con tres máquinas, salió, entró a un uno contra uno, y como
+>    un segundo después la pantalla se le llenó con los cuatro jugadores de la
+>    sala vieja. No es caché.
+>
+>    Está reproducido con un doble de `WebSocket` y la causa es de
+>    `public/app.js`: **`connect()` no cierra el socket anterior y pone
+>    `leaving = false`**, pero el `onclose` del socket viejo sigue armado y
+>    cierra sobre el `code` viejo. Cuando su evento de cierre llega —siempre
+>    tarde, es asíncrono— ya encuentra `leaving` en falso, lo lee como una caída
+>    y programa `connect(codeViejo)`. El segundo de demora es exactamente el
+>    primer escalón del backoff.
+>
+>    La idea de arreglo: que cada conexión sepa si sigue siendo la vigente
+>    (un número de sesión que `connect()` incremente, y que los handlers
+>    comparen contra el suyo antes de hacer nada), y que `connect()` cierre y
+>    desarme el socket anterior antes de abrir el nuevo. El caso de prueba es el
+>    de arriba: sala A, salir, sala B, y recién ahí soltar el cierre de A.
+>
+> 2. **Contra la máquina no debería pasar por la sala de espera.** Es uno contra
+>    uno: no hay a quién esperar ni orden que acomodar, así que del botón
+>    debería salir directo a elegir el número. Si querés más de uno contra uno,
+>    ese camino ya existe: crear sala normal y sumar gente o máquinas ahí.
+>    Ojo con el invariante 1 al hacerlo —el orden del círculo se congela al
+>    empezar— y con que el anfitrión sigue teniendo que ser una persona.
+>
+> 3. **Decidir si se sirve una fuente propia desde `public/`.** Hoy el título y
 >    los números salen de la familia del sistema (Impact / Bahnschrift), así que
 >    en Android y en Linux se ven distintos. Cargar Anton y una condensada como
 >    `.woff2` es lo único que falta para que el tono sea el mismo en todos lados.
-> 2. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
+>    Está sin decidir porque implica meter archivos de fuente al repo.
+> 4. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
 >    grande: no hay círculo ni rival. El número del día **no puede viajar al
 >    cliente**, se valida en el servidor o el desafío se muere solo.
-> 3. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
+> 5. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
 >    partidas reales. Hoy son una hipótesis; el registro de partidas ya está
 >    juntando datos, se leen con `npm run tail`.
-> 4. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
+> 6. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
 >
 > **`wrangler dev` no arranca en la máquina de Lucas** (agosto 2026): el runtime
