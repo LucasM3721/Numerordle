@@ -28,14 +28,34 @@
 > Workers, en `wrangler.jsonc`) y no en el panel, así el cliente puede mostrar
 > un aviso decente en vez de una página de error de Cloudflare.
 >
-> **Lo que falta cargar a mano** son tres secretos, todos opcionales y todos
-> con los pasos en el README: `DISCORD_WEBHOOK_URL` para que avise cuando esté
-> frenando, y `CF_ACCOUNT_ID` + `CF_ANALYTICS_TOKEN` para el chequeo diario de
-> cupo. Sin ellos todo funciona igual, nada más que en silencio.
+> **Los tres secretos opcionales ya están cargados y probados de punta a punta**
+> (`DISCORD_WEBHOOK_URL`, `CF_ACCOUNT_ID`, `CF_ANALYTICS_TOKEN`). El aviso de
+> cupo llega a Discord con el número real. De acá en más **el silencio es la
+> señal buena**: solo escribe si se pasa el 50% del cupo, si alguien pide más de
+> 10 salas por minuto, o si la consulta falla.
 >
-> Ojo con una idea que quedó descartada: **una regla de Rate Limiting del WAF no
-> se puede usar acá.** Son de zona, y `workers.dev` no es una zona propia. Haría
-> falta un dominio propio agregado a Cloudflare.
+> Después de la pila se agregaron tres cosas de juego, todas desplegadas:
+> la **pausa de un segundo** antes de mostrar la jugada de la máquina, poder
+> **escribir el número antes de que te toque**, y que **el turno de un ausente se
+> pase solo** a los 90 s (antes la partida quedaba detenida hasta que el
+> anfitrión apretara el botón). El cursor vuelve al primer dígito al arriesgar.
+>
+> Ojo con dos ideas descartadas: **una regla de Rate Limiting del WAF no se puede
+> usar acá** —son de zona y `workers.dev` no es una zona propia—, y **el cron no
+> se puede disparar a mano**: para probar algo que corre por cron, lo que
+> funcionó fue una ruta temporal e impredecible en `fetch`, llamarla una vez y
+> borrarla. Cambiar el cron a cada minuto es más lento de propagar y menos
+> controlable.
+>
+> **Lo que queda por hacer**, sin urgencia:
+>
+> 1. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
+>    partidas reales. Hoy son una hipótesis; el registro de partidas ya está
+>    juntando datos, se leen con `npm run tail`.
+> 2. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
+>    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
+> 3. GitHub avisa que las acciones del workflow apuntan a Node 20, que está
+>    quedando obsoleto. Anda igual; es subir las versiones de las acciones.
 >
 > Ideas que se evaluaron y se descartaron (con el porqué) están al final de
 > [docs/DECISIONES.md](docs/DECISIONES.md).
@@ -56,8 +76,13 @@ npm run deploy   # publica a Cloudflare (a mano)
 npm run tail     # logs de producción en vivo
 ```
 
-`npm test` necesita `npm run dev` corriendo en otra terminal. Para probar contra
-producción: `BASE=https://numerordle.lucasm3721.workers.dev npm test`.
+**`npm test` necesita `npm run dev:test` en otra terminal, no `npm run dev`.** La
+diferencia es una variable que baja a 2,5 s el margen con el que se pasa el turno
+de un ausente; con los 90 s de verdad, dos casos tardarían más que toda la suite
+y fallan por tiempo agotado. Para jugar a mano usá `npm run dev`, que respeta el
+margen real.
+
+Para probar contra producción: `BASE=https://numerordle.lucasm3721.workers.dev npm test`.
 
 **Cada push a `main` despliega solo**, pero únicamente si pasan `check`, el build
 y `npm test` (ver `.github/workflows/deploy.yml`). Trabajá en ramas y abrí un pull
