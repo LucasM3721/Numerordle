@@ -91,7 +91,7 @@ let lastPhase = null;
  * del servidor y esto no lo puede alterar. Si algo falla, lo peor que pasa es
  * que la jugada aparezca antes de tiempo.
  */
-const DEMORA_BOT_MS = 700;
+const DEMORA_BOT_MS = 1000;
 
 let puedoArriesgar = false; // si además de escribir, ya se puede mandar
 let mostrados = new Set(); // entradas del historial ya reveladas
@@ -718,6 +718,9 @@ function render() {
     lastRound = mios;
   } else if (mios > lastRound) {
     guessPad.clear();
+    // Al primer dígito: quedaba en el último y había que volver a mano cada vez.
+    // En el celular además mantiene el teclado arriba entre intento e intento.
+    guessPad.focus();
     lastRound = mios;
   }
 

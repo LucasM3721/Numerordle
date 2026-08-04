@@ -249,9 +249,11 @@ El servidor resuelve la jugada del bot en el mismo instante que la tuya, así qu
 las dos llegan en el mismo estado y aparecían en el mismo parpadeo. Funcionaba,
 pero se sentía un `console.log` y no un rival.
 
-El cliente retiene **solo lo suyo** unos 700 ms (`DEMORA_BOT_MS` en `app.js`) y
-mientras tanto le pone "pensando…" en la mesa. Tu resultado se ve al instante:
-medido, aparece a los 10 ms y el de la máquina a los 718.
+El cliente retiene **solo lo suyo** un segundo (`DEMORA_BOT_MS` en `app.js`) y
+mientras tanto le pone "pensando…" en la mesa. Tu resultado se ve al instante.
+
+El número salió de jugar: 700 ms se sentía apurado todavía. Es puro gusto y se
+cambia en una línea, así que si en algún momento molesta, movelo.
 
 Tres decisiones que importan más que el número:
 
