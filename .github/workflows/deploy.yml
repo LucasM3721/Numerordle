@@ -34,9 +34,11 @@ jobs:
       - name: Build del Worker
         run: npx wrangler deploy --dry-run
 
+      # DESTRABE_MS baja el margen de 90 s con el que se pasa el turno de un
+      # ausente. Es solo para las pruebas: producción usa el valor real.
       - name: Levantar el servidor local
         run: |
-          npx wrangler dev --port 8787 > wrangler-dev.log 2>&1 &
+          npx wrangler dev --port 8787 --var DESTRABE_MS:2500 > wrangler-dev.log 2>&1 &
           for i in $(seq 1 60); do
             if curl -sf http://127.0.0.1:8787/ > /dev/null; then
               echo "servidor listo"

@@ -129,14 +129,34 @@ Cerrar la página no te saca al instante, porque recargar, cambiar de wifi o que
 bloquee el teléfono no deberían echarte. Después de **90 segundos** sí, y solo
 donde es seguro:
 
-- **Sala de espera**: te va.
+- **Sala de espera**: te va de la lista.
 - **Eligiendo número**: te va solo si todavía no elegiste. El que ya se comprometió
   se queda aunque pierda la conexión.
-- **Partida en curso**: nunca (ver la primera sección).
+- **Partida en curso**: no te saca nunca (ver la primera sección), pero **tu turno
+  se pasa solo**.
 
-La alarma del Durable Object está multiplexada: sirve para este barrido *y* para
-vencer la sala a las 24 h sin uso. `nextAlarmAt()` devuelve el más cercano de los
-dos. Si la sala queda sin nadie se borra al instante.
+Esa última parte es la que hace que una desconexión no arruine la partida del
+resto. Sacarte del círculo le cambiaría el objetivo a otro, así que no se hace;
+lo que se hace es dejar tu lugar y seguir. En modo por turnos se saltea tu turno
+y en simultáneo se cierra la ronda, y en los dos casos queda anotado como "pasó"
+en el historial. Si volvés, seguís en la partida con tu número intacto.
+
+**El anfitrión conserva sus botones** para no esperar los 90 segundos; esto es la
+red para cuando no está mirando, o para cuando el que se cayó es él mismo (ahí el
+rol pasa solo al primer jugador conectado, y la máquina nunca hereda la sala).
+
+En simultáneo se fuerza **solo si todos los que faltan están ausentes**: con uno
+presente la ronda todavía tiene a quién esperar de verdad.
+
+La alarma del Durable Object está multiplexada: barrer ausentes, destrabar la
+ronda y vencer la sala a las 24 h. `nextAlarmAt()` devuelve la más cercana de las
+tres. Hace falta la alarma y no alcanza con revisar en cada mensaje: si nadie más
+está jugando, no hay ningún mensaje que dispare la revisión. Si la sala queda sin
+nadie se borra al instante.
+
+Los 90 segundos se pueden bajar con la variable `DESTRABE_MS` **solo para las
+pruebas** — esperar minuto y medio por caso en CI no es viable, y un caso que no
+se corre no protege de nada. Producción usa el valor real.
 
 ## Costo
 
@@ -204,6 +224,24 @@ con la del bot y correr los objetivos a donde estén de verdad.
 
 Se lee con `npm run tail` en vivo, o en el panel de Cloudflare, que ya tiene la
 observabilidad prendida en `wrangler.jsonc`.
+
+## Escribir antes de que te toque
+
+En modo por turnos el pad está habilitado aunque no sea tu turno: pensar el
+número es la mitad del juego y no tiene por qué empezar recién cuando te toca.
+Lo que se bloquea es **mandarlo**, no tipearlo.
+
+Dos detalles sin los cuales no sirve:
+
+- **El pad se limpia cuando jugaste vos, no cuando cambia la ronda.** Atado a la
+  ronda te borraba lo que venías escribiendo justo antes de poder mandarlo.
+- **El estado que llega no pisa lo que estás tipeando.** El intento pendiente
+  solo se vuelca al pad si está vacío; si no, cada actualización del servidor te
+  reescribía el casillero encima de los dedos.
+
+Enter avisa "todavía no es tu turno" del lado del cliente. Dejarlo llegar al
+servidor también funcionaría, pero contesta con un error rojo, y esto no es un
+error: es alguien apurado.
 
 ## La pausa de la máquina
 

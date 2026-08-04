@@ -75,7 +75,7 @@ let leaving = false;
 let retries = 0;
 let reconnectTimer = null;
 let pingTimer = null;
-let lastRound = -1;
+let lastRound = -1; // cuántos intentos tuyos llevabas en el último render
 let lastGame = -1;
 let lastPhase = null;
 
@@ -93,6 +93,7 @@ let lastPhase = null;
  */
 const DEMORA_BOT_MS = 700;
 
+let puedoArriesgar = false; // si además de escribir, ya se puede mandar
 let mostrados = new Set(); // entradas del historial ya reveladas
 let retenidos = new Set(); // entradas de la máquina esperando su momento
 let timerBot = null;
@@ -531,6 +532,11 @@ function submitSecret() {
 }
 
 function submitGuess() {
+  // Se puede escribir antes de tiempo, así que Enter tiene que avisar acá y no
+  // dejar que el servidor conteste "no es tu turno" como si fuera un error.
+  if (!puedoArriesgar) {
+    return flash('guess-error', 'Todavía no es tu turno. Cuando llegue, dale a Arriesgar.');
+  }
   const value = guessPad.value;
   if (!validSecret(value)) {
     return flash('guess-error', 'Tienen que ser 4 dígitos del 1 al 9, sin repetir.');
@@ -702,11 +708,17 @@ function render() {
   const isHost = you.isHost;
   marks.use(state.code, state.game);
 
-  // Limpiar el pad cuando cambia la ronda o empieza otra partida.
-  if (state.round !== lastRound || state.game !== lastGame) {
-    if (lastRound !== -1) guessPad.clear();
-    lastRound = state.round;
+  // El pad se limpia cuando jugaste vos, no cuando cambia la ronda: si se
+  // limpiara por ronda, borraría el número que estabas escribiendo mientras
+  // esperabas tu turno, que es justo lo que se quiere permitir.
+  const mios = state.log.filter((e) => e.playerId === you.id).length;
+  if (state.game !== lastGame) {
+    if (lastGame !== -1) guessPad.clear();
     lastGame = state.game;
+    lastRound = mios;
+  } else if (mios > lastRound) {
+    guessPad.clear();
+    lastRound = mios;
   }
 
   for (const v of ['lobby', 'secret', 'playing', 'intermission', 'finished']) {
@@ -808,22 +820,27 @@ function renderPlaying(me) {
   }
 
   $('target-name').textContent = nameOf(you.targetId);
-  // En simultáneo podés escribir (y corregir) mientras el resto piensa.
-  const canSend = me?.status === 'playing' && (state.mode === 'strict' ? myTurn : true);
-  guessPad.disabled = !canSend;
+  const playing = me?.status === 'playing';
+  const canSend = playing && (state.mode === 'strict' ? myTurn : true);
+
+  // Escribir se puede siempre que sigas en partida, aunque todavía no te toque:
+  // pensar el número es la mitad del juego y no tiene por qué empezar recién
+  // cuando llega tu turno. Lo que se bloquea es mandarlo, no tipearlo.
+  puedoArriesgar = canSend;
+  guessPad.disabled = !playing;
   $('btn-guess').disabled = !canSend;
   $('btn-guess').textContent = you.pending ? 'Cambiar mi intento' : 'Arriesgar';
 
-  if (you.pending && guessPad.value !== you.pending) guessPad.value = you.pending;
+  // No pisar lo que la persona esté tipeando mientras espera.
+  if (you.pending && !guessPad.value) guessPad.value = you.pending;
 
   // La fila de entrada solo existe mientras te quede algo por arriesgar.
   const mine = logVisible().filter((e) => e.playerId === you.id);
-  const playing = me?.status === 'playing';
   show('guess-row', playing);
   show('btn-guess', playing);
   $('guess-idx').textContent = `${mine.length + 1}`;
   $('guess-row').classList.toggle('active', canSend);
-  $('guess-slot').textContent = you.pending ? 'enviado' : '?';
+  $('guess-slot').textContent = you.pending ? 'enviado' : canSend ? '?' : 'esperá';
 
   let note = '';
   if (state.mode === 'sim' && you.pending) {
@@ -841,6 +858,8 @@ function renderPlaying(me) {
     else if (p.status === 'quit') tag = 'se retiró';
     // Sin esto la pausa de la máquina se lee como que se colgó.
     else if (p.bot && maquinaPensando()) tag = 'pensando…';
+    // Que se vea por qué la partida no avanza, antes de que se pase su turno.
+    else if (!p.connected) tag = 'sin conexión';
     else if (state.mode === 'sim') tag = state.waitingOn.includes(p.id) ? 'pensando…' : 'ya mandó';
     else if (state.turnId === p.id) tag = 'juega';
     scoreboard.appendChild(

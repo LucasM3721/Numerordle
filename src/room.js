@@ -216,6 +216,53 @@ function sweepable(state, p) {
   return false;
 }
 
+/**
+ * Cuánto se espera antes de pasarle el turno a alguien que no está. En
+ * producción es GRACE_MS, igual que el barrido. Se puede bajar con la variable
+ * `DESTRABE_MS` **solo para las pruebas**: esperar minuto y medio en CI por
+ * cada caso no es viable, y un caso que no se corre no protege de nada.
+ */
+let destrabeMs = GRACE_MS;
+
+const ausenteHace = (p, ahora) =>
+  Boolean(p) && !esBot(p) && !p.connected && p.disconnectedAt
+  && ahora - p.disconnectedAt >= destrabeMs;
+
+/**
+ * Destraba la ronda cuando el que tiene que jugar ya no está.
+ *
+ * En partida no se saca a nadie del círculo —eso le cambiaría el objetivo a
+ * otro—, pero tampoco puede quedar todo detenido esperando a alguien que cerró
+ * el navegador. Pasados los 90 segundos de siempre, su turno se pasa solo.
+ *
+ * El anfitrión conserva sus botones para no esperar; esto es la red por si no
+ * está mirando, o si el que se cayó es justamente él.
+ */
+function destrabar(state, ahora = Date.now()) {
+  if (state.phase !== 'playing') return false;
+  let hubo = false;
+
+  // El bucle es porque destrabar a uno puede dejar a otro ausente al frente.
+  for (let vuelta = 0; vuelta < 100 && state.phase === 'playing'; vuelta++) {
+    if (state.mode === 'strict') {
+      const id = state.roundQueue[state.turnPtr];
+      const p = id ? findPlayer(state, id) : null;
+      if (!p || !ausenteHace(p, ahora)) break;
+      pushSkip(state, id);
+      advanceStrict(state);
+    } else {
+      // En simultáneo solo se fuerza si TODOS los que faltan están ausentes:
+      // con uno solo presente, la ronda todavía tiene a quién esperar.
+      const faltan = state.roundQueue.filter((id) => !state.pending[id]);
+      if (!faltan.length) break;
+      if (!faltan.every((id) => ausenteHace(findPlayer(state, id), ahora))) break;
+      resolveSimultaneous(state, true);
+    }
+    hubo = true;
+  }
+  return hubo;
+}
+
 /** Saca a un jugador de la ronda en curso sin dejar la partida colgada. */
 function dropFromRound(state, id) {
   const pos = state.roundQueue.indexOf(id);
@@ -541,6 +588,8 @@ export class GameRoom {
     // hiberna es porque estuvo quieta, que es justo cuando no hay nada que
     // limitar.
     this.ritmo = new Map();
+    const override = Number(env.DESTRABE_MS);
+    if (Number.isFinite(override) && override > 0) destrabeMs = override;
     ctx.blockConcurrencyWhile(async () => {
       this.state = (await ctx.storage.get('state')) ?? null;
       ensurePublicIds(this.state);
@@ -701,6 +750,9 @@ export class GameRoom {
     try {
       const changed = this.handle(player, msg);
       if (changed === false) return;
+      // Primero se destraba y después juegan los bots: si el turno saltado deja
+      // a la máquina al frente, tiene que jugar en la misma tanda.
+      destrabar(this.state);
       turnoDeBots(this.state);
       await this.save();
       await this.broadcast();
@@ -958,12 +1010,18 @@ export class GameRoom {
     return humanos(this.state).length === 0 ? EMPTY_TTL_MS : IDLE_TTL_MS;
   }
 
-  /** La alarma sirve para dos cosas: barrer ausentes y vencer la sala. */
+  /** Barrer ausentes, destrabar la ronda y vencer la sala: la más cercana. */
   nextAlarmAt() {
     const s = this.state;
     let soonest = s.lastActivity + this.ttl();
     for (const p of s.players) {
       if (sweepable(s, p)) soonest = Math.min(soonest, p.disconnectedAt + GRACE_MS);
+      // En partida no se barre a nadie, pero su turno sí se pasa solo. Hace
+      // falta la alarma porque si nadie más juega no hay nada que la dispare.
+      const trabaLaRonda =
+        s.phase === 'playing' && p.status === 'playing' && !esBot(p)
+        && !p.connected && p.disconnectedAt;
+      if (trabaLaRonda) soonest = Math.min(soonest, p.disconnectedAt + destrabeMs);
     }
     return soonest;
   }
@@ -996,7 +1054,8 @@ export class GameRoom {
       (p) => !(sweepable(s, p) && now - p.disconnectedAt >= GRACE_MS),
     );
 
-    if (s.players.length !== antes) {
+    const barrio = s.players.length !== antes;
+    if (barrio) {
       // Una sala donde solo queda la máquina no es una sala: es un Durable
       // Object jugando solo.
       if (humanos(s).length === 0) {
@@ -1004,7 +1063,15 @@ export class GameRoom {
         return;
       }
       if (!findPlayer(s, s.hostId)) s.hostId = nuevoAnfitrion(s);
-      // Sin tocar lastActivity: barrer no cuenta como actividad de la sala.
+    }
+
+    // La partida detenida esperando a alguien que no vuelve. Acá es donde hace
+    // falta de verdad: si nadie más juega, no hay ningún mensaje que lo dispare.
+    const destrabo = destrabar(s, now);
+    if (destrabo) turnoDeBots(s);
+
+    if (barrio || destrabo) {
+      // Sin tocar lastActivity: esto no es actividad de nadie.
       await this.ctx.storage.put('state', s);
       await this.broadcast();
     }

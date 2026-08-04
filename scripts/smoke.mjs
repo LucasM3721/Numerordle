@@ -92,6 +92,7 @@ const esperarRechazo = async (ws) => {
 
 const nombres = (s) => s.players.map((p) => p.name);
 const buscar = (s, nombre) => s.players.find((p) => p.name === nombre);
+const nombreDelTurno = (s) => s.players.find((p) => p.id === s.turnId)?.name ?? null;
 const objetivos = (s) =>
   s.players.map((p) => `${p.name}->${s.players.find((q) => q.id === p.targetId).name}`);
 const resumenLog = (s) =>
@@ -430,6 +431,89 @@ async function contraLaMaquina() {
   ana.close();
 }
 
+// ------------------------------------------- desconexión en plena partida
+
+/**
+ * El caso que más molesta jugando: alguien cierra la pestaña en medio de una
+ * ronda. Nadie se puede sacar del círculo sin cambiarle el objetivo a otro,
+ * así que su turno se pasa solo pasado el margen.
+ *
+ * Necesita el servidor levantado con `--var DESTRABE_MS:<pocos ms>`; con los
+ * 90 segundos de producción esta prueba tardaría más que todo el resto junto.
+ */
+async function desconexionEnPartida() {
+  console.log('\nDesconexión en plena partida (modo por turnos)');
+  const code = await crearSala('strict');
+  const ana = await conectar(code, 'smoke-caida-ana', 'Ana');
+  const beto = await conectar(code, 'smoke-caida-beto', 'Beto');
+  const cami = await conectar(code, 'smoke-caida-cami', 'Cami');
+  await esperar(ana, (s) => s.players.length === 3, 'que entren los tres');
+
+  decir(ana, { t: 'start' });
+  await esperar(ana, (s) => s.phase === 'secret', 'el reparto');
+  decir(ana, { t: 'setSecret', secret: '1234' });
+  decir(beto, { t: 'setSecret', secret: '5678' });
+  decir(cami, { t: 'setSecret', secret: '9123' });
+  await esperar(ana, (s) => s.phase === 'playing', 'que arranque');
+
+  decir(ana, { t: 'guess', guess: '5671' });
+  const enBeto = await esperar(ana, (s) => nombreDelTurno(s) === 'Beto', 'el turno de Beto');
+  igual('le toca a Beto', nombreDelTurno(enBeto), 'Beto');
+
+  // Beto cierra la pestaña justo cuando le toca.
+  beto.close();
+  await esperar(ana, (s) => !buscar(s, 'Beto').connected, 'que se note la caída');
+  igual('la partida no lo saca del círculo', nombres(estado(ana)), ['Ana', 'Beto', 'Cami']);
+  igual('sigue siendo el turno de Beto', nombreDelTurno(estado(ana)), 'Beto');
+
+  // Nadie toca nada: la ronda tiene que destrabarse sola.
+  const destrabada = await esperar(
+    ana,
+    (s) => nombreDelTurno(s) === 'Cami',
+    'que se pase el turno del ausente sin que nadie apriete nada',
+  );
+  chequear(
+    'el turno del ausente se pasa solo',
+    destrabada.log.some((e) => e.playerName === 'Beto' && e.skipped),
+  );
+  igual('y la partida sigue con el que viene', nombreDelTurno(destrabada), 'Cami');
+  igual('Beto sigue en la partida por si vuelve', buscar(destrabada, 'Beto').status, 'playing');
+
+  ana.close();
+  cami.close();
+}
+
+/** El anfitrión se cae en plena partida: el rol tiene que pasar solo. */
+async function anfitrionSeCae() {
+  console.log('\nSe cae el anfitrión');
+  const code = await crearSala('sim');
+  const ana = await conectar(code, 'smoke-host-ana', 'Ana');
+  const beto = await conectar(code, 'smoke-host-beto', 'Beto');
+  await esperar(ana, (s) => s.players.length === 2, 'que entren los dos');
+  igual('Ana arranca de anfitriona', buscar(estado(ana), 'Ana').id, estado(ana).hostId);
+
+  decir(ana, { t: 'start' });
+  await esperar(ana, (s) => s.phase === 'secret', 'el reparto');
+  decir(ana, { t: 'setSecret', secret: '1234' });
+  decir(beto, { t: 'setSecret', secret: '5678' });
+  await esperar(beto, (s) => s.phase === 'playing', 'que arranque');
+
+  ana.close();
+  const traspaso = await esperar(beto, (s) => s.you.isHost, 'que Beto herede la sala');
+  igual('el anfitrionazgo pasa al que queda', buscar(traspaso, 'Beto').id, traspaso.hostId);
+  chequear('y hereda los botones para destrabar', traspaso.you.isHost === true);
+
+  // Y sin nadie que apriete nada, la ronda igual se cierra sola.
+  decir(beto, { t: 'guess', guess: '1235' });
+  const cerrada = await esperar(beto, (s) => s.round === 2, 'que la ronda cierre sin la ausente');
+  chequear(
+    'la ronda se cierra sin la que se fue',
+    cerrada.log.some((e) => e.playerName === 'Ana' && e.skipped),
+  );
+
+  beto.close();
+}
+
 // ------------------------------------------------------------------ main
 
 console.log(`Probando contra ${BASE}`);
@@ -441,6 +525,8 @@ try {
   await limitesYRuido();
   await topeDeConexiones();
   await contraLaMaquina();
+  await desconexionEnPartida();
+  await anfitrionSeCae();
 } catch (err) {
   fallos++;
   console.log(`\nError inesperado: ${err.message}`);

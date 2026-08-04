@@ -112,6 +112,11 @@ Cambiando `B`/`WS` a `https://…` y `wss://…` corre lo mismo contra producci�
 
 Detalles que ahorran tiempo:
 
+- **No edites archivos con `Get-Content`/`Set-Content` en PowerShell 5.1.** Lee
+  como ANSI y te deja `mÃ¡quina` donde decía `máquina`, en todo el archivo y de
+  una sola pasada. Usá las herramientas de edición del agente, o
+  `[System.IO.File]::ReadAllText/WriteAllText` con UTF8 explícito. Para
+  comprobar que no pasó: `Select-String -Pattern 'Ã|â€'` no tiene que dar nada.
 - **Node 20 necesita `--experimental-websocket`.**
 - **Dejá aire entre jugadas** (~500 ms). Si disparás rondas más rápido de lo que se
   resuelven, los intentos nuevos pisan los pendientes y parece un bug que no hay.
