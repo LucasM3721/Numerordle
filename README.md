@@ -33,7 +33,7 @@ pendientes no se filtren y que fijos y picas den los números exactos.
 ## Subirlo
 
 Está publicado en **https://numerordle.lucasm3721.workers.dev** — ese es el link
-que pasás; el de una sala concreta es `.../r/ABC12`.
+que pasás; el de una sala concreta es `.../r/K7Q4Z`.
 
 **Cada push a `main` despliega solo**, siempre que pasen las verificaciones
 (`.github/workflows/deploy.yml`). Para trabajar sin publicar, usá una rama y abrí
