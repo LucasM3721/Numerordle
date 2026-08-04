@@ -31,14 +31,30 @@ function igual(descripcion, obtenido, esperado) {
 
 // --------------------------------------------------------------- conexión
 
+/**
+ * El límite de creación es de diez salas por minuto y por IP, y la suite pide
+ * más que eso en unos segundos: la que caiga del otro lado de la ventana se
+ * come un 429 y antes se llevaba puesta la corrida entera.
+ *
+ * Se espera y se vuelve a pedir en vez de bajarle el límite al servidor: es una
+ * de las protecciones de costo, y una prueba no es motivo para debilitarla.
+ * También es lo que hace que la suite se pueda correr contra producción.
+ */
 async function crearSala(mode, max, bot) {
-  const res = await fetch(`${BASE}/api/rooms`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ mode, max, bot }),
-  });
-  if (!res.ok) throw new Error(`no se pudo crear la sala: HTTP ${res.status}`);
-  return (await res.json()).code;
+  const limite = Date.now() + 90000;
+  for (;;) {
+    const res = await fetch(`${BASE}/api/rooms`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mode, max, bot }),
+    });
+    if (res.ok) return (await res.json()).code;
+    if (res.status !== 429 || Date.now() >= limite) {
+      throw new Error(`no se pudo crear la sala: HTTP ${res.status}`);
+    }
+    console.log('  ...  esperando a que se libere el cupo de creación de salas');
+    await new Promise((r) => setTimeout(r, 5000));
+  }
 }
 
 function conectar(code, pid, name) {
@@ -450,7 +466,9 @@ async function contraLaMaquina() {
  */
 async function maquinasEnLaSala() {
   console.log('\nMáquinas en una sala normal');
-  const code = await crearSala('sim', 6);
+  // Todo en una sola sala: cada `crearSala` gasta del límite de diez por
+  // minuto, y la suite entera ya lo roza.
+  const code = await crearSala('strict', 6);
   const ana = await conectar(code, 'bots-ana', 'Ana');
   const beto = await conectar(code, 'bots-beto', 'Beto');
   await esperar(ana, (s) => s.players.length === 2, 'que entren Ana y Beto');
@@ -490,50 +508,38 @@ async function maquinasEnLaSala() {
   const menos = await esperar(ana, (s) => s.players.length === 4, 'que se vaya una máquina');
   igual('se sacan con el mismo kick que a una persona', menos.players.filter((p) => p.bot).length, 2);
 
+  // Con el cupo bajado a los que ya están, la sala queda llena: el que frena no
+  // es el tope de máquinas sino el lugar.
+  decir(ana, { t: 'setMax', max: 4 });
+  await esperar(ana, (s) => s.maxPlayers === 4, 'que baje el cupo');
+  decir(ana, { t: 'addBot', nivel: 'normal' });
+  chequear('con la sala llena no entra una más', (await esperarError(ana, 3)).includes('lugar'));
+
   decir(ana, { t: 'start' });
   await esperar(ana, (s) => s.phase === 'secret', 'el reparto de números');
   decir(ana, { t: 'addBot', nivel: 'normal' });
   chequear(
     'empezada la partida ya no se suman: le cambiaría el objetivo a alguien',
-    (await esperarError(ana, 3)).includes('antes de empezar'),
+    (await esperarError(ana, 4)).includes('antes de empezar'),
   );
 
-  ana.close();
-  beto.close();
-}
-
-/**
- * Dos máquinas en la misma sala. El bucle de `turnoDeBots` está escrito para
- * esto —una jugada suya destraba la siguiente— pero hasta ahora nunca había
- * más de una para probarlo.
- */
-async function dosMaquinasEnElCirculo() {
-  console.log('\nDos máquinas en el mismo círculo');
-  const code = await crearSala('strict', 3);
-  const ana = await conectar(code, 'bots2-ana', 'Ana');
-  await esperar(ana, (s) => s.players.length === 1, 'que entre Ana');
-
-  decir(ana, { t: 'addBot', nivel: 'normal' });
-  decir(ana, { t: 'addBot', nivel: 'dificil' });
-  const llena = await esperar(ana, (s) => s.players.length === 3, 'que se sumen las dos');
-
-  decir(ana, { t: 'addBot', nivel: 'normal' });
-  chequear('con la sala llena no entra una más', (await esperarError(ana, 1)).includes('lugar'));
-
-  decir(ana, { t: 'start' });
-  await esperar(ana, (s) => s.phase === 'secret', 'el reparto de números');
+  // Y de acá en más juegan. El bucle de `turnoDeBots` está escrito para que una
+  // jugada suya destrabe la siguiente, pero nunca había habido dos para
+  // probarlo: el círculo es Ana, Beto y las dos máquinas atrás.
+  const maquinas = new Set(menos.players.filter((p) => p.bot).map((p) => p.id));
   decir(ana, { t: 'setSecret', secret: '1234' });
+  decir(beto, { t: 'setSecret', secret: '5678' });
   const jugando = await esperar(ana, (s) => s.phase === 'playing', 'que arranque la partida');
   igual('las dos eligen su número solas', jugando.players.every((p) => p.ready), true);
+  igual('y los suyos siguen tapados', jugando.players.filter((p) => p.bot).map((p) => p.secret), [null, null]);
 
-  // Ana va primera en el círculo, así que hasta que no juegue no se mueve
-  // nadie. Después tienen que jugar las dos, una atrás de la otra.
-  decir(ana, { t: 'guess', guess: '5678' });
-  const vuelta = await esperar(ana, (s) => s.log.length >= 3, 'una vuelta entera del círculo');
-  const ids = new Set(llena.players.filter((p) => p.bot).map((p) => p.id));
-  const suyas = vuelta.log.filter((e) => ids.has(e.playerId));
+  decir(ana, { t: 'guess', guess: '9876' });
+  await esperar(ana, (s) => s.log.length >= 1, 'la jugada de Ana');
+  decir(beto, { t: 'guess', guess: '9876' });
+  const vuelta = await esperar(ana, (s) => s.log.length >= 4, 'una vuelta entera del círculo');
+  const suyas = vuelta.log.filter((e) => maquinas.has(e.playerId));
   chequear(
-    'las dos juegan solas cuando les toca',
+    'las dos juegan solas cuando les toca, una atrás de la otra',
     new Set(suyas.map((e) => e.playerId)).size === 2,
     JSON.stringify(suyas.map((e) => `${e.playerName} ${e.guess}`)),
   );
@@ -544,6 +550,7 @@ async function dosMaquinasEnElCirculo() {
   );
 
   ana.close();
+  beto.close();
 }
 
 // ------------------------------------------- desconexión en plena partida
@@ -641,7 +648,6 @@ try {
   await topeDeConexiones();
   await contraLaMaquina();
   await maquinasEnLaSala();
-  await dosMaquinasEnElCirculo();
   await desconexionEnPartida();
   await anfitrionSeCae();
 } catch (err) {

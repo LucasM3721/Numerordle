@@ -20,9 +20,11 @@
 > Al mergear se resolvió un conflicto en `package.json`: dos puntas habían
 > agregado archivos distintos al comando `check`. Quedaron los dos.
 >
-> **Ojo al probar contra producción**: la suite entera crea más de 10 salas por
-> minuto y hace saltar el límite de `CREAR_SALA`, o sea que falla sola. Contra
-> producción conviene una prueba corta y a mano.
+> **La suite crea once salas** y el límite de `CREAR_SALA` es de diez por minuto,
+> así que una se come un 429. Desde agosto de 2026 `crearSala` espera a que se
+> libere la ventana en vez de morirse, o sea que la corrida tarda un minuto más
+> de lo que tardaría sin límite —y por eso mismo ya se puede correr contra
+> producción—. Si agregás una suite, fijate si podés usar una sala que ya exista.
 >
 > El límite de creación de salas quedó **en el código** (API de Rate Limiting de
 > Workers, en `wrangler.jsonc`) y no en el panel, así el cliente puede mostrar
@@ -102,6 +104,8 @@ y fallan por tiempo agotado. Para jugar a mano usá `npm run dev`, que respeta e
 margen real.
 
 Para probar contra producción: `BASE=https://numerordle.lucasm3721.workers.dev npm test`.
+Tarda un minuto de más: la suite pide once salas y el límite es de diez por
+minuto, así que una espera a que se libere la ventana.
 
 **Cada push a `main` despliega solo**, pero únicamente si pasan `check`, el build
 y `npm test` (ver `.github/workflows/deploy.yml`). Trabajá en ramas y abrí un pull
