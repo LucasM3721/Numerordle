@@ -6,12 +6,23 @@
 > punta: el secreto está cargado y el workflow pasa entero, *Verificar* y
 > *Desplegar*.
 >
-> Lo último que se hizo fue prepararlo para **abrir el link al público**, en
-> cuatro pull requests apilados (cupo configurable → identidad → endurecer →
-> cabeceras). El grande es el de identidad: `viewFor` mandaba a todos el `pid`
-> de cada jugador, que es la credencial, así que cualquiera que hubiera pasado
-> por la sala podía reconectarse como otro y el servidor le contestaba con su
-> número secreto.
+> Lo último que se hizo fue prepararlo para **abrir el link al público**, en una
+> pila de nueve pull requests (cupo configurable → identidad → endurecer →
+> cabeceras → límites de creación, y de ahí tres puntas: rival de la máquina,
+> registro de partidas y servidor estático de desarrollo). **Están todas
+> mergeadas y desplegadas.**
+>
+> El grande es el de identidad: `viewFor` mandaba a todos el `pid` de cada
+> jugador, que es la credencial, así que cualquiera que hubiera pasado por la
+> sala podía reconectarse como otro y el servidor le contestaba con su número
+> secreto.
+>
+> Al mergear se resolvió un conflicto en `package.json`: dos puntas habían
+> agregado archivos distintos al comando `check`. Quedaron los dos.
+>
+> **Ojo al probar contra producción**: la suite entera crea más de 10 salas por
+> minuto y hace saltar el límite de `CREAR_SALA`, o sea que falla sola. Contra
+> producción conviene una prueba corta y a mano.
 >
 > El límite de creación de salas quedó **en el código** (API de Rate Limiting de
 > Workers, en `wrangler.jsonc`) y no en el panel, así el cliente puede mostrar
