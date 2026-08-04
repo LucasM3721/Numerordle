@@ -178,10 +178,21 @@ select:focus {
 .mode small { color: var(--muted); font-size: 0.8rem; line-height: 1.35; display: block; }
 .modes.compact .mode { padding: 8px 10px; }
 
+/* ------------------------------------------------------------ plegables */
+
+/* Una tarjeta que se despliega: cerrada ocupa un renglón y se lee como título
+   del bloque, así que el resumen va con el mismo peso que un <h2>. */
+details.card > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+details.card[open] > summary { margin-bottom: 14px; }
+
 /* ---------------------------------------------------------------- reglas */
 
-.rules summary { cursor: pointer; font-weight: 600; }
-.rules ol { margin: 12px 0 0; padding-left: 20px; color: var(--muted); font-size: 0.9rem; }
+.rules ol { margin: 0; padding-left: 20px; color: var(--muted); font-size: 0.9rem; }
 .rules li { margin-bottom: 7px; }
 .rules ul { margin: 5px 0; padding-left: 18px; }
 .rules b.fijo { color: var(--fijo); }

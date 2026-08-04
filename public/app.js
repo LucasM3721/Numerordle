@@ -413,27 +413,31 @@ function setBusy(msg) {
  */
 let bloqueo = null;
 
+// Las dos formas de crear sala pasan por el mismo límite, así que se apagan
+// juntas: dejar una prendida es prometer algo que va a fallar igual. La cuenta
+// va en las dos porque el cartel que explica el bloqueo está arriba de todo, y
+// desde el botón que apretaste puede no verse.
+const BOTONES_DE_CREAR = { 'btn-create': 'Crear sala', 'btn-bot': 'Jugar contra la máquina' };
+
 function bloquearCreacion(segundos, msg) {
-  const btn = $('btn-create');
-  // Las dos formas de crear sala pasan por el mismo límite, así que se apagan
-  // juntas: dejar una prendida es prometer algo que va a fallar igual.
-  const otro = $('btn-bot');
   setBusy(msg);
   clearInterval(bloqueo);
   let quedan = segundos;
-  btn.disabled = true;
-  otro.disabled = true;
+  for (const id of Object.keys(BOTONES_DE_CREAR)) $(id).disabled = true;
   const tick = () => {
     if (quedan <= 0) {
       clearInterval(bloqueo);
       bloqueo = null;
-      btn.disabled = false;
-      otro.disabled = false;
-      btn.textContent = 'Crear sala';
+      for (const [id, etiqueta] of Object.entries(BOTONES_DE_CREAR)) {
+        $(id).disabled = false;
+        $(id).textContent = etiqueta;
+      }
       setBusy('');
       return;
     }
-    btn.textContent = `Crear sala (${quedan})`;
+    for (const [id, etiqueta] of Object.entries(BOTONES_DE_CREAR)) {
+      $(id).textContent = `${etiqueta} (${quedan})`;
+    }
     quedan--;
   };
   tick();
@@ -462,12 +466,24 @@ function horaDeReposicion() {
  */
 function createBotRoom() {
   const nivel = document.querySelector('input[name="nivel"]:checked')?.value ?? 'normal';
-  return createRoom({ mode: 'strict', max: 2, bot: nivel, boton: 'btn-bot' });
+  return createRoom({ mode: 'strict', max: 2, bot: nivel, boton: 'btn-bot', error: 'bot-error' });
+}
+
+/**
+ * El nombre vive en su propio bloque, arriba, pero el aviso va donde apretaste:
+ * un cartel al pie de la pantalla puede quedar fuera de la vista y el botón
+ * parece roto. El foco es el que lleva hasta el campo.
+ */
+function faltaElNombre(destino) {
+  flash(destino, 'Poné tu nombre primero.');
+  $('home-name').focus();
+  return null;
 }
 
 async function createRoom(opciones = {}) {
+  const error = opciones.error ?? 'create-error';
   const name = $('home-name').value.trim();
-  if (!name) return flash('home-error', 'Poné tu nombre primero.');
+  if (!name) return faltaElNombre(error);
   store.name = name;
   const boton = opciones.boton ?? 'btn-create';
   const mode = opciones.mode ?? document.querySelector('input[name="mode"]:checked')?.value ?? 'sim';
@@ -505,7 +521,7 @@ async function createRoom(opciones = {}) {
     history.pushState({}, '', `/r/${data.code}`);
     connect(data.code);
   } catch (err) {
-    flash('home-error', String(err.message ?? err));
+    flash(error, String(err.message ?? err));
   } finally {
     // Si quedó bloqueado a propósito, la cuenta regresiva es la que manda.
     if (!bloqueo) $(boton).disabled = false;
@@ -514,9 +530,9 @@ async function createRoom(opciones = {}) {
 
 function joinRoom() {
   const name = $('home-name').value.trim();
-  if (!name) return flash('home-error', 'Poné tu nombre primero.');
+  if (!name) return faltaElNombre('join-error');
   const code = $('home-code').value.trim().toUpperCase();
-  if (!/^[A-Z2-9]{4,8}$/.test(code)) return flash('home-error', 'Ese código no parece válido.');
+  if (!/^[A-Z2-9]{4,8}$/.test(code)) return flash('join-error', 'Ese código no parece válido.');
   store.name = name;
   history.pushState({}, '', `/r/${code}`);
   connect(code);
@@ -1018,7 +1034,9 @@ if (match) {
     connect(code);
   } else {
     $('home-code').value = code;
-    flash('home-error', `Poné tu nombre para entrar a la sala ${code}.`);
+    // Acá no apretó ningún botón: llegó por el link. El aviso va pegado al
+    // campo que le falta llenar.
+    flash('name-error', `Poné tu nombre para entrar a la sala ${code}.`);
     $('home-name').focus();
   }
 }

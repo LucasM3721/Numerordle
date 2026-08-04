@@ -160,6 +160,11 @@ Detalles que ahorran tiempo:
 
 - La interfaz y los comentarios van en **español rioplatense**. Los mensajes de
   error los lee el jugador: que digan qué pasó, no un código.
+- **El error va en el bloque donde se apretó el botón**, no en un cartel al pie.
+  Cada tarjeta de la pantalla de inicio tiene el suyo (`create-error`,
+  `bot-error`, `join-error`, `name-error`); `home-error` y `home-busy` quedan
+  arriba de todo y son solo para lo que no cuelga de ningún botón. Un cartel
+  fuera de la vista se lee como que el botón no hizo nada.
 - Sin dependencias en el cliente y sin paso de build. Si algo necesita un bundler,
   probablemente no haga falta.
 - Los comentarios explican decisiones, no mecánica. Si el código ya lo dice, sobra.
