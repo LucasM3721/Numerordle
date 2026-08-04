@@ -176,6 +176,11 @@ async function partidaPorTurnos() {
     final.players.map((p) => `${p.name}:${p.status}`),
     ['Ana:won', 'Beto:quit', 'Cami:won'],
   );
+  // El registro de la partida no puede llevarse nada de nadie por delante.
+  chequear(
+    'la vista final no filtra ids internos ni el código de la sala',
+    !JSON.stringify(final).includes('smoke-ana'),
+  );
 
   [ana, beto, cami].forEach((w) => w.close());
 }

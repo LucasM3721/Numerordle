@@ -186,6 +186,25 @@ El aviso a Discord pasa por su propio limitador de uno por minuto. Sin eso, el
 aviso amplificaría el ataque en vez de contarlo. No lleva la IP: es dato
 personal de un tercero y no cambia lo que hay que hacer al respecto.
 
+## Lo único que se registra
+
+Al terminar una partida se escribe **una línea** con la forma de esa partida:
+modo, cuántos jugaron, cuántas rondas duró, y para cada uno cuántos intentos
+tiró y si ganó. Nada más.
+
+**No va nada que identifique a nadie**: ni nombres, ni números secretos, ni
+ids, ni el código de la sala, ni de dónde se conectó cada uno. Si algún día
+hace falta agregar un campo, que pase por `registrarPartida()` y por esta
+sección.
+
+Existe por una razón concreta: los tres niveles del rival de la máquina están
+calibrados contra una hipótesis de cómo juega la gente, no contra una medición.
+Con unas cuantas partidas registradas se puede comparar la distribución real
+con la del bot y correr los objetivos a donde estén de verdad.
+
+Se lee con `npm run tail` en vivo, o en el panel de Cloudflare, que ya tiene la
+observabilidad prendida en `wrangler.jsonc`.
+
 ## Qué pasa si se agota el cupo del día
 
 El plan gratis da 100.000 requests diarios al Worker, y **no factura por
