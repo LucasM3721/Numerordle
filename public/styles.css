@@ -1,16 +1,33 @@
+/**
+ * Los grises son neutros a propósito. Antes tiraban a azul (#0f1117 y familia),
+ * que es el gris por defecto de medio internet y lo primero que delata una
+ * pantalla armada sin decidir el color.
+ *
+ * Los bordes son un pelo de blanco y no una línea propia: dibujarle una caja
+ * visible a cada cosa es lo que hace que todo parezca del mismo peso. La caja
+ * se insinúa; lo que se ve es el contenido.
+ */
 :root {
-  --bg: #0f1117;
-  --bg-card: #171a23;
-  --bg-soft: #1f2331;
-  --line: #2a2f3f;
-  --text: #e8eaf0;
-  --muted: #939aad;
+  --bg: #0a0a0b;
+  --bg-card: #131315;
+  --bg-soft: #1c1c1f;
+  --line: rgba(255, 255, 255, .07);
+  /* Para lo que hay que poder tocar: un campo sin borde visible no se lee como
+     un campo. Sigue siendo suave, pero se ve. */
+  --line-strong: rgba(255, 255, 255, .15);
+  --text: #fafafa;
+  --muted: #8f8f99;
+  /* El gris más callado. El que había (#5c6377) daba 2,9 contra la tarjeta y no
+     llegaba a legible; ya que se tocaba la paleta, se subió hasta 4,5. */
+  --faint: #7c7c85;
   --accent: #ffc857;
   --accent-ink: #221a05;
   --fijo: #4ade80;
   --pica: #60a5fa;
   --danger: #f87171;
-  --radius: 14px;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --pill: 999px;
 }
 
 * { box-sizing: border-box; }
@@ -23,10 +40,9 @@ html, body {
   -webkit-text-size-adjust: 100%;
 }
 
-body {
-  background-image: radial-gradient(circle at 50% -10%, #1c2130 0%, var(--bg) 60%);
-  min-height: 100vh;
-}
+/* Sin el resplandor radial detrás del título. No iluminaba nada —no hay nada
+   arriba que pueda estar iluminado— y es la decoración más repetida que hay. */
+body { min-height: 100vh; }
 
 .wrap {
   max-width: 620px;
@@ -58,13 +74,13 @@ h3 { font-size: 0.9rem; margin: 18px 0 6px; color: var(--muted); text-transform:
   color: var(--accent);
   background: rgba(255, 200, 87, .08);
   border: 1px solid rgba(255, 200, 87, .35);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 11px 12px;
   font-size: 0.9rem;
   line-height: 1.4;
   margin: 12px 0 0;
 }
-.foot { text-align: center; color: #5c6377; font-size: 0.75rem; margin-top: 28px; }
+.foot { text-align: center; color: var(--faint); font-size: 0.75rem; margin-top: 28px; }
 
 /* ----------------------------------------------------------------- cajas */
 
@@ -92,8 +108,8 @@ h3 { font-size: 0.9rem; margin: 18px 0 6px; color: var(--muted); text-transform:
 input[type="text"] {
   width: 100%;
   background: var(--bg-soft);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
   color: var(--text);
   padding: 11px 12px;
   font-size: 1rem;
@@ -108,8 +124,8 @@ input[type="text"]:focus {
 select {
   width: 100%;
   background: var(--bg-soft);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
   color: var(--text);
   padding: 11px 12px;
   font-size: 1rem;
@@ -133,7 +149,7 @@ select:focus {
   background: var(--bg-soft);
   border: 1px solid var(--line);
   color: var(--text);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 11px 16px;
   font: inherit;
   font-weight: 600;
@@ -143,7 +159,8 @@ select:focus {
 .btn:hover:not(:disabled) { filter: brightness(1.25); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.btn.ghost { background: transparent; }
+/* Sin relleno que lo sostenga, con el borde de un pelo desaparecía. */
+.btn.ghost { background: transparent; border-color: var(--line-strong); }
 .btn.big { width: 100%; padding: 14px; font-size: 1.05rem; }
 .btn.small { padding: 6px 10px; font-size: 0.8rem; }
 
@@ -152,9 +169,9 @@ select:focus {
    quedaría ámbar desteñido en vez de apagado. Y uno que sigue pareciendo el
    botón principal invita a insistir. */
 .btn:disabled {
-  background: #23262e;
+  background: #212124;
   border-color: var(--line);
-  color: #6b7280;
+  color: #6b6b74;
   cursor: not-allowed;
   filter: none;
 }
@@ -168,11 +185,11 @@ select:focus {
   align-items: flex-start;
   background: var(--bg-soft);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 11px 12px;
   cursor: pointer;
 }
-.mode:has(input:checked) { border-color: var(--accent); background: #23242a; }
+.mode:has(input:checked) { border-color: var(--accent); background: #212124; }
 .mode input { margin-top: 3px; accent-color: var(--accent); }
 .mode strong { display: block; font-size: 0.95rem; }
 .mode small { color: var(--muted); font-size: 0.8rem; line-height: 1.35; display: block; }
@@ -224,12 +241,12 @@ details.card[open] > summary { margin-bottom: 14px; }
   gap: 9px;
   background: var(--bg-soft);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 9px 11px;
   font-size: 0.92rem;
 }
 .player .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fijo); flex: none; }
-.player .dot.off { background: #4b5163; }
+.player .dot.off { background: #4b4b55; }
 .player .who { font-weight: 600; }
 .player .tag {
   margin-left: auto;
@@ -242,28 +259,42 @@ details.card[open] > summary { margin-bottom: 14px; }
   flex-wrap: wrap;
   gap: 6px;
 }
-.player.is-you { border-color: #414c66; }
+.player.is-you { border-color: rgba(255, 255, 255, .22); }
 .player.is-turn { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
 .player.won { border-color: var(--fijo); }
-.player .num {
+/**
+ * Las etiquetas de la fila —"anfitrión", "listo", el nivel de la máquina— son
+ * píldoras. Sueltas al final del renglón se leían como una palabra más de la
+ * oración; encerradas, la fila pasa a tener dos cosas distintas: quién es, y
+ * qué le pasa. Es lo que hacen las dos referencias con todo lo que es estado.
+ */
+.player .tag > span {
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  padding: 2px 9px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+/* El número no es un estado, es el dato: va desnudo. */
+.player .tag > span.num {
+  border: 0;
+  padding: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.14em;
   color: var(--accent);
   font-weight: 700;
 }
 /* La máquina se distingue de un vistazo en la lista, sin leer el nombre. */
-.player .maquina {
+.player .tag > span.maquina {
   color: #a5b4fc;
-  border: 1px solid rgba(165, 180, 252, .35);
-  border-radius: 6px;
-  padding: 1px 6px;
+  border-color: rgba(165, 180, 252, .35);
 }
 .player .kick { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 0 2px; }
 .player .kick:hover { color: var(--danger); }
 .player .ctl {
   background: none;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--pill);
   color: var(--muted);
   cursor: pointer;
   font-size: 0.75rem;
@@ -287,8 +318,8 @@ details.card[open] > summary { margin-bottom: 14px; }
   font-weight: 700;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   background: var(--bg-soft);
-  border: 2px solid var(--line);
-  border-radius: 12px;
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius);
   color: var(--text);
   padding: 0;
 }
@@ -303,7 +334,7 @@ details.card[open] > summary { margin-bottom: 14px; }
 /* ------------------------------------------------------------- resultados */
 
 .banner {
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 9px 12px;
   font-size: 0.9rem;
   font-weight: 600;
@@ -320,7 +351,7 @@ details.card[open] > summary { margin-bottom: 14px; }
 .guess-row {
   margin-top: 5px;
   border-style: dashed;
-  border-color: #3a4157;
+  border-color: #3a3a44;
   background: transparent;
 }
 .guess-row.active { border-color: var(--accent); border-style: solid; background: rgba(255, 200, 87, .06); }
@@ -333,14 +364,14 @@ details.card[open] > summary { margin-bottom: 14px; }
   font-weight: 700;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
   color: var(--text);
   padding: 0;
 }
 .pad.inline input:focus { outline: none; border-color: var(--accent); }
 .pad.inline input:disabled { opacity: .45; }
-.marks.pending { color: #5c6377; font-size: 0.8rem; font-weight: 600; }
+.marks.pending { color: var(--faint); font-size: 0.8rem; font-weight: 600; }
 
 .board { display: grid; gap: 5px; margin-top: 10px; }
 .board .empty { color: var(--muted); font-size: 0.88rem; }
@@ -350,10 +381,10 @@ details.card[open] > summary { margin-bottom: 14px; }
   gap: 10px;
   background: var(--bg-soft);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 8px 11px;
 }
-.try .idx { color: #5c6377; font-size: 0.75rem; width: 22px; flex: none; }
+.try .idx { color: var(--faint); font-size: 0.75rem; width: 22px; flex: none; }
 .try .digits {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 1.3rem;
@@ -365,7 +396,7 @@ details.card[open] > summary { margin-bottom: 14px; }
   font-size: 0.8rem;
   font-weight: 700;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: var(--pill);
   border: 1px solid;
 }
 .mark.f { color: var(--fijo); border-color: rgba(74, 222, 128, .45); background: rgba(74, 222, 128, .1); }
@@ -387,7 +418,7 @@ details.card[open] > summary { margin-bottom: 14px; }
   color: var(--text);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background .12s ease, color .12s ease;
 }
@@ -435,7 +466,7 @@ details.card[open] > summary { margin-bottom: 14px; }
 .feed { display: grid; gap: 4px; margin-top: 10px; max-height: 340px; overflow-y: auto; }
 .feed .round-sep {
   font-size: 0.72rem;
-  color: #5c6377;
+  color: var(--faint);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin: 8px 0 2px;
@@ -446,9 +477,9 @@ details.card[open] > summary { margin-bottom: 14px; }
   gap: 8px;
   font-size: 0.86rem;
   padding: 5px 2px;
-  border-bottom: 1px solid #1e2230;
+  border-bottom: 1px solid var(--line);
 }
-.feed .line .arrow { color: #5c6377; }
+.feed .line .arrow { color: var(--faint); }
 .feed .line .digits {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.12em;
@@ -464,7 +495,7 @@ details.card[open] > summary { margin-bottom: 14px; }
 .winner {
   background: rgba(74, 222, 128, .1);
   border: 1px solid rgba(74, 222, 128, .4);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 11px 13px;
   font-size: 0.95rem;
 }
