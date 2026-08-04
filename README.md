@@ -105,6 +105,11 @@ Si falta cualquiera de los dos, el chequeo no corre y no molesta. Si están pero
 la consulta falla —token vencido, cambio en la API— te avisa por Discord, que
 es mejor que quedarse mudo para siempre.
 
+> Si aparece `not authorized for that account` y el token está bien configurado,
+> revisá cómo se cargó el secreto: en PowerShell, pasarle el valor por tubería
+> le agrega un BOM invisible y el id de cuenta deja de coincidir con ninguna.
+> Cargalo de nuevo escribiéndolo a mano en el prompt de `wrangler secret put`.
+
 > Al crear un subdominio `workers.dev` por primera vez, Cloudflare tarda en emitir
 > el certificado TLS. Mientras tanto el sitio da `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`
 > aunque el Worker ya esté sirviendo. Es esperar, no hay nada que configurar.

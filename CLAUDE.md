@@ -112,6 +112,12 @@ Cambiando `B`/`WS` a `https://…` y `wss://…` corre lo mismo contra producci�
 
 Detalles que ahorran tiempo:
 
+- **No le pases valores a un comando por tubería en PowerShell 5.1.** Le mete un
+  BOM adelante. Ya pasó con `$valor | wrangler secret put`: el secreto quedó
+  guardado con tres bytes invisibles al principio, y la API de Cloudflare
+  contestaba `not authorized for that account` sin decir por qué. Redirigí desde
+  un archivo escrito con `WriteAllText` y `UTF8Encoding $false`:
+  `cmd /c "npx wrangler secret put NOMBRE < archivo.txt"`.
 - **No edites archivos con `Get-Content`/`Set-Content` en PowerShell 5.1.** Lee
   como ANSI y te deja `mÃ¡quina` donde decía `máquina`, en todo el archivo y de
   una sola pasada. Usá las herramientas de edición del agente, o
