@@ -130,6 +130,38 @@ export function randomSecret() {
   return out;
 }
 
+/**
+ * Cuántos números válidos hay: 9 · 8 · 7 · 6, las permutaciones de cuatro
+ * dígitos distintos del 1 al 9.
+ */
+export const TOTAL_SECRETOS = 3024;
+
+/**
+ * El número número `indice` de los 3024, contados siempre igual.
+ *
+ * Existe para el desafío del día, que necesita convertir un hash en un número
+ * válido. Se podría hacer tomando dígitos del hash y descartando los que
+ * repiten, pero eso reparte mal: los números con dígitos bajos saldrían más
+ * seguido. Acá cada índice da un número distinto y cada número tiene un solo
+ * índice, así que un hash uniforme da números uniformes.
+ *
+ * Es puro y no toca criptografía a propósito: la parte que se puede equivocar
+ * en silencio —el reparto— queda probada sin depender de nada.
+ */
+export function permutacionSecreta(indice) {
+  const pool = '123456789'.split('');
+  let n = ((Math.trunc(indice) % TOTAL_SECRETOS) + TOTAL_SECRETOS) % TOTAL_SECRETOS;
+  let out = '';
+  // Radix decreciente: 9 opciones para el primer dígito, 8 para el segundo y
+  // así. El producto es 3024, que es lo que hace que sea una biyección.
+  for (let i = 0; i < SECRET_LEN; i++) {
+    const j = n % pool.length;
+    n = Math.floor(n / pool.length);
+    out += pool.splice(j, 1)[0];
+  }
+  return out;
+}
+
 /** Fisher-Yates con crypto, para mezclar el orden del círculo. */
 export function shuffled(list) {
   const out = [...list];

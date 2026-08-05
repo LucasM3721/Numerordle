@@ -14,15 +14,21 @@
   },
 
   // Una sala = un Durable Object. Estado aislado, websockets propios.
+  // Un desafío del día = otro, uno por jugador y por día. Va en una clase
+  // aparte y no como un modo de GameRoom porque ahí el orden de los jugadores
+  // ES el círculo, y el desafío no tiene círculo.
   "durable_objects": {
     "bindings": [
-      { "name": "ROOMS", "class_name": "GameRoom" }
+      { "name": "ROOMS", "class_name": "GameRoom" },
+      { "name": "RETOS", "class_name": "RetoDelDia" }
     ]
   },
 
   // new_sqlite_classes (y no new_classes) es lo que habilita el plan gratis.
+  // Las migraciones se agregan al final y no se editan: cada tag ya corrió.
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["GameRoom"] }
+    { "tag": "v1", "new_sqlite_classes": ["GameRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["RetoDelDia"] }
   ],
 
   // Dos veces por día, en UTC. El cupo diario del plan gratis se repone a la
@@ -40,7 +46,10 @@
   "ratelimits": [
     { "name": "CREAR_SALA", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
     { "name": "ABRIR_SALA", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } },
-    { "name": "AVISO", "namespace_id": "1003", "simple": { "limit": 1, "period": 60 } }
+    { "name": "AVISO", "namespace_id": "1003", "simple": { "limit": 1, "period": 60 } },
+    // Un desafío entero son 12 intentos: 60 por minuto es holgado para jugar y
+    // corta al que quiera hacer girar el Durable Object a mano.
+    { "name": "RETO", "namespace_id": "1004", "simple": { "limit": 60, "period": 60 } }
   ],
 
   // Cada versión publicada podría quedar accesible en su propia URL pública.

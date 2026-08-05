@@ -595,9 +595,14 @@ sala en ese momento es ruido.
 
 ## El desafío del día
 
-**Todavía no está construido: esto es el diseño, decidido el 5 de agosto de
-2026.** Se escribió antes de tocar código porque son varias decisiones cuyo
-porqué no se iba a poder deducir del resultado.
+El diseño se decidió y se escribió acá **antes** de tocar código, porque son
+varias decisiones cuyo porqué no se iba a poder deducir del resultado. El
+servidor ya está hecho (`src/reto.js`); lo que falta es la interfaz.
+
+**La clave `RETO_CLAVE` es un secreto del Worker y hay que cargarla a mano.**
+Si falta, el desafío contesta 503 y el resto del juego sigue andando. Para
+probar en local y en CI se pasa como `--var` con un valor cualquiera: derivar
+el número de una clave de juguete está bien mientras la de producción sea otra.
 
 Un jugador solo contra el número del día, con un tope de **12 intentos**. No hay
 círculo ni rival.
