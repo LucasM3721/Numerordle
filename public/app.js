@@ -1138,6 +1138,113 @@ $('btn-end').onclick = () => {
   if (confirm('¿Terminar la partida para todos y revelar los números?')) send({ t: 'endGame' });
 };
 
+// ------------------------------------------------------- desafío del día
+
+/**
+ * El desafío es la única parte del juego que no habla por websocket: se juega
+ * solo, así que no hay nada que el servidor tenga que empujar. Cada intento es
+ * un POST y la respuesta trae el estado entero, que es todo lo que hace falta
+ * para volver a dibujar.
+ */
+let reto = null;
+
+const retoPad = new DigitPad($('reto-pad'), () => arriesgarReto());
+
+async function pedirReto(metodo = 'GET', cuerpo = null) {
+  const opciones = { method: metodo };
+  if (cuerpo) {
+    opciones.headers = { 'content-type': 'application/json' };
+    opciones.body = JSON.stringify(cuerpo);
+  }
+  try {
+    const res = await fetch(`/api/reto?pid=${encodeURIComponent(store.pid)}`, opciones);
+    return { ok: res.ok, cuerpo: await res.json() };
+  } catch {
+    // Sin conexión no hay nada que reintentar solo: el que aprieta decide.
+    return { ok: false, cuerpo: { error: 'No se pudo conectar. Fijate la conexión y probá de nuevo.' } };
+  }
+}
+
+async function abrirReto() {
+  flash('reto-error', '');
+  $('btn-reto').disabled = true;
+  const { ok, cuerpo } = await pedirReto();
+  $('btn-reto').disabled = false;
+  // El aviso va en el bloque del botón que se apretó, no en un cartel al pie:
+  // si falta la clave en el servidor, el desafío contesta que no está
+  // disponible y el resto del juego sigue andando.
+  if (!ok) return flash('reto-error', cuerpo.error ?? 'No se pudo abrir el desafío.');
+
+  reto = cuerpo;
+  show('screen-home', false);
+  show('screen-reto', true);
+  renderReto();
+  if (!reto.terminado) retoPad.focus();
+}
+
+async function arriesgarReto() {
+  if (!reto || reto.terminado) return;
+  const valor = retoPad.value;
+  if (!validSecret(valor)) {
+    return flash('reto-guess-error', 'Tienen que ser 4 dígitos del 1 al 9, sin repetir.');
+  }
+  flash('reto-guess-error', '');
+  $('btn-reto-guess').disabled = true;
+  const { ok, cuerpo } = await pedirReto('POST', { guess: valor });
+  $('btn-reto-guess').disabled = false;
+  if (!ok) return flash('reto-guess-error', cuerpo.error ?? 'No se pudo mandar el intento.');
+
+  reto = cuerpo;
+  retoPad.clear();
+  renderReto();
+  if (!reto.terminado) retoPad.focus();
+}
+
+function renderReto() {
+  if (!reto) return;
+  // Las anotaciones se guardan por día, así que el desafío de mañana arranca
+  // limpio sin que haya que borrar nada.
+  marks.use('reto', reto.fecha);
+  $('reto-fecha').textContent = reto.fecha;
+
+  const n = reto.intentos.length;
+  const quedan = reto.tope - n;
+  $('reto-banner').textContent = reto.terminado
+    ? (reto.gano ? '¡Lo encontraste!' : 'Se te acabaron los intentos.')
+    : `Te ${quedan === 1 ? 'queda' : 'quedan'} ${quedan} de ${reto.tope}.`;
+
+  // `n` es el índice de la anotación, que acá es la posición en la lista: los
+  // intentos solo se agregan al final, así que no se corre nunca.
+  renderBoard($('reto-board'), reto.intentos.map((e, i) => ({ ...e, n: i })), {
+    annotate: true,
+    empty: '',
+  });
+
+  $('reto-idx').textContent = `${n + 1}`;
+  show('reto-row', !reto.terminado);
+  show('btn-reto-guess', !reto.terminado);
+  retoPad.disabled = reto.terminado;
+
+  show('reto-final', reto.terminado);
+  if (!reto.terminado) return;
+
+  $('reto-final-titulo').textContent = reto.gano ? 'Lo sacaste' : 'Casi';
+  $('reto-final-texto').textContent = reto.gano
+    ? `En ${n} ${n === 1 ? 'intento' : 'intentos'}. Mañana hay otro.`
+    : 'El número era:';
+  // Si ganaste ya está en el tablero, arriba y en verde: repetirlo abajo es
+  // contarte algo que acabás de hacer.
+  $('reto-final-numero').textContent = reto.numero ?? '····';
+  show('reto-final-numero', !reto.gano);
+}
+
+$('btn-reto').onclick = abrirReto;
+$('btn-reto-guess').onclick = arriesgarReto;
+$('btn-reto-salir').onclick = () => {
+  show('screen-reto', false);
+  show('screen-home', true);
+};
+
 // -------------------------------------------------------------------- arranque
 
 $('home-name').value = store.name;

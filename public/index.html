@@ -124,6 +124,16 @@
       <p id="bot-error" class="error hidden"></p>
     </details>
 
+    <!-- La única puerta que no lleva a una sala: se juega solo y sin código,
+         así que no hay nada que elegir antes de entrar. Por eso es un botón y
+         no una tarjeta con opciones adentro. -->
+    <div class="card">
+      <h2>Desafío del día</h2>
+      <p class="hint">El mismo número para todo el mundo, con 12 intentos. Cambia a la medianoche.</p>
+      <button id="btn-reto" class="btn primary big">Jugar el de hoy</button>
+      <p id="reto-error" class="error hidden"></p>
+    </div>
+
     <div class="card">
       <label class="field">
         <span>¿Te pasaron un código?</span>
@@ -290,6 +300,40 @@
     <div id="host-tools" class="card tools hidden">
       <button id="btn-skip" class="btn ghost small hidden">Saltear turno</button>
       <button id="btn-end" class="btn ghost small hidden">Terminar partida</button>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ DESAFÍO DEL DÍA -->
+  <section id="screen-reto" class="screen hidden">
+    <header class="topbar">
+      <div class="code-block">
+        <span class="code-label">Desafío</span>
+        <b id="reto-fecha">—</b>
+      </div>
+      <button id="btn-reto-salir" class="btn ghost small">Salir</button>
+    </header>
+
+    <div class="card">
+      <div id="reto-banner" class="banner"></div>
+
+      <!-- Mismo armado que la partida: el pad es la fila siguiente del tablero,
+           así se compara con la de arriba y ya está donde va a caer el resultado. -->
+      <div id="reto-board" class="board"></div>
+      <div id="reto-row" class="try guess-row">
+        <span id="reto-idx" class="idx"></span>
+        <div id="reto-pad" class="pad inline"></div>
+        <span class="marks pending">?</span>
+      </div>
+
+      <p id="reto-guess-error" class="error hidden"></p>
+      <button id="btn-reto-guess" class="btn primary big">Arriesgar</button>
+      <p class="hint">Tocá cada dígito de tus intentos para marcarlo: <b class="k-no">✕ no está</b> · <b class="k-pica">pica</b> · <b class="k-fijo">fijo</b>. Son anotaciones tuyas.</p>
+    </div>
+
+    <div id="reto-final" class="card hidden">
+      <h2 id="reto-final-titulo"></h2>
+      <p id="reto-final-texto" class="hint"></p>
+      <div id="reto-final-numero" class="secret-num">····</div>
     </div>
   </section>
 
