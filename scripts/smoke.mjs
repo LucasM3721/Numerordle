@@ -345,6 +345,18 @@ async function limitesYRuido() {
   const res = await fetch(`${BASE}/api/rooms/${code}/exists`);
   chequear('ya no se puede preguntar si una sala existe', res.status === 404, `HTTP ${res.status}`);
 
+  // La única fuente propia del proyecto. Se prueba porque es el tipo de cosa
+  // que se rompe callada: el fallback de página única contesta el index con un
+  // 200 alegre, así que un archivo que no se subió no se nota mirando el
+  // código de estado. Lo que lo delata es el tipo de contenido.
+  const fuente = await fetch(`${BASE}/fuentes/anton-latin.woff2`);
+  igual('la fuente del título se sirve', fuente.status, 200);
+  igual(
+    'y como fuente, no como el index disfrazado',
+    fuente.headers.get('content-type'),
+    'font/woff2',
+  );
+
   // Una marca de dirección adentro del nombre da vuelta la línea entera.
   decir(ana, { t: 'rename', name: 'Be‮to' });
   await esperar(ana, (s) => s.players[0].name !== 'Ana', 'el cambio de nombre');

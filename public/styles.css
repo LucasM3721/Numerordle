@@ -7,6 +7,37 @@
  * visible a cada cosa es lo que hace que todo parezca del mismo peso. La caja
  * se insinúa; lo que se ve es el contenido.
  */
+/**
+ * La única fuente propia del proyecto, y va en un solo lugar: el título.
+ *
+ * Antes salía de la familia del sistema (Impact y parientes), y eso alcanzaba
+ * en escritorio pero **en los dos teléfonos no existe**: ni iOS ni Android
+ * tienen ninguna de esas, así que la portada se veía con la del sistema en
+ * negrita, que es justo lo que se quiso sacar. Un juego que se pasa por link se
+ * juega en el teléfono.
+ *
+ * Es el archivo `latin` de Google Fonts tal cual, sin recortar a las letras del
+ * título: recortarlo bajaría de 18 KB a 3, pero necesita herramientas que este
+ * repo no tiene y el día que el título cambie una letra se rompería en silencio,
+ * mezclando glifos de dos fuentes.
+ *
+ * `swap`: el título se ve con la del sistema hasta que llega y después cambia.
+ * Nada espera a la fuente.
+ */
+@font-face {
+  font-family: 'Anton';
+  src: url('/fuentes/anton-latin.woff2') format('woff2');
+  /* Anton tiene un solo grosor, pero el `h1` pide 700 —lo pide para cuando la
+     fuente no está—. Declarar el rango la vuelve una coincidencia exacta y
+     ningún navegador la engorda a la fuerza. `font-synthesis-weight` haría lo
+     mismo, pero no existe en Safari anterior al 16.4, que es justo uno de los
+     lados que veníamos a arreglar. */
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --bg: #0a0a0b;
   --bg-card: #131315;
@@ -34,15 +65,23 @@
   /**
    * La display va en un solo lugar: el título de la portada. En los h2 y en los
    * resúmenes de los plegables cansaría, porque ahí se lee, no se mira.
+   *
+   * Atrás de Anton quedan las del sistema, que son lo que se ve en el instante
+   * anterior a que llegue el archivo y lo que queda si nunca llega.
    */
-  --fuente-titulo: Impact, Haettenschweiler, "Arial Narrow Bold", Bahnschrift, var(--fuente);
+  --fuente-titulo: Anton, Impact, Haettenschweiler, "Arial Narrow Bold", Bahnschrift, var(--fuente);
 
   /**
    * Los números. Una grotesca condensada donde exista, y la monoespaciada de
    * siempre donde no: las dos tienen los dígitos del mismo ancho, que es lo
    * único que no se puede perder cuando se comparan intentos en vertical.
+   *
+   * Acá no se carga nada: entre Bahnschrift (Windows), DIN Alternate (macOS y
+   * iOS) y Roboto Condensed (Android) ya están los cuatro lados cubiertos sin
+   * un solo byte. Roboto Condensed va último de las condensadas, antes de la
+   * monoespaciada, para no pisar a las que ya ganaban donde ganaban.
    */
-  --fuente-num: Bahnschrift, "DIN Alternate", "Liberation Sans Narrow", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --fuente-num: Bahnschrift, "DIN Alternate", "Liberation Sans Narrow", "Roboto Condensed", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 * { box-sizing: border-box; }

@@ -5,8 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Fijos y Picas</title>
 <meta name="description" content="El juego de adivinar el número de 4 dígitos, para jugar con amigos desde un link." />
-<meta name="theme-color" content="#0f1117" />
+<meta name="theme-color" content="#0a0a0b" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>" />
+<!-- El título es lo primero que se ve, así que la fuente se pide junto con el
+     CSS y no cuando el CSS la nombra: si no, la portada se dibuja con la del
+     sistema y cambia sola un instante después. `crossorigin` va aunque sea del
+     mismo origen — las fuentes se piden en modo CORS y sin eso se baja dos veces. -->
+<link rel="preload" href="/fuentes/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>

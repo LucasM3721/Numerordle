@@ -85,20 +85,22 @@
 > dos clics. Si querés más de uno contra uno, el camino es crear sala normal y
 > sumar gente o máquinas ahí.
 >
+> **El título tiene fuente propia** (agosto de 2026): Anton, 18 KB, servida
+> desde `public/fuentes/`. La pila del sistema alcanzaba en escritorio, pero
+> **en los dos teléfonos no existía** —ni iOS ni Android tienen Impact ni sus
+> parientes—, así que la portada se veía con la del sistema en negrita justo
+> donde más se juega. Los números **no** cargan nada: entre Bahnschrift,
+> DIN Alternate y Roboto Condensed los cuatro lados quedan cubiertos gratis.
+>
 > **Lo que queda por hacer**, en este orden:
 >
-> 1. **Decidir si se sirve una fuente propia desde `public/`.** Hoy el título y
->    los números salen de la familia del sistema (Impact / Bahnschrift), así que
->    en Android y en Linux se ven distintos. Cargar Anton y una condensada como
->    `.woff2` es lo único que falta para que el tono sea el mismo en todos lados.
->    Está sin decidir porque implica meter archivos de fuente al repo.
-> 2. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
+> 1. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
 >    grande: no hay círculo ni rival. El número del día **no puede viajar al
 >    cliente**, se valida en el servidor o el desafío se muere solo.
-> 3. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
+> 2. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
 >    partidas reales. Hoy son una hipótesis; el registro de partidas ya está
 >    juntando datos, se leen con `npm run tail`.
-> 4. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
+> 3. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
 >
 > **`wrangler dev` volvió a arrancar** en la máquina de Lucas (5 de agosto de
@@ -158,7 +160,7 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 | `src/room.js` | el Durable Object: máquina de estados de la sala |
 | `src/index.js` | Worker de entrada: crea salas, enruta el websocket |
 | `src/bot.js` | la cabeza de la máquina: su cuaderno y los tres niveles |
-| `public/` | cliente completo: un HTML, un CSS, un JS. Sin build ni dependencias |
+| `public/` | cliente completo: un HTML, un CSS, un JS y una fuente. Sin build ni dependencias |
 
 ## Invariantes que no hay que romper
 
@@ -243,7 +245,10 @@ Detalles que ahorran tiempo:
   consulta previa que diga si una sala existe, y no hay que agregarla: la hubo
   (`/exists`) y se sacó porque servía para barrer códigos a ver cuáles había.
 - Sin dependencias en el cliente y sin paso de build. Si algo necesita un bundler,
-  probablemente no haga falta.
+  probablemente no haga falta. El único binario del repo es
+  `public/fuentes/anton-latin.woff2`, que se baja de Google Fonts y se commitea
+  tal cual —no se recorta ni se genera acá—, con su `anton-OFL.txt` al lado
+  porque la licencia lo pide.
 - **La fuente display va en un solo lugar: el `h1` de la portada.** En los `h2` y
   en los resúmenes de los plegables cansa, porque ahí se lee y no se mira. Los
   números —el pad, la fila de intentos, tu número, fijos y picas— van con
