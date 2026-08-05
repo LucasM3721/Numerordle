@@ -3,5 +3,9 @@ node_modules/
 .dev.vars
 *.log
 
+# Lo que se baja del panel de Cloudflare para mirar partidas. Trae el id de la
+# cuenta y de cada request, y no es algo que haga falta versionar.
+logs-*.json
+
 # Permisos y ajustes propios de cada máquina (launch.json sí se comparte)
 .claude/settings.local.json
