@@ -86,7 +86,19 @@ export default {
       const accion = request.method === 'POST' ? 'intento' : 'estado';
       const id = env.RETOS.idFromName(`${fecha}-${pid}`);
       const stub = env.RETOS.get(id);
-      return stub.fetch(new Request(`https://reto/${accion}?fecha=${fecha}`, request));
+
+      // El cuerpo se lee **acá** y se reenvía ya materializado, en vez de pasar
+      // el request original con su stream sin abrir. Si el objeto contesta sin
+      // llegar a leerlo —el 409 de un desafío que ya terminó—, ese stream queda
+      // colgado y el runtime tira "Can't read from request stream after
+      // response has been sent". No es un error que se pueda atrapar: **mata al
+      // Worker**, y los pedidos siguientes se cuelgan hasta agotar el tiempo.
+      const cuerpo = request.method === 'POST' ? await request.text() : undefined;
+      return stub.fetch(new Request(`https://reto/${accion}?fecha=${fecha}`, {
+        method: request.method,
+        headers: { 'content-type': 'application/json' },
+        body: cuerpo,
+      }));
     }
 
     // Hubo un /exists que decía si una sala existía y cuántos había adentro.
