@@ -11,17 +11,36 @@ import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta, scoreGuess } from '.
 
 export const TOPE_INTENTOS = 12;
 
-// El reto de ayer no le sirve a nadie, pero se deja pasar un día de más para
-// que el que estaba jugando a la medianoche no pierda lo que llevaba.
-const TTL_MS = 1000 * 60 * 60 * 48;
-
 // El día corre en UTC−3 y no en UTC como el resto del proyecto. Con UTC el
 // número cambiaría a las nueve de la noche de acá, en plena hora de jugar.
 const DESFASE_MS = 3 * 60 * 60 * 1000;
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Margen para borrar el desafío después de que termina su día.
+ *
+ * En rigor no hace falta ninguno: apenas cambia el día el objeto ya no tiene
+ * puerta. Va igual porque la alarma y el Worker no leen el mismo reloj, y
+ * borrar un instante *antes* de tiempo sí se notaría.
+ */
+const MARGEN_MS = 1000 * 60 * 10;
 
 /** La fecha de hoy en UTC−3, con la forma `2026-08-05`. */
 export function fechaDeHoy(ahora = Date.now()) {
   return new Date(ahora - DESFASE_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * Cuándo termina el día `fecha`. Es exactamente el instante en que `fechaDeHoy`
+ * empieza a devolver el día siguiente.
+ *
+ * Sirve para no dejar vivo lo que ya nadie puede abrir: el Worker enruta
+ * siempre a la fecha de hoy, así que **el desafío de ayer no tiene puerta**.
+ * Antes se borraba a las 48 h, y ese día de más era lugar ocupado sin que
+ * nadie pudiera entrar.
+ */
+export function finDelDia(fecha) {
+  return Date.parse(`${fecha}T00:00:00Z`) + DESFASE_MS + DIA_MS;
 }
 
 /**
@@ -50,9 +69,11 @@ export async function numeroDelDia(fecha, clave) {
   return permutacionSecreta(n % TOTAL_SECRETOS);
 }
 
+// Sin marca de creación: lo único que decide cuánto vive es su fecha, y esa ya
+// está. Guardar además cuándo se creó invitaría a usarla para vencerlo, que es
+// justo lo que estaba mal.
 function nuevoReto(fecha) {
-  const now = Date.now();
-  return { fecha, creadoEn: now, intentos: [], terminado: false, gano: false };
+  return { fecha, intentos: [], terminado: false, gano: false };
 }
 
 /**
@@ -183,7 +204,7 @@ export class RetoDelDia {
 
   async guardar() {
     await this.ctx.storage.put('reto', this.estado);
-    await this.ctx.storage.setAlarm(this.estado.creadoEn + TTL_MS);
+    await this.ctx.storage.setAlarm(finDelDia(this.estado.fecha) + MARGEN_MS);
   }
 
   async alarm() {
