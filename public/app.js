@@ -1150,14 +1150,22 @@ let reto = null;
 
 const retoPad = new DigitPad($('reto-pad'), () => arriesgarReto());
 
-async function pedirReto(metodo = 'GET', cuerpo = null) {
+/**
+ * `fecha` es la del desafío que se está jugando, y se manda para poder
+ * terminarlo si el día cambia con la pantalla abierta. El servidor solo la
+ * acepta para **continuar** algo ya empezado, nunca para empezar: pedir la de
+ * ayer en frío sería pedir un número que ya se sabe.
+ */
+async function pedirReto(metodo = 'GET', cuerpo = null, fecha = null) {
   const opciones = { method: metodo };
   if (cuerpo) {
     opciones.headers = { 'content-type': 'application/json' };
     opciones.body = JSON.stringify(cuerpo);
   }
+  const qs = new URLSearchParams({ pid: store.pid });
+  if (fecha) qs.set('fecha', fecha);
   try {
-    const res = await fetch(`/api/reto?pid=${encodeURIComponent(store.pid)}`, opciones);
+    const res = await fetch(`/api/reto?${qs}`, opciones);
     return { ok: res.ok, cuerpo: await res.json() };
   } catch {
     // Sin conexión no hay nada que reintentar solo: el que aprieta decide.
@@ -1190,14 +1198,31 @@ async function arriesgarReto() {
   }
   flash('reto-guess-error', '');
   $('btn-reto-guess').disabled = true;
-  const { ok, cuerpo } = await pedirReto('POST', { guess: valor });
+  const { ok, cuerpo } = await pedirReto('POST', { guess: valor }, reto.fecha);
   $('btn-reto-guess').disabled = false;
-  if (!ok) return flash('reto-guess-error', cuerpo.error ?? 'No se pudo mandar el intento.');
+  if (!ok) {
+    // Cambió el día y se pasaron las horas de gracia. Se le muestra el de hoy,
+    // pero diciéndolo: cambiarle el tablero sin aviso se lee como que perdió
+    // todo, y lo que pasó es que su desafío se venció.
+    if (cuerpo.vencido) return arrancarDeNuevo();
+    return flash('reto-guess-error', cuerpo.error ?? 'No se pudo mandar el intento.');
+  }
 
   reto = cuerpo;
   retoPad.clear();
   renderReto();
   if (!reto.terminado) retoPad.focus();
+}
+
+/** Se venció el desafío que estaba jugando: se le trae el de hoy y se le dice. */
+async function arrancarDeNuevo() {
+  const { ok, cuerpo } = await pedirReto();
+  if (!ok) return flash('reto-guess-error', cuerpo.error ?? 'No se pudo abrir el desafío.');
+  reto = cuerpo;
+  retoPad.clear();
+  renderReto();
+  flash('reto-guess-error', 'Cambió el día: este es el desafío nuevo, y arranca de cero.', true);
+  retoPad.focus();
 }
 
 function renderReto() {

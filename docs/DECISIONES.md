@@ -252,6 +252,7 @@ ningún otro lado, y una fila es **un jugador de una partida**, no una partida.
 | `index1` | `humano`, o el nivel de la máquina |
 | `blob1` | el modo: `strict` o `sim` |
 | `blob2` | lo mismo que `index1` |
+| `blob3` | el día del desafío; vacío en las partidas |
 | `double1` | intentos que tiró |
 | `double2` | si ganó: 1 o 0 |
 | `double3` | en qué ronda ganó, 0 si no ganó |
@@ -265,6 +266,11 @@ esquemas, y eso cuesta más que un slot de los veinte que hay.
 
 **Si agregás un campo, va al final.** Reordenar es lo único que no se puede: las
 filas viejas no se reescriben y quedarían diciendo otra cosa.
+
+`blob3` existe porque el `timestamp` de la fila dice cuándo se escribió, no de
+qué día era el desafío, y **con las tres horas de gracia no son lo mismo**: uno
+del 5 se puede terminar a las 00:30 del 6. Agrupar por `timestamp` movería esas
+partidas de día. Para contar desafíos por día se agrupa por `blob3`.
 
 Una consulta que anda, para arrancar:
 
@@ -662,6 +668,27 @@ todos los días.
 
 Lo que **no** cambia es que el número no sale del servidor: la respuesta a un
 intento lleva fijos y picas y nada más, igual que en el juego normal.
+
+### El que quedó jugando cuando cambió el día
+
+El Worker enruta siempre a la fecha de hoy, así que apenas cambia el día el
+desafío de ayer **deja de tener puerta**: al que estaba jugando se le vaciaba el
+tablero y le aparecía otro número, sin aviso. No lo causaba el barrido —lo causa
+el enrutado—, y por eso no se arreglaba dejando la sala viva más tiempo.
+
+Ahora el cliente manda la fecha del desafío que está jugando, y se acepta **solo
+para continuar uno ya empezado, nunca para empezar**. Ahí está toda la
+seguridad del asunto: si se pudiera empezar el de ayer, pedir esa fecha sería
+pedir un número que ya se sabe. Como la sala solo existe si esa persona ya había
+arrancado, alcanza con exigir que haya algo empezado y sin terminar.
+
+Dura **tres horas** pasada la medianoche, y solo mientras la pantalla siga
+abierta: el cliente no guarda nada, así que al salir o recargar te toca el de
+hoy. Es a propósito —el desafío del día es de un día— y las tres horas son para
+que el que arrancó 23:50 pueda terminar, no para estirar el juego.
+
+Pasado eso el servidor contesta que venció, y el cliente trae el de hoy
+**diciéndolo**: cambiarle el tablero en silencio se lee como que perdió todo.
 
 ### Los reintentos no se pueden evitar, y no se intenta
 
