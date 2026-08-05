@@ -297,6 +297,50 @@ el cupo ni invitar a nadie, porque todo eso era de la espera. Está bien: para
 eso está el camino de crear una sala normal y sumarle gente o máquinas, que
 hace lo mismo y se explica solo.
 
+## La única fuente que se carga
+
+El repo tiene un solo binario: `public/fuentes/anton-latin.woff2`, 18 KB, y va
+únicamente en el `h1` de la portada.
+
+Entró porque la pila del sistema tapaba el agujero justo donde no importaba.
+Esto es dónde caía cada una antes:
+
+| | Título (Impact →) | Números (Bahnschrift →) |
+| --- | --- | --- |
+| Windows | Impact ✓ | Bahnschrift ✓ |
+| macOS | Impact ✓ | DIN Alternate ✓ |
+| iPhone | ✗ la del sistema en negrita | DIN Alternate ✓ |
+| Android | ✗ la del sistema en negrita | ✗ monoespaciada |
+
+O sea que la display existía solo en escritorio, y un juego que se pasa por link
+se juega en el teléfono. Los números, en cambio, estaban cubiertos en tres de
+cuatro y en el que faltaba caían en monoespaciada, que se ve más pobre pero
+**sigue alineada**, que es lo único que no se puede perder. Por eso se carga una
+sola fuente y no dos: a la de los números le alcanzó con sumarle
+`"Roboto Condensed"` a la pila, que en Android ya está instalada y no cuesta un
+byte.
+
+Cuatro decisiones chicas que no son obvias:
+
+- **Es el archivo `latin` de Google Fonts tal cual.** Recortarlo a las letras de
+  "FIJOS Y PICAS" lo bajaría a unos 3 KB, pero necesita herramientas que este
+  repo no tiene y el día que el título cambie una letra se rompe en silencio,
+  mezclando glifos de dos fuentes. Por 15 KB no vale.
+- **El `@font-face` declara `font-weight: 400 700`** aunque Anton tenga un solo
+  grosor. El `h1` pide 700 —lo pide para cuando la fuente todavía no está—, y
+  sin el rango el navegador la engorda a la fuerza. `font-synthesis-weight`
+  hace lo mismo pero no existe en Safari anterior al 16.4, que es justo uno de
+  los lados que se venía a arreglar.
+- **Se precarga desde el HTML, con `crossorigin`.** Sin el atributo se baja dos
+  veces, porque las fuentes se piden en modo CORS aunque sean del mismo origen.
+- **No se le puso `Cache-Control: immutable`**, que sería lo natural para un
+  archivo que no cambia: el nombre no lleva hash, así que un día de estos
+  cambiar la fuente dejaría a medio mundo con la vieja durante un año. Si
+  alguna vez se quiere, primero el nombre y después la cabecera.
+
+La CSP no hubo que tocarla: no hay `font-src`, así que cae en `default-src
+'self'` y una fuente servida desde `public/` ya estaba permitida.
+
 ## Qué pasa si se agota el cupo del día
 
 El plan gratis da 100.000 requests diarios al Worker, y **no factura por
