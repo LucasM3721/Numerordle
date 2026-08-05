@@ -817,6 +817,14 @@ async function desafioDelDia() {
     return { status: res.status, cuerpo: await res.json() };
   };
 
+  // Antes de gastar el desafío: lo que no es un número válido se rechaza y no
+  // cuenta como intento. Va acá y no al final porque una vez terminado el
+  // desafío contesta 409 a todo, que es lo correcto pero tapa esta prueba.
+  const malo = await tirar('1123');
+  igual('un número con repetidos se rechaza', malo.status, 400);
+  estado = await (await fetch(url)).json();
+  igual('y no gasta un intento', estado.intentos.length, 0);
+
   const candidatos = [
     '1234', '5678', '1357', '2468', '1235', '1236',
     '1237', '1238', '1239', '1245', '1246', '1247',
@@ -844,10 +852,6 @@ async function desafioDelDia() {
   // página no regale un desafío nuevo.
   const devuelta = await (await fetch(url)).json();
   igual('el mismo pid retoma el mismo desafío', devuelta.intentos.length, estado.intentos.length);
-
-  // Entradas que no son números válidos no gastan intentos.
-  const malo = await tirar('1123');
-  igual('un número con repetidos se rechaza', malo.status, 400);
 
   const sinPid = await fetch(`${BASE}/api/reto?pid=x`);
   igual('un identificador inválido se rechaza', sinPid.status, 400);
