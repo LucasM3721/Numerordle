@@ -266,6 +266,19 @@ esquemas, y eso cuesta más que un slot de los veinte que hay.
 **Si agregás un campo, va al final.** Reordenar es lo único que no se puede: las
 filas viejas no se reescriben y quedarían diciendo otra cosa.
 
+Una consulta que anda, para arrancar:
+
+```sql
+SELECT timestamp, index1 AS quien, double1 AS intentos, double2 AS gano
+FROM numerordle_partidas
+ORDER BY timestamp DESC
+```
+
+**`timestamp` tiene que estar en el `SELECT` para poder ordenar por él.** El
+`ORDER BY` se resuelve contra las columnas proyectadas, no contra el esquema, y
+si no está contesta `unable to find type of column: "timestamp"` — que suena a
+que la columna no existe, y no es eso.
+
 ## La trampa al leer los intentos
 
 En una partida por turnos los dos juegan todas las rondas, y la partida corta en
