@@ -241,6 +241,31 @@ Se guarda por dos vías, con propósitos distintos:
   se comparan los niveles del bot. Escribir ahí no puede voltear una partida:
   si falla, se pierde el dato y se sigue jugando.
 
+### Qué es cada columna
+
+Analytics Engine no guarda nombres: las columnas son posiciones, y una consulta
+contra `double3` no dice nada por sí sola. El mapa vive acá porque no está en
+ningún otro lado, y una fila es **un jugador de una partida**, no una partida.
+
+| Columna | Qué es |
+| --- | --- |
+| `index1` | `humano`, o el nivel de la máquina |
+| `blob1` | el modo: `strict` o `sim` |
+| `blob2` | lo mismo que `index1` |
+| `double1` | intentos que tiró |
+| `double2` | si ganó: 1 o 0 |
+| `double3` | en qué ronda ganó, 0 si no ganó |
+| `double4` | cuántos jugaron |
+| `double5` | cuántas rondas duró |
+| `double6` | si hubo descuento: 1 o 0 |
+
+`blob2` repite `index1` a propósito y no hace falta para consultar —se pregunta
+por `index1`—, pero mover las posiciones ahora partiría el histórico en dos
+esquemas, y eso cuesta más que un slot de los veinte que hay.
+
+**Si agregás un campo, va al final.** Reordenar es lo único que no se puede: las
+filas viejas no se reescriben y quedarían diciendo otra cosa.
+
 ## La trampa al leer los intentos
 
 En una partida por turnos los dos juegan todas las rondas, y la partida corta en
