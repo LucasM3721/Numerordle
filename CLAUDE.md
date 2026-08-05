@@ -4,23 +4,35 @@
 >
 > El juego está terminado, en vivo y **con todo mergeado y desplegado**. El
 > deploy automático funciona de punta a punta: cada push a `main` corre
-> *Verificar* y *Desplegar*, y `npm test` son 89 verificaciones que pasan.
+> *Verificar* y *Desplegar*, y `npm test` son 127 verificaciones que pasan.
 >
 > Esta guía se lee sola. Lo que no está acá está en
 > [docs/DECISIONES.md](docs/DECISIONES.md), que es donde vive el **porqué** de
 > cada cosa —incluidas las ideas que se evaluaron y no entraron—. El historial
 > de cambios es `git log`, no esta nota: acá va solo lo que sigue siendo cierto.
 >
-> **Lo último que se hizo** (sesión del 5 de agosto): el cliente dejó de
-> reconectarse solo a la sala anterior (era un `onclose` viejo que seguía
-> armado); el uno contra uno **ya no pasa por la sala de espera**; el título
-> tiene **fuente propia** (Anton, 18 KB, en `public/fuentes/`); las filas del
-> tablero dejaron de partirse en dos renglones en el celular; y el registro de
-> partidas pasó a anotar **quién era máquina y de qué nivel**, sin lo cual no
-> se puede calibrar nada, y a guardarse noventa días en Analytics Engine.
+> **Lo último que se hizo** (5 de agosto). Dos cosas grandes, las dos en vivo:
 >
-> **Tres cosas de operación que no se deducen del código:**
+> - **El desafío del día**, completo: un jugador solo contra el número de hoy,
+>   tope de 12, en `src/reto.js` y la pantalla `screen-reto`. El número se
+>   deriva de la fecha con HMAC y no se guarda en ningún lado. Va por HTTP y no
+>   por websocket, así que se prueba entero sin abrir un socket.
+> - **El registro de partidas anota qué era cada jugador** —persona o máquina, y
+>   de qué nivel—, sin lo cual no se puede calibrar nada, y se guarda noventa
+>   días en Analytics Engine. Los logs solos duran tres.
 >
+> Antes, ese mismo día: el cliente dejó de reconectarse a la sala anterior, el
+> uno contra uno dejó de pasar por la sala de espera, y el título tiene fuente
+> propia (Anton, 18 KB, en `public/fuentes/`).
+>
+> **Cuatro cosas de operación que no se deducen del código:**
+>
+> - **`RETO_CLAVE` está cargada** (como secreto del Worker, desde el panel) y es
+>   con lo que se deriva el número del día. **No se cambia**: cambiarla cambia
+>   todos los números futuros, y en medio de un día deja a alguien adivinando
+>   otro número sin enterarse. Si falta, el desafío contesta 503 y el resto del
+>   juego sigue andando. En local y en CI va como `--var` con un valor de
+>   juguete; la de producción no está en el repo.
 > - **Los tres secretos opcionales están cargados y probados**
 >   (`DISCORD_WEBHOOK_URL`, `CF_ACCOUNT_ID`, `CF_ANALYTICS_TOKEN`). De acá en
 >   más **el silencio es la señal buena**: solo escribe a Discord si se pasa el
@@ -36,36 +48,49 @@
 >
 > **Lo que queda por hacer**, en este orden:
 >
-> 1. ~~**Desafío del día**~~: **hecho**. Un jugador solo contra el número de
->    hoy, tope de 12, en `src/reto.js` y la pantalla `screen-reto`. El porqué de
->    cada decisión está en "El desafío del día", en DECISIONES. **Necesita el
->    secreto `RETO_CLAVE` cargado**; sin él contesta 503 y el resto del juego
->    sigue andando.
-> 2. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
->    partidas reales. El lado del bot ya está medido y es reproducible sin
->    servidor: `npm run bot` da 15,9 / 12,0 / 8,0 de media. Falta el lado
->    humano, y **el reloj arranca de cero**: hasta el 5 de agosto de 2026 el
->    registro no anotaba quién era máquina y quién persona, así que lo juntado
->    hasta entonces no se puede usar (ver "Lo único que se registra" en
->    DECISIONES). Desde ahora se acumula en Analytics Engine, noventa días.
->    Dos cosas antes de juntar: **hace falta que juegue otra gente** —las 23
->    partidas que había eran todas de Lucas, que es rápido y no sirve de
->    muestra— y hay que pedirles que **si pierden sigan jugando**, que es lo que
->    hace que su número se registre entero. El porqué está en "La trampa al leer
->    los intentos", en DECISIONES.
-> 3. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
->    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
+> 1. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
+>    partidas reales. **No queda nada que programar: falta que juegue gente.**
+>
+>    El lado del bot ya está medido y no depende de producción: `npm run bot` da
+>    15,9 / 12,0 / 8,0 de media. Falta el lado humano, y **arranca casi de
+>    cero**: al 5 de agosto hay un desafío jugado y nada más. Las 23 partidas
+>    que había de antes **no se pueden usar** —no decían quién era máquina— y ya
+>    se vencieron.
+>
+>    Dos cosas para que lo que se junte sirva. **El desafío del día es la fuente
+>    limpia**: sin rival no hay partida que corte antes de tiempo, así que el
+>    número llega entero solo. En el uno contra uno hay que pedirles que **si
+>    pierden sigan jugando**, o su fila queda truncada y no entra. El porqué
+>    está en "La trampa al leer los intentos", en DECISIONES, y conviene leerlo
+>    antes de sacar cualquier cuenta.
+>
+>    Para leer los datos, la consulta y el mapa de columnas están en "Qué es
+>    cada columna". Ojo con una: se agrupa por `blob3` y no por `timestamp`,
+>    porque un desafío del 5 se puede cerrar el 6.
+> 2. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
+>    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día, y si
+>    el tope de 12 del desafío está bien puesto.
 >
 > **Cómo se verifica desde acá.** `wrangler dev` **va y viene** en la máquina de
-> Lucas: el 5 de agosto de 2026 arrancó y corrió la suite entera local, 89 de
-> 89, y esa misma tarde volvió a tirar "access violation in the runtime" —un
-> Visual C++ Redistributable viejo—. Tratalo como que puede no estar: **la
+> Lucas: el 5 de agosto de 2026 arrancó a la mañana y corrió la suite entera
+> local, y de ahí en adelante no arrancó más —"access violation in the runtime",
+> un Visual C++ Redistributable viejo—. Tratalo como que puede no estar: **la
 > verificación real es la del pull request** y no hay que perder la tarde
 > persiguiéndolo. Lo que sí anda siempre, sin Worker, es `npm run check`,
 > `npm run bot` y las pruebas puras de la suite.
 >
+> Y algo que quedó demostrado el mismo día: **un CI en verde sobre una carrera
+> no prueba que no haya bug.** El desafío mataba al Worker al contestar 409 sin
+> leer el cuerpo del pedido, y la primera corrida pasó igual porque la ventana
+> entre que el Worker muere y llega el pedido siguiente es una carrera. Si algo
+> falla de a ratos, relanzalo antes de teorizar: dos corridas iguales dicen
+> mucho más que una.
+>
 > - Para mirar la interfaz sin Worker: `npm run estatico`. De la sala en
->   adelante no sirve, porque no tiene websocket.
+>   adelante no sirve, porque no tiene websocket. **Para el desafío sí sirve**:
+>   como habla por HTTP, alcanza con pisar `window.fetch` y contestarle lo mismo
+>   que `src/reto.js`. Así se probaron el desafío ganado, el perdido en el tope
+>   y el cambio de día, sin levantar el Worker.
 > - Para probar lógica del cliente que depende del websocket, se pisa
 >   `window.WebSocket` con un doble desde la consola (`app.js` resuelve el
 >   global recién al hacer `new`). Dos cosas hacen que el doble sirva para
