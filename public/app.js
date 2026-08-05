@@ -380,7 +380,29 @@ function noSePudoEntrar(motivo) {
   flash(destino, motivo);
 }
 
+/**
+ * Cierra el socket vigente y, sobre todo, lo desarma.
+ *
+ * Desarmarlo es lo que importa: `close()` no termina en el acto y su `onclose`
+ * llega después, cerrado sobre el código de *su* sala. Con solo `leaving` no
+ * alcanzaba —salir y entrar a otra sala lo vuelve a poner en falso antes de
+ * que el evento viejo llegue—, así que ese `onclose` lo leía como una caída y
+ * reconectaba a la sala anterior. Un segundo más tarde, el primer escalón del
+ * backoff, la pantalla se llenaba con los jugadores de la que habías dejado.
+ */
+function cerrarSocket() {
+  if (!ws) return;
+  ws.onopen = ws.onmessage = ws.onclose = ws.onerror = null;
+  try {
+    ws.close();
+  } catch {
+    /* ya cerrado */
+  }
+  ws = null;
+}
+
 function connect(code, avisarEn = null) {
+  cerrarSocket();
   roomCode = code;
   leaving = false;
   esperandoEntrar = avisarEn;
@@ -457,12 +479,7 @@ function goHome(message) {
   botonEntrar(true);
   clearTimeout(reconnectTimer);
   clearInterval(pingTimer);
-  try {
-    ws?.close();
-  } catch {
-    /* ya cerrado */
-  }
-  ws = null;
+  cerrarSocket();
   state = null;
   roomCode = null;
   lastRound = -1;

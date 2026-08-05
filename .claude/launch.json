@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["wrangler", "dev", "--port", "8787"],
       "port": 8787
+    },
+    {
+      "name": "estatico",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/servir-estatico.mjs"],
+      "port": 8899
     }
   ]
 }

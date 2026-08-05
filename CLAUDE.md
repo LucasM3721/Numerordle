@@ -68,46 +68,36 @@
 > tres versiones: **base callada y una sola display, solo en el título de la
 > portada**. Los números van con una grotesca condensada.
 >
+> **Se arregló que el cliente se reconectara solo a la sala anterior.** Lo vio
+> Lucas: creó una sala con tres máquinas, salió, entró a un uno contra uno, y un
+> segundo después la pantalla se le llenó con los cuatro de la sala vieja. Era
+> el `onclose` del socket viejo, que seguía armado y cerrado sobre *su* código:
+> llegaba tarde, encontraba `leaving` de nuevo en falso —la sala nueva lo había
+> reiniciado— y lo leía como una caída. Ahora `connect()` y `goHome()` pasan por
+> `cerrarSocket()`, que además de cerrar **desarma los handlers**; ver el
+> comentario en `public/app.js`.
+>
 > **Lo que queda por hacer**, en este orden:
 >
-> 1. **BUG: el cliente se reconecta solo a la sala anterior.** Lo vio Lucas:
->    creó una sala con tres máquinas, salió, entró a un uno contra uno, y como
->    un segundo después la pantalla se le llenó con los cuatro jugadores de la
->    sala vieja. No es caché.
->
->    Está reproducido con un doble de `WebSocket` y la causa es de
->    `public/app.js`: **`connect()` no cierra el socket anterior y pone
->    `leaving = false`**, pero el `onclose` del socket viejo sigue armado y
->    cierra sobre el `code` viejo. Cuando su evento de cierre llega —siempre
->    tarde, es asíncrono— ya encuentra `leaving` en falso, lo lee como una caída
->    y programa `connect(codeViejo)`. El segundo de demora es exactamente el
->    primer escalón del backoff.
->
->    La idea de arreglo: que cada conexión sepa si sigue siendo la vigente
->    (un número de sesión que `connect()` incremente, y que los handlers
->    comparen contra el suyo antes de hacer nada), y que `connect()` cierre y
->    desarme el socket anterior antes de abrir el nuevo. El caso de prueba es el
->    de arriba: sala A, salir, sala B, y recién ahí soltar el cierre de A.
->
-> 2. **Contra la máquina no debería pasar por la sala de espera.** Es uno contra
+> 1. **Contra la máquina no debería pasar por la sala de espera.** Es uno contra
 >    uno: no hay a quién esperar ni orden que acomodar, así que del botón
 >    debería salir directo a elegir el número. Si querés más de uno contra uno,
 >    ese camino ya existe: crear sala normal y sumar gente o máquinas ahí.
 >    Ojo con el invariante 1 al hacerlo —el orden del círculo se congela al
 >    empezar— y con que el anfitrión sigue teniendo que ser una persona.
 >
-> 3. **Decidir si se sirve una fuente propia desde `public/`.** Hoy el título y
+> 2. **Decidir si se sirve una fuente propia desde `public/`.** Hoy el título y
 >    los números salen de la familia del sistema (Impact / Bahnschrift), así que
 >    en Android y en Linux se ven distintos. Cargar Anton y una condensada como
 >    `.woff2` es lo único que falta para que el tono sea el mismo en todos lados.
 >    Está sin decidir porque implica meter archivos de fuente al repo.
-> 4. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
+> 3. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
 >    grande: no hay círculo ni rival. El número del día **no puede viajar al
 >    cliente**, se valida en el servidor o el desafío se muere solo.
-> 5. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
+> 4. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
 >    partidas reales. Hoy son una hipótesis; el registro de partidas ya está
 >    juntando datos, se leen con `npm run tail`.
-> 6. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
+> 5. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
 >
 > **`wrangler dev` no arranca en la máquina de Lucas** (agosto 2026): el runtime
@@ -115,7 +105,11 @@
 > sea que `npm test` no corre local y la verificación real es la del pull
 > request. Para mirar la interfaz, `npm run estatico`; para probar lógica del
 > cliente que depende del websocket, se pisa `window.WebSocket` con un doble
-> desde la consola (`app.js` resuelve el global recién al hacer `new`).
+> desde la consola (`app.js` resuelve el global recién al hacer `new`). Dos
+> cosas hacen que el doble sirva para carreras: que su `close()` **no** dispare
+> `onclose` —el evento lo soltás vos, tarde, que es de donde salen los bugs— y
+> pisar también `fetch` para que cada sala nueva devuelva un código distinto.
+> Después se maneja a botonazos y se cuentan los sockets abiertos.
 >
 > Ideas que se evaluaron y se descartaron (con el porqué) están al final de
 > [docs/DECISIONES.md](docs/DECISIONES.md).
