@@ -406,3 +406,14 @@ sala en ese momento es ruido.
 - Un ayudante que cuente los números todavía posibles (son 3024 permutaciones,
   se calcula en el cliente sin esfuerzo). Se descartó por ahora: le sacaría la
   gracia al juego. Si se agrega, que sea opcional y apagado por defecto.
+- Las reglas de WAF que circulan para sacarse el tráfico sucio de encima
+  (bloquear países enteros, ~250 ASN de hosting, patrones de inyección SQL).
+  Acá no se pueden ni poner: las reglas del WAF son de zona y `workers.dev` no
+  es una zona propia, el mismo motivo por el que quedó afuera la regla de Rate
+  Limiting. Y aunque hubiera dominio propio seguirían sin pegarle a nada
+  nuestro: no hay una sola consulta SQL en el proyecto, y lo que un escaneo
+  golpea son rutas que sirve la capa de assets sin ejecutar el Worker
+  (`run_worker_first` es solo `/api/*`). Contra eso las listas bloquean gente
+  de verdad: la que circulaba traía AS3356 y AS174, que son tránsito, y AS786,
+  que es la red académica del Reino Unido. Lo que protege el cupo es lo que ya
+  está puesto: los límites por IP de `wrangler.jsonc`.
