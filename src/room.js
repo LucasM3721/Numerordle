@@ -316,6 +316,12 @@ function detach(state, player) {
   if (fuera) {
     state.players = state.players.filter((p) => p.id !== player.id);
     if (state.hostId === player.id) state.hostId = nuevoAnfitrion(state);
+    // Del reparto no se sale sin empezar, así que quedarse sin rivales ahí
+    // dejaba a alguien solo mirando el pad para siempre, sin más salida que
+    // irse de la sala. Vuelve a la espera, que es donde la sala se arma.
+    if (state.phase === 'secret' && state.players.length < MIN_PLAYERS) {
+      state.phase = 'lobby';
+    }
     return true;
   }
   if (player.status === 'playing') {
