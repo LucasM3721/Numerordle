@@ -165,6 +165,15 @@ Cambiando `B`/`WS` a `https://…` y `wss://…` corre lo mismo contra producci�
 
 Detalles que ahorran tiempo:
 
+- **El JSON que se baja del panel de logs no tiene la forma que muestra el
+  panel.** Cada entrada trae `$workers`, `$metadata`, `dataset`, `timestamp` y
+  `source`, y cuando el `console.log` fue un JSON **el objeto parseado queda en
+  `source`** (`source.evento`, `source.intentos`). `source.message` existe solo
+  para los logs que son texto suelto. La interfaz lo muestra todo aplanado al
+  nivel de arriba, así que copiar esa forma no encuentra nada. Se filtra con
+  `e.source?.evento === 'partida'`. Y **el export viene cortado en 1000
+  entradas**, las más recientes: el rango de fechas del archivo no es la ventana
+  de retención, aunque lo parezca.
 - **No le pases valores a un comando por tubería en PowerShell 5.1.** Le mete un
   BOM adelante. Ya pasó con `$valor | wrangler secret put`: el secreto quedó
   guardado con tres bytes invisibles al principio, y la API de Cloudflare
