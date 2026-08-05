@@ -38,7 +38,10 @@
 >
 > 1. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
 >    grande: no hay círculo ni rival. El número del día **no puede viajar al
->    cliente**, se valida en el servidor o el desafío se muere solo.
+>    cliente**, se valida en el servidor o el desafío se muere solo. **El diseño
+>    ya está decidido y escrito** —clase de Durable Object aparte, número
+>    derivado con HMAC, tope de 12, HTTP en vez de websocket—: está en "El
+>    desafío del día", en DECISIONES. Lo que falta es construirlo.
 > 2. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
 >    partidas reales. El lado del bot ya está medido y es reproducible sin
 >    servidor: `npm run bot` da 15,9 / 12,0 / 8,0 de media. Falta el lado
