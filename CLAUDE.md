@@ -36,12 +36,12 @@
 >
 > **Lo que queda por hacer**, en este orden:
 >
-> 1. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
->    grande: no hay círculo ni rival. El número del día **no puede viajar al
->    cliente**, se valida en el servidor o el desafío se muere solo. **El diseño
->    ya está decidido y escrito** —clase de Durable Object aparte, número
->    derivado con HMAC, tope de 12, HTTP en vez de websocket—: está en "El
->    desafío del día", en DECISIONES. Lo que falta es construirlo.
+> 1. **Desafío del día**: uno solo adivina, con un tope de 12. **El servidor ya
+>    está hecho** (`src/reto.js`, `GET`/`POST /api/reto`) y la suite lo juega
+>    entero; **falta la interfaz**, que es una tercera pantalla y puede reusar
+>    `renderBoard()` y el pad. El porqué de cada decisión está en "El desafío
+>    del día", en DECISIONES. **Antes de desplegarlo hay que cargar el secreto
+>    `RETO_CLAVE`**; sin él el desafío contesta 503 y el resto sigue andando.
 > 2. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
 >    partidas reales. El lado del bot ya está medido y es reproducible sin
 >    servidor: `npm run bot` da 15,9 / 12,0 / 8,0 de media. Falta el lado
@@ -119,6 +119,7 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 | `src/room.js` | el Durable Object: máquina de estados de la sala |
 | `src/index.js` | Worker de entrada: crea salas, enruta el websocket |
 | `src/bot.js` | la cabeza de la máquina: su cuaderno y los tres niveles |
+| `src/reto.js` | el desafío del día: el número derivado de la fecha y su Durable Object |
 | `public/` | cliente completo: un HTML, un CSS, un JS y una fuente. Sin build ni dependencias |
 
 ## Invariantes que no hay que romper

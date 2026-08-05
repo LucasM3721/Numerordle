@@ -8,6 +8,8 @@
  */
 
 import { filasDePartida } from '../src/room.js';
+import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta } from '../src/game.js';
+import { TOPE_INTENTOS, fechaDeHoy, numeroDelDia } from '../src/reto.js';
 
 const BASE = process.env.BASE ?? 'http://127.0.0.1:8787';
 const WS_BASE = BASE.replace(/^http/, 'ws');
@@ -743,11 +745,121 @@ function formaDelRegistro() {
   );
 }
 
+// ------------------------------------------ el número del día, sin servidor
+
+/**
+ * El reparto del número del día es lo que más silenciosamente se puede
+ * equivocar: si `permutacionSecreta` repitiera números o dejara agujeros, el
+ * desafío seguiría andando y nadie se enteraría — solo que algunos números
+ * saldrían más seguido que otros. Por eso se recorren los 3024 enteros.
+ */
+async function numeroDelDiaAndaBien() {
+  console.log('\n— el número del día');
+
+  const vistos = new Set();
+  let invalidos = 0;
+  for (let i = 0; i < TOTAL_SECRETOS; i++) {
+    const n = permutacionSecreta(i);
+    if (!isValidSecret(n)) invalidos++;
+    vistos.add(n);
+  }
+  igual('los 3024 índices dan 3024 números distintos', vistos.size, TOTAL_SECRETOS);
+  igual('todos son números válidos', invalidos, 0);
+  igual('el índice da la vuelta', permutacionSecreta(TOTAL_SECRETOS), permutacionSecreta(0));
+
+  // La fecha corre en UTC−3: a las 02:00 UTC del día 6 acá todavía es el 5.
+  igual('el día corre en UTC−3', fechaDeHoy(Date.parse('2026-08-06T02:00:00Z')), '2026-08-05');
+  igual('y cambia a la medianoche de acá', fechaDeHoy(Date.parse('2026-08-06T03:00:00Z')), '2026-08-06');
+
+  const a = await numeroDelDia('2026-08-05', 'una-clave');
+  const b = await numeroDelDia('2026-08-05', 'una-clave');
+  const c = await numeroDelDia('2026-08-06', 'una-clave');
+  const d = await numeroDelDia('2026-08-05', 'otra-clave');
+  igual('el mismo día con la misma clave da el mismo número', a, b);
+  chequear('es un número válido', isValidSecret(a), a);
+  chequear('otro día da otro número', a !== c, `${a} vs ${c}`);
+  chequear('otra clave da otro número', a !== d, `${a} vs ${d}`);
+}
+
+// ------------------------------------------------------ el desafío del día
+
+/**
+ * Un desafío entero por HTTP. Se puede probar sin abrir un websocket porque el
+ * desafío no tiene nada que empujar, que es justo por lo que se eligió HTTP.
+ *
+ * No se sabe cuál es el número, así que se tiran candidatos hasta que el
+ * servidor diga que terminó. Acertar de casualidad es una entre 3024 por
+ * intento: el caso está contemplado en vez de ignorado, así la prueba no
+ * falla un día al azar.
+ */
+async function desafioDelDia() {
+  console.log('\n— el desafío del día');
+
+  const pid = `reto${Math.random().toString(36).slice(2, 12)}`;
+  const url = `${BASE}/api/reto?pid=${pid}`;
+
+  let estado = await (await fetch(url)).json();
+  if (estado.error) {
+    chequear('el desafío del día está disponible', false, estado.error);
+    return;
+  }
+  igual('arranca sin intentos', estado.intentos.length, 0);
+  igual('el tope es 12', estado.tope, TOPE_INTENTOS);
+  igual('no arranca terminado', estado.terminado, false);
+  chequear('el número no viaja antes de terminar', estado.numero === null, JSON.stringify(estado.numero));
+
+  const tirar = async (guess) => {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ guess }),
+    });
+    return { status: res.status, cuerpo: await res.json() };
+  };
+
+  const candidatos = [
+    '1234', '5678', '1357', '2468', '1235', '1236',
+    '1237', '1238', '1239', '1245', '1246', '1247',
+  ];
+  let filtrado = true;
+  for (const guess of candidatos) {
+    if (estado.terminado) break;
+    const { cuerpo } = await tirar(guess);
+    estado = cuerpo;
+    if (!estado.terminado && estado.numero !== null) filtrado = false;
+  }
+
+  chequear('el número nunca se filtró mientras el desafío seguía', filtrado);
+  igual('el desafío terminó', estado.terminado, true);
+  chequear('al terminar sí se revela el número', isValidSecret(estado.numero ?? ''), String(estado.numero));
+  if (!estado.gano) {
+    igual('sin acertar, termina justo en el tope', estado.intentos.length, TOPE_INTENTOS);
+  }
+
+  // Terminado es terminado: no se sigue tirando.
+  const extra = await tirar('9876');
+  igual('un intento después de terminar se rechaza', extra.status, 409);
+
+  // El mismo pid retoma el mismo desafío, que es lo que hace que recargar la
+  // página no regale un desafío nuevo.
+  const devuelta = await (await fetch(url)).json();
+  igual('el mismo pid retoma el mismo desafío', devuelta.intentos.length, estado.intentos.length);
+
+  // Entradas que no son números válidos no gastan intentos.
+  const malo = await tirar('1123');
+  igual('un número con repetidos se rechaza', malo.status, 400);
+
+  const sinPid = await fetch(`${BASE}/api/reto?pid=x`);
+  igual('un identificador inválido se rechaza', sinPid.status, 400);
+}
+
 // ------------------------------------------------------------------ main
 
 console.log(`Probando contra ${BASE}`);
 try {
   formaDelRegistro();
+  await numeroDelDiaAndaBien();
+  await desafioDelDia();
   await partidaPorTurnos();
   await partidaSimultanea();
   await cupoDeLaSala();

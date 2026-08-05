@@ -4,9 +4,17 @@
  */
 
 import { GameRoom } from './room.js';
-import { MAX_PLAYERS, clampMaxPlayers, isValidCode, normalizeCode, randomCode } from './game.js';
+import { RetoDelDia, fechaDeHoy } from './reto.js';
+import {
+  MAX_PLAYERS,
+  clampMaxPlayers,
+  isValidCode,
+  isValidPid,
+  normalizeCode,
+  randomCode,
+} from './game.js';
 
-export { GameRoom };
+export { GameRoom, RetoDelDia };
 
 // Cupo diario de requests del Worker en el plan gratis. Los archivos estáticos
 // no cuentan (los sirve el binding de assets sin invocar al Worker), así que
@@ -56,6 +64,29 @@ export default {
         if (res.ok) return json({ code });
       }
       return json({ error: 'No se pudo crear la sala, probá de nuevo.' }, 503);
+    }
+
+    // El desafío del día. No hay sala que crear ni websocket que abrir: es un
+    // jugador solo, así que no hay nada que empujarle. Cada intento igual
+    // despierta un Durable Object, y por eso tiene su propio limitador.
+    if (url.pathname === '/api/reto') {
+      if (request.method !== 'GET' && request.method !== 'POST') {
+        return json({ error: 'No encontrado.' }, 404);
+      }
+      const pid = url.searchParams.get('pid') ?? '';
+      if (!isValidPid(pid)) return json({ error: 'Identificador inválido.' }, 400);
+
+      if (!(await dentroDelLimite(env, env.RETO, request))) {
+        return json({ error: 'Demasiados intentos seguidos. Esperá un momento.' }, 429);
+      }
+
+      // La fecha la decide el servidor. Si la eligiera el cliente, pedir la de
+      // ayer sería pedir un número que ya se sabe.
+      const fecha = fechaDeHoy();
+      const accion = request.method === 'POST' ? 'intento' : 'estado';
+      const id = env.RETOS.idFromName(`${fecha}-${pid}`);
+      const stub = env.RETOS.get(id);
+      return stub.fetch(new Request(`https://reto/${accion}?fecha=${fecha}`, request));
     }
 
     // Hubo un /exists que decía si una sala existía y cuántos había adentro.
