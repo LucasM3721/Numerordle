@@ -1,96 +1,36 @@
 # Fijos y Picas — guía del repo
 
-> **Dónde quedamos** (última sesión: agosto 2026)
+> **Dónde quedamos** (5 de agosto de 2026)
 >
-> El juego está terminado y en vivo. El deploy automático funciona de punta a
-> punta: el secreto está cargado y el workflow pasa entero, *Verificar* y
-> *Desplegar*.
+> El juego está terminado, en vivo y **con todo mergeado y desplegado**. El
+> deploy automático funciona de punta a punta: cada push a `main` corre
+> *Verificar* y *Desplegar*, y `npm test` son 89 verificaciones que pasan.
 >
-> Lo último que se hizo fue prepararlo para **abrir el link al público**, en una
-> pila de nueve pull requests (cupo configurable → identidad → endurecer →
-> cabeceras → límites de creación, y de ahí tres puntas: rival de la máquina,
-> registro de partidas y servidor estático de desarrollo). **Están todas
-> mergeadas y desplegadas.**
+> Esta guía se lee sola. Lo que no está acá está en
+> [docs/DECISIONES.md](docs/DECISIONES.md), que es donde vive el **porqué** de
+> cada cosa —incluidas las ideas que se evaluaron y no entraron—. El historial
+> de cambios es `git log`, no esta nota: acá va solo lo que sigue siendo cierto.
 >
-> El grande es el de identidad: `viewFor` mandaba a todos el `pid` de cada
-> jugador, que es la credencial, así que cualquiera que hubiera pasado por la
-> sala podía reconectarse como otro y el servidor le contestaba con su número
-> secreto.
+> **Lo último que se hizo** (sesión del 5 de agosto): el cliente dejó de
+> reconectarse solo a la sala anterior (era un `onclose` viejo que seguía
+> armado); el uno contra uno **ya no pasa por la sala de espera**; el título
+> tiene **fuente propia** (Anton, 18 KB, en `public/fuentes/`); y las filas del
+> tablero dejaron de partirse en dos renglones en el celular.
 >
-> Al mergear se resolvió un conflicto en `package.json`: dos puntas habían
-> agregado archivos distintos al comando `check`. Quedaron los dos.
+> **Tres cosas de operación que no se deducen del código:**
 >
-> **La suite crea once salas** y el límite de `CREAR_SALA` es de diez por minuto,
-> así que una se come un 429. Desde agosto de 2026 `crearSala` espera a que se
-> libere la ventana en vez de morirse, o sea que la corrida tarda un minuto más
-> de lo que tardaría sin límite —y por eso mismo ya se puede correr contra
-> producción—. Si agregás una suite, fijate si podés usar una sala que ya exista.
->
-> El límite de creación de salas quedó **en el código** (API de Rate Limiting de
-> Workers, en `wrangler.jsonc`) y no en el panel, así el cliente puede mostrar
-> un aviso decente en vez de una página de error de Cloudflare.
->
-> **Los tres secretos opcionales ya están cargados y probados de punta a punta**
-> (`DISCORD_WEBHOOK_URL`, `CF_ACCOUNT_ID`, `CF_ANALYTICS_TOKEN`). El aviso de
-> cupo llega a Discord con el número real. De acá en más **el silencio es la
-> señal buena**: solo escribe si se pasa el 50% del cupo, si alguien pide más de
-> 10 salas por minuto, o si la consulta falla.
->
-> Después de la pila se agregaron tres cosas de juego, todas desplegadas:
-> la **pausa de un segundo** antes de mostrar la jugada de la máquina, poder
-> **escribir el número antes de que te toque**, y que **el turno de un ausente se
-> pase solo** a los 90 s (antes la partida quedaba detenida hasta que el
-> anfitrión apretara el botón). El cursor vuelve al primer dígito al arriesgar.
->
-> Ojo con dos ideas descartadas: **una regla de Rate Limiting del WAF no se puede
-> usar acá** —son de zona y `workers.dev` no es una zona propia—, y **el cron no
-> se puede disparar a mano**: para probar algo que corre por cron, lo que
-> funcionó fue una ruta temporal e impredecible en `fetch`, llamarla una vez y
-> borrarla. Cambiar el cron a cada minuto es más lento de propagar y menos
-> controlable.
->
-> En agosto de 2026 se ordenó la pantalla de inicio (el nombre en su propio
-> bloque, "Cómo se juega" arriba, "Contra la máquina" plegado), **cada aviso
-> pasó al bloque donde se apretó el botón**, entrar con un código dejó de
-> cambiar de pantalla hasta que el servidor confirma, y los códigos se
-> validan por su forma real (5 caracteres, sin I, O, 0 ni 1). Después,
-> **las máquinas se pueden sumar a una sala cualquiera**, hasta tres.
->
-> **El estilo se rehizo** contra dos referencias que dio Lucas
-> (potrerofutbol.ar/el-idolo y copero.com.ar/juegos/simulador-carrera). Se les
-> midieron los tokens: las dos usan negro **neutro** —`#040505` y `#09090b`—,
-> bordes de un pelo al 6-8%, píldoras para los estados y una fuente cargada.
-> Ninguna tiene el resplandor radial: Potrero incluso dejó
-> `--page-bg-gradient: var(--page-bg-solid)` para colapsarlo a propósito.
->
-> De ahí salieron los grises neutros, los bordes al 7%, los radios (8 tarjeta,
-> 6 interior, píldora estado) y después el tono, que Lucas eligió comparando
-> tres versiones: **base callada y una sola display, solo en el título de la
-> portada**. Los números van con una grotesca condensada.
->
-> **Se arregló que el cliente se reconectara solo a la sala anterior.** Lo vio
-> Lucas: creó una sala con tres máquinas, salió, entró a un uno contra uno, y un
-> segundo después la pantalla se le llenó con los cuatro de la sala vieja. Era
-> el `onclose` del socket viejo, que seguía armado y cerrado sobre *su* código:
-> llegaba tarde, encontraba `leaving` de nuevo en falso —la sala nueva lo había
-> reiniciado— y lo leía como una caída. Ahora `connect()` y `goHome()` pasan por
-> `cerrarSocket()`, que además de cerrar **desarma los handlers**; ver el
-> comentario en `public/app.js`.
->
-> **Contra la máquina ya no pasa por la sala de espera.** Es uno contra uno: no
-> hay a quién esperar ni orden que acomodar, así que la espera era un botón
-> entre el que quiere jugar y el juego. La sala que nace con máquina **nace en
-> el reparto** (`phase: 'secret'` desde `create`, y la máquina elige su número
-> ahí mismo), y `join` ya aceptaba gente en esa fase. Del botón al tablero hay
-> dos clics. Si querés más de uno contra uno, el camino es crear sala normal y
-> sumar gente o máquinas ahí.
->
-> **El título tiene fuente propia** (agosto de 2026): Anton, 18 KB, servida
-> desde `public/fuentes/`. La pila del sistema alcanzaba en escritorio, pero
-> **en los dos teléfonos no existía** —ni iOS ni Android tienen Impact ni sus
-> parientes—, así que la portada se veía con la del sistema en negrita justo
-> donde más se juega. Los números **no** cargan nada: entre Bahnschrift,
-> DIN Alternate y Roboto Condensed los cuatro lados quedan cubiertos gratis.
+> - **Los tres secretos opcionales están cargados y probados**
+>   (`DISCORD_WEBHOOK_URL`, `CF_ACCOUNT_ID`, `CF_ANALYTICS_TOKEN`). De acá en
+>   más **el silencio es la señal buena**: solo escribe a Discord si se pasa el
+>   50 % del cupo diario, si alguien pide más de 10 salas por minuto, o si la
+>   consulta falla.
+> - **El límite de creación de salas está en el código** (API de Rate Limiting
+>   de Workers, en `wrangler.jsonc`) y no en el panel, así el cliente puede
+>   mostrar un aviso decente en vez de una página de error de Cloudflare.
+> - **La suite crea doce salas** y el límite es de diez por minuto, así que una
+>   espera a que se libere la ventana: la corrida tarda un minuto más de lo que
+>   tardaría sin límite, y por eso mismo se puede correr contra producción. Si
+>   agregás una suite, fijate si podés usar una sala que ya exista.
 >
 > **Lo que queda por hacer**, en este orden:
 >
@@ -103,21 +43,24 @@
 > 3. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
 >
-> **`wrangler dev` volvió a arrancar** en la máquina de Lucas (5 de agosto de
-> 2026): la suite entera corrió local, 83 de 83. Estuvo un tiempo tirando
-> "access violation" —un Visual C++ Redistributable viejo—, así que si vuelve a
-> pasar, la verificación real es la del pull request y no hay que perder la
-> tarde persiguiéndolo. Para mirar la interfaz sin Worker, `npm run estatico`;
-> para probar lógica del
-> cliente que depende del websocket, se pisa `window.WebSocket` con un doble
-> desde la consola (`app.js` resuelve el global recién al hacer `new`). Dos
-> cosas hacen que el doble sirva para carreras: que su `close()` **no** dispare
-> `onclose` —el evento lo soltás vos, tarde, que es de donde salen los bugs— y
-> pisar también `fetch` para que cada sala nueva devuelva un código distinto.
-> Después se maneja a botonazos y se cuentan los sockets abiertos.
+> **Cómo se verifica desde acá.** `wrangler dev` **volvió a arrancar** en la
+> máquina de Lucas el 5 de agosto de 2026 y la suite entera corrió local, 89 de
+> 89. Estuvo un tiempo tirando "access violation" —un Visual C++ Redistributable
+> viejo—; si vuelve a pasar, la verificación real es la del pull request y no
+> hay que perder la tarde persiguiéndolo.
 >
-> Ideas que se evaluaron y se descartaron (con el porqué) están al final de
-> [docs/DECISIONES.md](docs/DECISIONES.md).
+> - Para mirar la interfaz sin Worker: `npm run estatico`. De la sala en
+>   adelante no sirve, porque no tiene websocket.
+> - Para probar lógica del cliente que depende del websocket, se pisa
+>   `window.WebSocket` con un doble desde la consola (`app.js` resuelve el
+>   global recién al hacer `new`). Dos cosas hacen que el doble sirva para
+>   carreras: que su `close()` **no** dispare `onclose` —el evento lo soltás
+>   vos, tarde, que es de donde salen los bugs— y pisar también `fetch` para
+>   que cada sala nueva devuelva un código distinto. Después se maneja a
+>   botonazos y se cuentan los sockets abiertos.
+> - Para probar CSS desde la consola, **un `<style>` inyectado no sirve**: lo
+>   bloquea la CSP (`style-src 'self'`). `insertRule` sobre la hoja que ya está
+>   cargada sí anda, y se borra con `deleteRule`.
 
 Juego de adivinar números de 4 dígitos, multijugador por link. Corre en Cloudflare
 Workers: cada sala es un Durable Object con su propio estado y sus websockets.
@@ -142,8 +85,8 @@ y fallan por tiempo agotado. Para jugar a mano usá `npm run dev`, que respeta e
 margen real.
 
 Para probar contra producción: `BASE=https://numerordle.lucasm3721.workers.dev npm test`.
-Tarda un minuto de más: la suite pide once salas y el límite es de diez por
-minuto, así que una espera a que se libere la ventana.
+Tarda un minuto de más: la suite pide doce salas y el límite es de diez por
+minuto, así que las que sobran esperan a que se libere la ventana.
 
 **Cada push a `main` despliega solo**, pero únicamente si pasan `check`, el build
 y `npm test` (ver `.github/workflows/deploy.yml`). Trabajá en ramas y abrí un pull
