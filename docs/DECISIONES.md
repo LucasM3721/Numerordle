@@ -241,6 +241,36 @@ Se guarda por dos vías, con propósitos distintos:
   se comparan los niveles del bot. Escribir ahí no puede voltear una partida:
   si falla, se pierde el dato y se sigue jugando.
 
+## La trampa al leer los intentos
+
+En una partida por turnos los dos juegan todas las rondas, y la partida corta en
+el instante en que alguien acierta. Así que `n` termina siendo, para todos, más
+o menos el número de rondas: sobre las 23 partidas que había registradas al 5 de
+agosto de 2026, en **19 los dos jugadores tenían exactamente el mismo `n`** y en
+3 más se llevaban uno.
+
+O sea que **el número del que perdió no dice cuánto habría tardado**: dice solo
+que necesitaba más que eso. Está censurado. La única medición limpia es la del
+que ganó, y por eso `gano` no es un adorno del registro sino lo que decide si la
+fila sirve.
+
+De ahí salen dos cosas que hay que tener en la cabeza antes de sacar cuentas:
+
+- **Un uno contra uno da como mucho un dato por partida**, no dos.
+- **El número de alguien solo se observa cuando esa persona gana**, así que la
+  muestra se corre sola hacia los rápidos.
+
+Por eso, y aunque suene al revés, **para juntar datos conviene jugar contra
+`facil`**. No es para que sea más fácil: es porque necesita 15,9 intentos de
+media, la persona gana casi siempre y su número llega entero. Contra `dificil`,
+que necesita 8, la mitad de las partidas terminan antes de que se sepa cuánto
+habría tardado el que perdió.
+
+Lo que había registrado hasta esa fecha es el peor caso posible para esto: un
+solo jugador, rápido —mediana de 6, cuando la referencia de alguien que juega
+bien es de 6 a 10— y casi siempre contra `dificil`. Sirvió para descubrir la
+censura, no para calibrar nada.
+
 ## Escribir antes de que te toque
 
 En modo por turnos el pad está habilitado aunque no sea tu turno: pensar el

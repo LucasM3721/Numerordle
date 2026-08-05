@@ -46,6 +46,10 @@
 >    registro no anotaba quién era máquina y quién persona, así que lo juntado
 >    hasta entonces no se puede usar (ver "Lo único que se registra" en
 >    DECISIONES). Desde ahora se acumula en Analytics Engine, noventa días.
+>    Dos cosas antes de juntar: **hace falta que juegue otra gente** —las 23
+>    partidas que había eran todas de Lucas, que es rápido y no sirve de
+>    muestra— y **conviene que jueguen contra `facil`**, por la censura que
+>    explica "La trampa al leer los intentos" en DECISIONES.
 > 3. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
 >
