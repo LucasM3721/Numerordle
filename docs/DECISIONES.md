@@ -254,17 +254,27 @@ que necesitaba más que eso. Está censurado. La única medición limpia es la d
 que ganó, y por eso `gano` no es un adorno del registro sino lo que decide si la
 fila sirve.
 
-De ahí salen dos cosas que hay que tener en la cabeza antes de sacar cuentas:
+De ahí sale que **el número de alguien solo se observa cuando esa persona gana**,
+con lo cual la muestra se corre sola hacia los rápidos.
 
-- **Un uno contra uno da como mucho un dato por partida**, no dos.
-- **El número de alguien solo se observa cuando esa persona gana**, así que la
-  muestra se corre sola hacia los rápidos.
+Pero hay una salida, y ya está en el juego: **el que pierde puede seguir jugando
+hasta encontrarlo**. Si elige eso, la partida sigue en descuento y su número
+queda registrado entero. Se ve en los datos: las 3 partidas con
+`descuento: true` son exactamente las 3 que terminaron con dos `gano: true`. Las
+otras 20 tienen un solo ganador y una fila censurada.
 
-Por eso, y aunque suene al revés, **para juntar datos conviene jugar contra
-`facil`**. No es para que sea más fácil: es porque necesita 15,9 intentos de
-media, la persona gana casi siempre y su número llega entero. Contra `dificil`,
-que necesita 8, la mitad de las partidas terminan antes de que se sepa cuánto
-habría tardado el que perdió.
+Así que la regla para juntar datos es corta:
+
+- **Si perdés, seguí jugando.** Ahí tu número llega entero, sea cual sea el
+  nivel del rival. Es lo único que hace falta pedirle a quien juegue.
+- Si no, que sea contra `facil`: necesita 15,9 intentos de media, así que la
+  persona gana casi siempre y el truncamiento casi no aparece. Contra `dificil`,
+  que necesita 8, se pierde alrededor de la mitad.
+
+De yapa, el descuento **deja esas partidas etiquetadas sin necesidad de
+`quien`**: la máquina nunca elige seguir —se planta apenas pierde, ver
+`unaJugadaDeBot`—, así que en un uno contra uno con descuento el que ganó
+segundo es siempre la persona.
 
 Lo que había registrado hasta esa fecha es el peor caso posible para esto: un
 solo jugador, rápido —mediana de 6, cuando la referencia de alguien que juega
