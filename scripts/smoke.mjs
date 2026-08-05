@@ -7,6 +7,8 @@
  *   BASE=https://numerordle.lucasm3721.workers.dev node --experimental-websocket scripts/smoke.mjs
  */
 
+import { filasDePartida } from '../src/room.js';
+
 const BASE = process.env.BASE ?? 'http://127.0.0.1:8787';
 const WS_BASE = BASE.replace(/^http/, 'ws');
 const TIMEOUT_MS = 10000;
@@ -690,10 +692,62 @@ async function anfitrionSeCae() {
   beto.close();
 }
 
+// --------------------------------------------- la forma del registro
+
+/**
+ * El registro de partidas es lo único que va a decidir si los tres niveles del
+ * bot están bien puestos, y es lo que menos se ve: sale del servidor y se lee
+ * meses después, cuando ya no hay forma de volver a jugar esas partidas. Por
+ * eso se verifica su forma acá, contra un estado armado a mano y sin servidor.
+ *
+ * Lo que más importa es `quien`. Sin eso las filas quedan sin dueño —una
+ * partida de dos no dice si fue contra alguien o contra la máquina— y no hay
+ * comparación posible, que es justo el agujero por el que los datos que se
+ * venían juntando no sirvieron para calibrar nada.
+ */
+function formaDelRegistro() {
+  console.log('\n— la forma del registro de partidas');
+
+  const estado = {
+    mode: 'strict',
+    round: 3,
+    overtime: false,
+    players: [
+      { pub: 'p1', status: 'won', wonRound: 3 },
+      { pub: 'p2', bot: 'dificil', status: 'playing', wonRound: null },
+    ],
+    log: [
+      { playerId: 'p1', skipped: false },
+      { playerId: 'p1', skipped: false },
+      { playerId: 'p1', skipped: true },
+      { playerId: 'p2', skipped: false },
+    ],
+  };
+
+  const filas = filasDePartida(estado);
+  igual('una fila por jugador', filas.length, 2);
+  igual('la persona queda marcada como humano', filas[0].quien, 'humano');
+  igual('la máquina queda marcada con su nivel', filas[1].quien, 'dificil');
+  igual('los intentos salteados no cuentan', filas[0].n, 2);
+  igual('cuenta los intentos de la máquina', filas[1].n, 1);
+  igual('el que ganó queda marcado', filas[0].gano, true);
+  igual('y en qué ronda ganó', filas[0].ronda, 3);
+  igual('el que no ganó no tiene ronda', filas[1].ronda, null);
+
+  // El invariante de privacidad de docs/DECISIONES.md, escrito como prueba:
+  // si alguien suma un campo al estado, esto se queja antes de que salga.
+  chequear(
+    'no sale ningún campo que identifique a nadie',
+    filas.every((f) => Object.keys(f).join() === 'quien,n,gano,ronda'),
+    JSON.stringify(filas[0]),
+  );
+}
+
 // ------------------------------------------------------------------ main
 
 console.log(`Probando contra ${BASE}`);
 try {
+  formaDelRegistro();
   await partidaPorTurnos();
   await partidaSimultanea();
   await cupoDeLaSala();

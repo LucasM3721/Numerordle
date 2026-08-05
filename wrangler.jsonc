@@ -50,5 +50,13 @@
   // y el despliegue de este proyecto va derecho a producción igual.
   "preview_urls": false,
 
+  // Una fila por jugador de cada partida terminada. Existe porque los logs de
+  // `observability` duran tres días en el plan gratis: son una ventana móvil,
+  // y para calibrar al bot contra jugadores reales hace falta un histórico.
+  // Acá se guardan noventa días y se consultan por SQL.
+  "analytics_engine_datasets": [
+    { "binding": "PARTIDAS", "dataset": "numerordle_partidas" }
+  ],
+
   "observability": { "enabled": true }
 }

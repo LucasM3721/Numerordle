@@ -351,29 +351,77 @@ function finishGame(state) {
 }
 
 /**
- * Una línea por partida terminada, para poder mirar después cómo se juega de
- * verdad: cuántos intentos tarda la gente, cuánto duran las partidas, si el
- * modo simultáneo se usa. Sirve, entre otras cosas, para calibrar al rival de
- * la máquina contra jugadores reales en vez de contra una intuición.
+ * El dataset donde se guardan las partidas. Va a nivel módulo, como
+ * `destrabeMs`, porque `finishGame` se llama desde cuatro lados que hoy solo
+ * reciben `state`: hacer viajar `env` hasta ahí ensuciaría cuatro firmas para
+ * un registro que no participa del juego. Queda en null si el binding no está
+ * —`npm run estatico`, o un `dev` sin configurar— y entonces solo se loguea.
+ */
+let partidas = null;
+
+/**
+ * Cómo le fue a cada uno en una partida terminada: una fila por jugador.
+ *
+ * `quien` es lo que hace que esto sirva para calibrar. Sin él una partida de
+ * dos no dice si fue contra una persona o contra la máquina, ni de qué nivel,
+ * y las dos filas de intentos quedan sin dueño: no se puede comparar cuánto
+ * tarda la gente contra cuánto tarda el bot, que es toda la pregunta. Va por
+ * jugador y no por partida porque agrupar es lo primero que se hace al leerlo.
  *
  * **No va nada que identifique a nadie**: ni nombres, ni números secretos, ni
- * ids, ni el código de la sala, ni de dónde se conectó cada uno. Solo la forma
- * de la partida. Si algún día hace falta agregar un campo, que pase por acá.
+ * ids, ni el código de la sala, ni de dónde se conectó cada uno. `quien` es el
+ * nivel de la máquina o la palabra `humano`, que no distingue a una persona de
+ * otra. Si algún día hace falta agregar un campo, que pase por acá.
  */
-function registrarPartida(state) {
-  const intentos = state.players.map((p) => ({
+export function filasDePartida(state) {
+  return state.players.map((p) => ({
+    quien: p.bot ?? 'humano',
     n: state.log.filter((e) => e.playerId === p.pub && !e.skipped).length,
     gano: p.status === 'won',
     ronda: p.wonRound ?? null,
   }));
+}
+
+/**
+ * El registro de una partida terminada, por dos vías con propósitos distintos.
+ *
+ * El `console.log` es para mirar en vivo con `npm run tail` mientras se juega.
+ * No sirve para calibrar: los logs del plan gratis duran **tres días**, así que
+ * son una ventana móvil y no un histórico. Analytics Engine las guarda noventa,
+ * y es de donde sale el dato con el que se comparan los niveles del bot.
+ */
+function registrarPartida(state) {
+  const filas = filasDePartida(state);
   console.log(JSON.stringify({
     evento: 'partida',
     modo: state.mode,
     jugadores: state.players.length,
     rondas: state.round,
     descuento: state.overtime,
-    intentos,
+    intentos: filas,
   }));
+
+  if (!partidas) return;
+  try {
+    for (const f of filas) {
+      partidas.writeDataPoint({
+        indexes: [f.quien],
+        blobs: [state.mode, f.quien],
+        doubles: [
+          f.n,
+          f.gano ? 1 : 0,
+          f.ronda ?? 0,
+          state.players.length,
+          state.round,
+          state.overtime ? 1 : 0,
+        ],
+      });
+    }
+  } catch (err) {
+    // Esto corre en el camino de una jugada. Un registro que se rompe no puede
+    // voltear la partida de nadie: se pierde el dato y se sigue jugando.
+    console.log(`no se pudo registrar la partida: ${err?.message ?? err}`);
+  }
 }
 
 function resolveGuess(state, playerId, guess) {
@@ -607,6 +655,7 @@ export class GameRoom {
     this.ritmo = new Map();
     const override = Number(env.DESTRABE_MS);
     if (Number.isFinite(override) && override > 0) destrabeMs = override;
+    partidas = env.PARTIDAS ?? null;
     ctx.blockConcurrencyWhile(async () => {
       this.state = (await ctx.storage.get('state')) ?? null;
       ensurePublicIds(this.state);
