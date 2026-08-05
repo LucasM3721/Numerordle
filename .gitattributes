@@ -1,2 +1,7 @@
 # Normalizar a LF dentro del repo: evita diffs falsos al cambiar de máquina.
 * text=auto eol=lf
+
+# Menos la fuente, que va tal cual. Git la detecta sola como binaria, pero
+# escribirlo es barato y un .woff2 corrupto se rompe callado: el navegador
+# vuelve a la del sistema sin decir nada.
+*.woff2 binary

@@ -215,6 +215,11 @@ Detalles que ahorran tiempo:
   contestaba `not authorized for that account` sin decir por qué. Redirigí desde
   un archivo escrito con `WriteAllText` y `UTF8Encoding $false`:
   `cmd /c "npx wrangler secret put NOMBRE < archivo.txt"`.
+- **Tampoco redirijas binarios con `>` en PowerShell 5.1.** Reescribe la salida
+  como texto: comparar `git show HEAD:public/fuentes/anton-latin.woff2 > x.woff2`
+  contra el archivo del disco daba 33.844 bytes contra 18.612 y hashes
+  distintos, y la fuente estaba perfecta. Redirigí por `cmd /c "... > archivo"`,
+  igual que para cargar secretos.
 - **No edites archivos con `Get-Content`/`Set-Content` en PowerShell 5.1.** Lee
   como ANSI y te deja `mÃ¡quina` donde decía `máquina`, en todo el archivo y de
   una sola pasada. Usá las herramientas de edición del agente, o
