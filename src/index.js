@@ -80,9 +80,14 @@ export default {
         return json({ error: 'Demasiados intentos seguidos. Esperá un momento.' }, 429);
       }
 
-      // La fecha la decide el servidor. Si la eligiera el cliente, pedir la de
-      // ayer sería pedir un número que ya se sabe.
-      const fecha = fechaDeHoy();
+      // El cliente puede pedir seguir el desafío que ya venía jugando cuando
+      // cambió el día, y solo ese: se aceptan hoy y ayer, y nada más. Que se
+      // pueda continuar de verdad lo decide la sala, que es la única que sabe
+      // si hay algo empezado; acá solo se acota a qué objeto se puede despertar.
+      const hoy = fechaDeHoy();
+      const ayer = fechaDeHoy(Date.now() - 86400000);
+      const pedida = url.searchParams.get('fecha');
+      const fecha = pedida === ayer ? ayer : hoy;
       const accion = request.method === 'POST' ? 'intento' : 'estado';
       const id = env.RETOS.idFromName(`${fecha}-${pid}`);
       const stub = env.RETOS.get(id);
@@ -94,7 +99,8 @@ export default {
       // response has been sent". No es un error que se pueda atrapar: **mata al
       // Worker**, y los pedidos siguientes se cuelgan hasta agotar el tiempo.
       const cuerpo = request.method === 'POST' ? await request.text() : undefined;
-      return stub.fetch(new Request(`https://reto/${accion}?fecha=${fecha}`, {
+      const qs = new URLSearchParams({ fecha, hoy: fecha === hoy ? '1' : '0' });
+      return stub.fetch(new Request(`https://reto/${accion}?${qs}`, {
         method: request.method,
         headers: { 'content-type': 'application/json' },
         body: cuerpo,

@@ -864,6 +864,21 @@ async function desafioDelDia() {
 
   const sinPid = await fetch(`${BASE}/api/reto?pid=x`);
   igual('un identificador inválido se rechaza', sinPid.status, 400);
+
+  // Lo que sostiene que se pueda continuar el de ayer: continuar sí, empezar
+  // no. Sin esto, pedir la fecha de ayer sería pedir un número que ya se sabe
+  // y el tope de doce no protegería nada.
+  const ayer = fechaDeHoy(Date.now() - 86400000);
+  const nuevo = `reto${Math.random().toString(36).slice(2, 12)}`;
+  const deAyer = await fetch(`${BASE}/api/reto?pid=${nuevo}&fecha=${ayer}`);
+  igual('no se puede empezar el desafío de ayer', deAyer.status, 410);
+  const cuerpoAyer = await deAyer.json();
+  chequear('y no viene ningún número', cuerpoAyer.numero == null, JSON.stringify(cuerpoAyer));
+
+  // Cualquier otra fecha ni siquiera despierta a esa sala: cae en la de hoy.
+  const otro = `reto${Math.random().toString(36).slice(2, 12)}`;
+  const viejo = await (await fetch(`${BASE}/api/reto?pid=${otro}&fecha=2020-01-01`)).json();
+  igual('una fecha cualquiera cae en la de hoy', viejo.fecha, fechaDeHoy());
 }
 
 // ------------------------------------------------------------------ main

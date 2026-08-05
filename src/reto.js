@@ -25,6 +25,13 @@ const DIA_MS = 24 * 60 * 60 * 1000;
  */
 const MARGEN_MS = 1000 * 60 * 10;
 
+/**
+ * Cuánto se le da al que quedó jugando cuando cambió el día. Sin esto, el que
+ * arranca 23:50 pierde seguro, y eso se lee como que algo se rompió y no como
+ * una regla del juego. Solo alarga lo que quedó **sin terminar**.
+ */
+const GRACIA_MS = 1000 * 60 * 60 * 3;
+
 /** La fecha de hoy en UTC−3, con la forma `2026-08-05`. */
 export function fechaDeHoy(ahora = Date.now()) {
   return new Date(ahora - DESFASE_MS).toISOString().slice(0, 10);
@@ -124,6 +131,19 @@ export class RetoDelDia {
     // tener la función.
     if (!clave) return json({ error: 'El desafío del día no está disponible.' }, 503);
 
+    /**
+     * Un desafío de otro día se puede **continuar, nunca empezar**.
+     *
+     * Es toda la seguridad de la idea: si se pudiera empezar uno de ayer,
+     * pedir esa fecha sería pedir un número que ya se sabe, y el tope de doce
+     * no protegería nada. Como el objeto solo existe si esa persona ya había
+     * arrancado, exigir que haya algo empezado alcanza.
+     */
+    const enCurso = this.estado?.fecha === fecha && !this.estado.terminado;
+    if (url.searchParams.get('hoy') !== '1' && !enCurso) {
+      return json({ error: 'Ese desafío ya terminó.', vencido: true }, 410);
+    }
+
     const numero = await numeroDelDia(fecha, clave);
 
     // El objeto es por jugador y por día, así que su fecha no debería cambiar
@@ -184,7 +204,8 @@ export class RetoDelDia {
     const e = this.estado;
     const n = e.intentos.length;
     console.log(JSON.stringify({
-      evento: 'partida', modo: 'reto', jugadores: 1, rondas: n, descuento: false,
+      evento: 'partida', modo: 'reto', fecha: e.fecha, jugadores: 1, rondas: n,
+      descuento: false,
       intentos: [{ quien: 'humano', n, gano: e.gano, ronda: e.gano ? n : null }],
     }));
 
@@ -192,7 +213,11 @@ export class RetoDelDia {
     try {
       this.env.PARTIDAS.writeDataPoint({
         indexes: ['humano'],
-        blobs: ['reto', 'humano'],
+        // `blob3` es el día del desafío, no el día en que se terminó. El
+        // `timestamp` de la fila dice cuándo se escribió, y con las tres horas
+        // de gracia uno del 5 se puede cerrar el 6: contarlo como del 6 movería
+        // la partida de día. Va al final del esquema, como manda la regla.
+        blobs: ['reto', 'humano', e.fecha],
         doubles: [n, e.gano ? 1 : 0, e.gano ? n : 0, 1, n, 0],
       });
     } catch (err) {
@@ -204,7 +229,11 @@ export class RetoDelDia {
 
   async guardar() {
     await this.ctx.storage.put('reto', this.estado);
-    await this.ctx.storage.setAlarm(finDelDia(this.estado.fecha) + MARGEN_MS);
+    // El terminado se va apenas cierra su día; el que quedó a medias se lleva
+    // las tres horas de gracia. Como esto corre en cada pedido, cuando el
+    // desafío se cierra la alarma se adelanta sola.
+    const margen = this.estado.terminado ? MARGEN_MS : GRACIA_MS;
+    await this.ctx.storage.setAlarm(finDelDia(this.estado.fecha) + margen);
   }
 
   async alarm() {
