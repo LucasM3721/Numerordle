@@ -36,12 +36,11 @@
 >
 > **Lo que queda por hacer**, en este orden:
 >
-> 1. **Desafío del día**: uno solo adivina, con un tope de 12. **El servidor ya
->    está hecho** (`src/reto.js`, `GET`/`POST /api/reto`) y la suite lo juega
->    entero; **falta la interfaz**, que es una tercera pantalla y puede reusar
->    `renderBoard()` y el pad. El porqué de cada decisión está en "El desafío
->    del día", en DECISIONES. **Antes de desplegarlo hay que cargar el secreto
->    `RETO_CLAVE`**; sin él el desafío contesta 503 y el resto sigue andando.
+> 1. ~~**Desafío del día**~~: **hecho**. Un jugador solo contra el número de
+>    hoy, tope de 12, en `src/reto.js` y la pantalla `screen-reto`. El porqué de
+>    cada decisión está en "El desafío del día", en DECISIONES. **Necesita el
+>    secreto `RETO_CLAVE` cargado**; sin él contesta 503 y el resto del juego
+>    sigue andando.
 > 2. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
 >    partidas reales. El lado del bot ya está medido y es reproducible sin
 >    servidor: `npm run bot` da 15,9 / 12,0 / 8,0 de media. Falta el lado

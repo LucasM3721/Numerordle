@@ -596,8 +596,7 @@ sala en ese momento es ruido.
 ## El desafío del día
 
 El diseño se decidió y se escribió acá **antes** de tocar código, porque son
-varias decisiones cuyo porqué no se iba a poder deducir del resultado. El
-servidor ya está hecho (`src/reto.js`); lo que falta es la interfaz.
+varias decisiones cuyo porqué no se iba a poder deducir del resultado.
 
 **La clave `RETO_CLAVE` es un secreto del Worker y hay que cargarla a mano.**
 Si falta, el desafío contesta 503 y el resto del juego sigue andando. Para
