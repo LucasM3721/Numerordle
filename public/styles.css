@@ -478,6 +478,9 @@ details.card[open] > summary { margin-bottom: 14px; }
   padding: 3px 9px;
   border-radius: var(--pill);
   border: 1px solid;
+  /* Una píldora partida en dos renglones no se lee como una píldora. Si el
+     espacio no alcanza, que lo resuelva la fila y no el texto. */
+  white-space: nowrap;
 }
 .mark.f { color: var(--fijo); border-color: rgba(74, 222, 128, .45); background: rgba(74, 222, 128, .1); }
 .mark.p { color: var(--pica); border-color: rgba(96, 165, 250, .45); background: rgba(96, 165, 250, .1); }
@@ -505,6 +508,44 @@ details.card[open] > summary { margin-bottom: 14px; }
 }
 .dg:hover { border-color: var(--line); }
 .dg:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/**
+ * En un celular la fila no entraba por poco y se rompía fea: los cuatro dígitos
+ * (144 px más sus separaciones) y las dos píldoras enteras —"0 fijos" y
+ * "1 pica"— piden unos 13 px más de los 314 que hay a 375 px de pantalla. El
+ * flex lo sacaba de la única parte elástica, que es el texto de la píldora, y
+ * lo partía en dos renglones: la fila pasaba de 40 a 64 px de alto.
+ *
+ * Se achica el dígito, que es de donde sobra. **El del pad tiene que medir
+ * exactamente lo mismo**: el pad es la fila siguiente del tablero y se lee en
+ * columna con las de arriba; si uno se achica y el otro no, se desalinean los
+ * cuatro dígitos, que es peor que el problema que se vino a arreglar.
+ */
+@media (max-width: 420px) {
+  .dg, .pad.inline input { width: 32px; }
+  /* El resto sale de lo que no se mira: el número de intento no necesita 22 px
+     para dos cifras, 8 de separación alcanzan, y la píldora aguanta un punto
+     menos de cuerpo y dos de aire a los costados sin dejar de leerse. Sumado
+     da unos 19 px de sobra a 360, que es el margen para que la fuente de
+     números de cada sistema —que no es la misma en ninguno— no lo rompa de
+     nuevo. */
+  .try { gap: 8px; }
+  .try .idx { width: 16px; }
+  .mark { font-size: 0.72rem; padding: 3px 7px; }
+}
+
+/**
+ * El piso. Abajo de 340 px no entra por más que se achique: para que entrara
+ * habría que dejar el dígito en 26 px, y un dígito de 26 px ya no se puede
+ * tocar. Ahí las dos píldoras bajan **enteras** a un segundo renglón, alineadas
+ * a la derecha, que se lee como una decisión y no como algo roto.
+ *
+ * Va solo acá y no en `.try` a secas: con `flex-wrap` puesto siempre, a 360 px
+ * la fila se partía en dos aunque entrara de sobra.
+ */
+@media (max-width: 340px) {
+  .try { flex-wrap: wrap; }
+}
 .dg.no {
   background: rgba(248, 113, 113, .2);
   color: #fca5a5;
