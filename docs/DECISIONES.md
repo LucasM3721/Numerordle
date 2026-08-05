@@ -593,6 +593,119 @@ lista. Durante el reparto todavía puede entrar gente hasta llenar el cupo, pero
 ahí ya están todos eligiendo su número y andar moviendo la configuración de la
 sala en ese momento es ruido.
 
+## El desafío del día
+
+**Todavía no está construido: esto es el diseño, decidido el 5 de agosto de
+2026.** Se escribió antes de tocar código porque son varias decisiones cuyo
+porqué no se iba a poder deducir del resultado.
+
+Un jugador solo contra el número del día, con un tope de **12 intentos**. No hay
+círculo ni rival.
+
+### Por qué una clase de Durable Object aparte
+
+El invariante que sostiene el juego es que **el orden de `players` es el
+círculo**. Un jugador solo no tiene círculo, así que meter un modo sin rival
+adentro de `GameRoom` dejaría ese invariante hablando de un caso que ya no
+cubre, que es exactamente como se erosionan hasta dejar de proteger.
+
+La clase nueva necesita tres cosas: el número, los intentos que van y el tope.
+`scoreGuess` e `isValidSecret` ya son puras y se reusan tal cual.
+
+Es **un objeto por jugador y por día**, reutilizado durante sus doce intentos y
+no uno por intento. Cada sala de juego que existe hoy es un objeto más grande y
+más longevo que este, así que no es de donde va a venir el costo.
+
+### El número se deriva, no se guarda
+
+`HMAC(clave_del_worker, fecha)` → índice entre las 3024 permutaciones de cuatro
+dígitos distintos del 1 al 9. Con seis bytes del MAC el sesgo del módulo es
+despreciable.
+
+Derivarlo en vez de guardarlo **elimina la coordinación**: cualquier instancia
+valida un intento sin consultarle a nadie, y no hay ningún lugar donde el número
+esté escrito. La alternativa —un objeto por día que lo genera y lo guarda—
+obliga a que todos lo consulten, y eso es un punto caliente y único para algo
+que no lo necesita.
+
+**Tiene que ser un hash con clave.** Con `SHA-256(fecha)` a secas cualquiera con
+la fecha calcula el número del día en su casa: sería público aunque nunca
+viajara al cliente. La clave es lo único que hace que de la secuencia observada
+no se deduzca la que sigue.
+
+El día es **UTC−3**, y no UTC como el resto del proyecto. Con UTC el número
+cambiaría a las nueve de la noche de acá, en plena hora de jugar.
+
+### El tope es 12, y tiene un costo cruzado
+
+Cuanto más bajo, mejor el juego —el tope se siente, perder es posible— y peor el
+dato, porque censura a los jugadores normales, que son justo los que hay que
+medir. 10 hace mejor juego; 15 hace mejor dato y le saca la tensión.
+
+12 deja terminar casi siempre a alguien que juega bien (de 6 a 10 intentos) y
+coincide con la media del bot `normal`, que es una referencia razonable de qué
+es un tope justo.
+
+### HTTP y no websocket
+
+Un jugador solo no tiene nada que le empujen. `GET /api/reto` para el estado y
+`POST /api/reto` para el intento sale más barato —sin socket abierto ni
+hibernación—, se prueba sin abrir websockets y no arrastra la reconexión.
+
+Lo que cuesta es un camino de render nuevo en el cliente, porque hoy todo se
+dibuja desde los mensajes `state`. Se paga una vez para no pagar el del socket
+todos los días.
+
+Lo que **no** cambia es que el número no sale del servidor: la respuesta a un
+intento lleva fijos y picas y nada más, igual que en el juego normal.
+
+### Los reintentos no se pueden evitar, y no se intenta
+
+Borrando el almacenamiento del navegador se juega de nuevo el mismo día. **No
+hay identidad de dispositivo confiable sin cuentas**: localStorage y cookies se
+borran, una IP no es una persona (ver "El límite de ritmo") y el fingerprinting
+choca de frente con no guardar nada que identifique a nadie.
+
+El caso real igual queda cubierto: el reto usa el mismo `pid` que el juego, así
+que recargar, cerrar o abrir otra pestaña devuelven al mismo reto. Reintentar
+exige borrar el almacenamiento a propósito —perdiendo de paso la identidad del
+juego— o ir a incógnito. Sin premio, el incentivo es poco.
+
+Lo que sí importa es que **un reintento se juega sabiendo el número**, así que
+da un conteo bajo que ensucia la calibración y es indistinguible de una primera
+vez. No se corrige: se separa. El reto se registra con `blob1 = 'reto'`, y eso
+permite correr la calibración con él y sin él.
+
+Las dos fuentes fallan distinto, que es lo que las hace útiles juntas:
+
+| | uno contra uno | reto del día |
+| --- | --- | --- |
+| Censura | arbitraria: corta cuando gana el otro | conocida: siempre en 12 |
+| Reintentos | no aplica | posibles, indetectables |
+
+Si las dos distribuciones coinciden, ninguno de los dos problemas es material.
+Si difieren, el desacuerdo mismo dice dónde mirar. Es mejor que ponderar a ojo.
+
+### Cómo entra en el dataset
+
+Sin tocar el esquema de "Qué es cada columna":
+
+| Columna | Valor en un reto |
+| --- | --- |
+| `index1`, `blob2` | `humano` |
+| `blob1` | `reto` |
+| `double1` | intentos que tiró |
+| `double2` | si lo encontró: 1 o 0 |
+| `double3` | los intentos si lo encontró, 0 si no |
+| `double4` | 1 |
+| `double5` | los intentos |
+| `double6` | 0 |
+
+Y trae algo que el uno contra uno no puede dar: **la censura pasa a ser
+conocida**. Un `double2 = 0` quiere decir "necesitaba más de 12", siempre el
+mismo número, y eso es algo con lo que se puede trabajar. En el uno contra uno
+la partida corta en un punto que depende del rival.
+
 ## Ideas que quedaron afuera
 
 - Arrastrar para reordenar el círculo: en el celular se pelea con el scroll. Las
