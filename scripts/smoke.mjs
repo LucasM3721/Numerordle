@@ -9,7 +9,7 @@
 
 import { filasDePartida } from '../src/room.js';
 import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta } from '../src/game.js';
-import { TOPE_INTENTOS, fechaDeHoy, numeroDelDia } from '../src/reto.js';
+import { TOPE_INTENTOS, fechaDeHoy, finDelDia, numeroDelDia } from '../src/reto.js';
 
 const BASE = process.env.BASE ?? 'http://127.0.0.1:8787';
 const WS_BASE = BASE.replace(/^http/, 'ws');
@@ -770,6 +770,15 @@ async function numeroDelDiaAndaBien() {
   // La fecha corre en UTC−3: a las 02:00 UTC del día 6 acá todavía es el 5.
   igual('el día corre en UTC−3', fechaDeHoy(Date.parse('2026-08-06T02:00:00Z')), '2026-08-05');
   igual('y cambia a la medianoche de acá', fechaDeHoy(Date.parse('2026-08-06T03:00:00Z')), '2026-08-06');
+
+  // El desafío se borra al terminar su día, no un día después: apenas cambia la
+  // fecha ya no tiene puerta, porque el Worker enruta siempre a la de hoy. Que
+  // las dos funciones estén de acuerdo es lo que hace que no se borre antes.
+  const fin = finDelDia('2026-08-05');
+  igual('el día termina a la medianoche de acá', fin, Date.parse('2026-08-06T03:00:00Z'));
+  igual('un instante antes todavía es el mismo día', fechaDeHoy(fin - 1), '2026-08-05');
+  igual('y en ese instante ya es el siguiente', fechaDeHoy(fin), '2026-08-06');
+  igual('el fin de cada día es el arranque del otro', finDelDia('2026-08-06') - fin, 86400000);
 
   const a = await numeroDelDia('2026-08-05', 'una-clave');
   const b = await numeroDelDia('2026-08-05', 'una-clave');
