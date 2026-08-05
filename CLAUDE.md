@@ -14,8 +14,10 @@
 > **Lo último que se hizo** (sesión del 5 de agosto): el cliente dejó de
 > reconectarse solo a la sala anterior (era un `onclose` viejo que seguía
 > armado); el uno contra uno **ya no pasa por la sala de espera**; el título
-> tiene **fuente propia** (Anton, 18 KB, en `public/fuentes/`); y las filas del
-> tablero dejaron de partirse en dos renglones en el celular.
+> tiene **fuente propia** (Anton, 18 KB, en `public/fuentes/`); las filas del
+> tablero dejaron de partirse en dos renglones en el celular; y el registro de
+> partidas pasó a anotar **quién era máquina y de qué nivel**, sin lo cual no
+> se puede calibrar nada, y a guardarse noventa días en Analytics Engine.
 >
 > **Tres cosas de operación que no se deducen del código:**
 >
@@ -38,16 +40,22 @@
 >    grande: no hay círculo ni rival. El número del día **no puede viajar al
 >    cliente**, se valida en el servidor o el desafío se muere solo.
 > 2. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
->    partidas reales. Hoy son una hipótesis; el registro de partidas ya está
->    juntando datos, se leen con `npm run tail`.
+>    partidas reales. El lado del bot ya está medido y es reproducible sin
+>    servidor: `npm run bot` da 15,9 / 12,0 / 8,0 de media. Falta el lado
+>    humano, y **el reloj arranca de cero**: hasta el 5 de agosto de 2026 el
+>    registro no anotaba quién era máquina y quién persona, así que lo juntado
+>    hasta entonces no se puede usar (ver "Lo único que se registra" en
+>    DECISIONES). Desde ahora se acumula en Analytics Engine, noventa días.
 > 3. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
 >
-> **Cómo se verifica desde acá.** `wrangler dev` **volvió a arrancar** en la
-> máquina de Lucas el 5 de agosto de 2026 y la suite entera corrió local, 89 de
-> 89. Estuvo un tiempo tirando "access violation" —un Visual C++ Redistributable
-> viejo—; si vuelve a pasar, la verificación real es la del pull request y no
-> hay que perder la tarde persiguiéndolo.
+> **Cómo se verifica desde acá.** `wrangler dev` **va y viene** en la máquina de
+> Lucas: el 5 de agosto de 2026 arrancó y corrió la suite entera local, 89 de
+> 89, y esa misma tarde volvió a tirar "access violation in the runtime" —un
+> Visual C++ Redistributable viejo—. Tratalo como que puede no estar: **la
+> verificación real es la del pull request** y no hay que perder la tarde
+> persiguiéndolo. Lo que sí anda siempre, sin Worker, es `npm run check`,
+> `npm run bot` y las pruebas puras de la suite.
 >
 > - Para mirar la interfaz sin Worker: `npm run estatico`. De la sala en
 >   adelante no sirve, porque no tiene websocket.

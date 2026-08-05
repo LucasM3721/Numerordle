@@ -208,22 +208,38 @@ personal de un tercero y no cambia lo que hay que hacer al respecto.
 
 ## Lo único que se registra
 
-Al terminar una partida se escribe **una línea** con la forma de esa partida:
-modo, cuántos jugaron, cuántas rondas duró, y para cada uno cuántos intentos
-tiró y si ganó. Nada más.
+Al terminar una partida se escribe **una fila por jugador** con la forma de esa
+partida: modo, cuántos jugaron, cuántas rondas duró, si hubo descuento, y para
+cada uno cuántos intentos tiró, si ganó y en qué ronda. Y **qué era**: una
+persona o una máquina, y de qué nivel. Nada más.
 
 **No va nada que identifique a nadie**: ni nombres, ni números secretos, ni
-ids, ni el código de la sala, ni de dónde se conectó cada uno. Si algún día
-hace falta agregar un campo, que pase por `registrarPartida()` y por esta
-sección.
+ids, ni el código de la sala, ni de dónde se conectó cada uno. `quien` dice
+`humano` o el nivel de la máquina, que no distingue a una persona de otra. Si
+algún día hace falta agregar un campo, que pase por `filasDePartida()` y por
+esta sección; la suite verifica que no salga ninguno más.
 
 Existe por una razón concreta: los tres niveles del rival de la máquina están
 calibrados contra una hipótesis de cómo juega la gente, no contra una medición.
 Con unas cuantas partidas registradas se puede comparar la distribución real
 con la del bot y correr los objetivos a donde estén de verdad.
 
-Se lee con `npm run tail` en vivo, o en el panel de Cloudflare, que ya tiene la
-observabilidad prendida en `wrangler.jsonc`.
+**Ese `quien` es lo que hace posible la comparación, y faltaba.** Las partidas
+que se venían juntando no lo tenían, así que una partida de dos no decía si
+había sido contra alguien o contra la máquina —ni de qué nivel—, y las dos
+filas de intentos quedaban sin dueño. Servían para ver cuánto duraban las
+partidas y qué modos se usan; para calibrar, no. Lo que se registró antes de
+esto no se puede usar.
+
+Se guarda por dos vías, con propósitos distintos:
+
+- **`console.log`**, para mirar en vivo con `npm run tail` mientras se juega.
+  No sirve para calibrar: en el plan gratis los logs duran **tres días**, así
+  que son una ventana móvil y no un histórico.
+- **Analytics Engine** (`PARTIDAS`, dataset `numerordle_partidas`), que los
+  guarda **noventa días** y se consulta por SQL. De acá sale el dato con el que
+  se comparan los niveles del bot. Escribir ahí no puede voltear una partida:
+  si falla, se pierde el dato y se sigue jugando.
 
 ## Escribir antes de que te toque
 
