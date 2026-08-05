@@ -297,6 +297,27 @@ el cupo ni invitar a nadie, porque todo eso era de la espera. Está bien: para
 eso está el camino de crear una sala normal y sumarle gente o máquinas, que
 hace lo mismo y se explica solo.
 
+## De dónde salieron los colores y las formas
+
+La primera versión se notaba armada sin decidir: fondo azul-pizarra (`#0f1117` y
+familia, el gris por defecto de medio internet), un solo acento, esquinas de
+14 px en todo y una columna de tarjetas iguales.
+
+Se rehizo contra dos referencias que dio Lucas —potrerofutbol.ar/el-idolo y
+copero.com.ar/juegos/simulador-carrera— y no de ojo: se les midieron los tokens.
+Las dos usan negro **neutro** (`#040505` y `#09090b`), bordes de un pelo al 6-8 %,
+píldoras para los estados y una fuente cargada. Ninguna de las dos tiene el
+resplandor radial de fondo; Potrero incluso dejó escrito
+`--page-bg-gradient: var(--page-bg-solid)` para colapsarlo a propósito.
+
+De ahí salieron los grises neutros, los bordes al 7 %, la escala de radios (8 la
+tarjeta, 6 lo de adentro, píldora los estados) y, después, el tono: Lucas eligió
+entre tres versiones la de **base callada con una sola display, y solo en el
+título de la portada**. Los números van con una grotesca condensada.
+
+Vale la pena repetir el método antes que el resultado: **medirle los tokens a una
+referencia** dice más que mirarla, y explica por qué cada número es el que es.
+
 ## La única fuente que se carga
 
 El repo tiene un solo binario: `public/fuentes/anton-latin.woff2`, 18 KB, y va
@@ -369,6 +390,12 @@ Hay un Cron Trigger que dos veces por día mira el consumo con la API de
 analytics y avisa por Discord si pasó la mitad. Es opcional: sin los secretos no
 corre. Lo importante es que **no está en el camino de ningún jugador**, así que
 si falla no lo nota nadie —y si falla, avisa, que es mejor que quedarse mudo.
+
+**Un cron no se puede disparar a mano**, y probarlo bajándole el intervalo a un
+minuto tarda en propagar y no se controla. Lo que funcionó fue sacar la lógica a
+una función y llamarla desde una ruta temporal e impredecible en `fetch`, una
+vez, y borrar la ruta en el mismo rato. Si hay que volver a tocar el aviso de
+cupo, ese es el camino.
 
 ## Otros topes
 
