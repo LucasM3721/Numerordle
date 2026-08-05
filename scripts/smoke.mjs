@@ -466,6 +466,38 @@ async function contraLaMaquina() {
   ana.close();
 }
 
+// ------------------------------------- quedarse sin rivales en el reparto
+
+/**
+ * Del reparto no se sale sin empezar la partida, así que sacar al único rival
+ * dejaba a alguien solo mirando el pad para siempre. Se nota sobre todo en el
+ * uno contra uno, donde la ✕ de la máquina está en la primera pantalla que ves.
+ *
+ * Es la única suite que pide una sala propia sin poder reusar otra: necesita
+ * una de dos con la máquina adentro y en pleno reparto, que es justo el estado
+ * que las demás atraviesan y dejan atrás.
+ */
+async function sinRivales() {
+  console.log('\nSacar al único rival en pleno reparto');
+  const code = await crearSala('strict', 2, 'normal');
+  const ana = await conectar(code, 'sola-ana', 'Ana');
+
+  const inicio = await esperar(ana, (s) => s.players.length === 2, 'que estén Ana y la máquina');
+  igual('la sala arranca en el reparto', inicio.phase, 'secret');
+
+  decir(ana, { t: 'kick', id: inicio.players.find((p) => p.bot).id });
+  const sola = await esperar(ana, (s) => s.players.length === 1, 'que se vaya la máquina');
+  igual('sin con quién jugar, la sala vuelve a la espera', sola.phase, 'lobby');
+  igual('y Ana sigue siendo la anfitriona', sola.you.isHost, true);
+
+  // Y desde la espera se rearma, que es de lo que se trata volver ahí.
+  decir(ana, { t: 'addBot', nivel: 'facil' });
+  const devuelta = await esperar(ana, (s) => s.players.length === 2, 'que vuelva una máquina');
+  igual('y desde ahí se puede volver a armar', devuelta.players.filter((p) => p.bot).length, 1);
+
+  ana.close();
+}
+
 // ------------------------------------------ máquinas en una sala normal
 
 /**
@@ -657,6 +689,7 @@ try {
   await limitesYRuido();
   await topeDeConexiones();
   await contraLaMaquina();
+  await sinRivales();
   await maquinasEnLaSala();
   await desconexionEnPartida();
   await anfitrionSeCae();
