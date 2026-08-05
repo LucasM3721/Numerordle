@@ -625,7 +625,19 @@ export class GameRoom {
       // La máquina entra al crearse la sala, antes que nadie, así ya está en el
       // círculo cuando llega el primero. Con dos jugadores el objetivo es mutuo.
       const nivel = url.searchParams.get('bot');
-      if (esNivel(nivel)) this.state.players.push(nuevoBot(this.state, nivel));
+      if (esNivel(nivel)) {
+        this.state.players.push(nuevoBot(this.state, nivel));
+        // Y la sala nace en el reparto, sin pasar por la espera: es uno contra
+        // uno, no hay a quién esperar ni orden que acomodar, así que la sala de
+        // espera era un botón entre el que quiere jugar y el juego. `join`
+        // acepta gente en 'secret', así que el que la creó entra derecho a
+        // elegir su número; el mínimo de dos lo sigue haciendo cumplir
+        // `everyoneReady`, que es quien arranca la partida.
+        this.state.phase = 'secret';
+        // Que elija el suyo ahora y no mientras el otro escribe: así la lista
+        // ya la muestra lista, y se ve que lo único que falta sos vos.
+        turnoDeBots(this.state);
+      }
       await this.save();
       return json({ ok: true, code: this.state.code });
     }

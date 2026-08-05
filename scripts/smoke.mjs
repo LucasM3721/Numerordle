@@ -415,6 +415,12 @@ async function contraLaMaquina() {
   igual('con su nivel a la vista', maquina?.bot, 'dificil');
   igual('la sala es de Ana, no de la máquina', inicio.you.isHost, true);
 
+  // Uno contra uno no tiene a quién esperar ni orden que acomodar: del botón se
+  // sale derecho a elegir el número y la sala de espera no se ve nunca.
+  igual('la sala nace en el reparto, sin sala de espera', inicio.phase, 'secret');
+  igual('y la máquina ya tiene el suyo', maquina?.ready, true);
+  igual('el suyo está tapado desde el minuto cero', maquina?.secret, null);
+
   // No se le puede dejar la sala: quedaría sin nadie que la maneje.
   decir(ana, { t: 'makeHost', id: maquina.id });
   chequear(
@@ -423,7 +429,11 @@ async function contraLaMaquina() {
   );
 
   decir(ana, { t: 'start' });
-  await esperar(ana, (s) => s.phase === 'secret', 'el reparto de números');
+  chequear(
+    'y no hay ninguna partida que empezar, porque ya arrancó',
+    (await esperarError(ana, 2)).includes('ya arrancó'),
+  );
+
   decir(ana, { t: 'setSecret', secret: '1234' });
 
   const jugando = await esperar(ana, (s) => s.phase === 'playing', 'que arranque la partida');

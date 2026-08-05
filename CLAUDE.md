@@ -77,33 +77,36 @@
 > `cerrarSocket()`, que además de cerrar **desarma los handlers**; ver el
 > comentario en `public/app.js`.
 >
+> **Contra la máquina ya no pasa por la sala de espera.** Es uno contra uno: no
+> hay a quién esperar ni orden que acomodar, así que la espera era un botón
+> entre el que quiere jugar y el juego. La sala que nace con máquina **nace en
+> el reparto** (`phase: 'secret'` desde `create`, y la máquina elige su número
+> ahí mismo), y `join` ya aceptaba gente en esa fase. Del botón al tablero hay
+> dos clics. Si querés más de uno contra uno, el camino es crear sala normal y
+> sumar gente o máquinas ahí.
+>
 > **Lo que queda por hacer**, en este orden:
 >
-> 1. **Contra la máquina no debería pasar por la sala de espera.** Es uno contra
->    uno: no hay a quién esperar ni orden que acomodar, así que del botón
->    debería salir directo a elegir el número. Si querés más de uno contra uno,
->    ese camino ya existe: crear sala normal y sumar gente o máquinas ahí.
->    Ojo con el invariante 1 al hacerlo —el orden del círculo se congela al
->    empezar— y con que el anfitrión sigue teniendo que ser una persona.
->
-> 2. **Decidir si se sirve una fuente propia desde `public/`.** Hoy el título y
+> 1. **Decidir si se sirve una fuente propia desde `public/`.** Hoy el título y
 >    los números salen de la familia del sistema (Impact / Bahnschrift), así que
 >    en Android y en Linux se ven distintos. Cargar Anton y una condensada como
 >    `.woff2` es lo único que falta para que el tono sea el mismo en todos lados.
 >    Está sin decidir porque implica meter archivos de fuente al repo.
-> 3. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
+> 2. **Desafío del día**: uno solo adivina, con un tope de intentos. Es el más
 >    grande: no hay círculo ni rival. El número del día **no puede viajar al
 >    cliente**, se valida en el servidor o el desafío se muere solo.
-> 4. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
+> 3. **Calibrar los tres niveles de la máquina** (16 / 12 / 8 intentos) contra
 >    partidas reales. Hoy son una hipótesis; el registro de partidas ya está
 >    juntando datos, se leen con `npm run tail`.
-> 5. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
+> 4. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día.
 >
-> **`wrangler dev` no arranca en la máquina de Lucas** (agosto 2026): el runtime
-> tira "access violation", que apunta a un Visual C++ Redistributable viejo. O
-> sea que `npm test` no corre local y la verificación real es la del pull
-> request. Para mirar la interfaz, `npm run estatico`; para probar lógica del
+> **`wrangler dev` volvió a arrancar** en la máquina de Lucas (5 de agosto de
+> 2026): la suite entera corrió local, 83 de 83. Estuvo un tiempo tirando
+> "access violation" —un Visual C++ Redistributable viejo—, así que si vuelve a
+> pasar, la verificación real es la del pull request y no hay que perder la
+> tarde persiguiéndolo. Para mirar la interfaz sin Worker, `npm run estatico`;
+> para probar lógica del
 > cliente que depende del websocket, se pisa `window.WebSocket` con un doble
 > desde la consola (`app.js` resuelve el global recién al hacer `new`). Dos
 > cosas hacen que el doble sirva para carreras: que su `close()` **no** dispare
@@ -177,9 +180,11 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 6. **Nada se encola si se corta la conexión.** `send()` avisa y pide repetir.
 7. **La máquina es un jugador más del círculo.** Tiene su `pub`, su lugar en el
    orden y su historial; lo único que la distingue es que no hay un websocket
-   del otro lado. Por eso se suma solo en la espera (`addBot`, del anfitrión,
-   hasta tres por sala) y no hay un `removeBot`: se saca con el mismo `kick`.
-   Nunca es anfitriona y el barrido de ausentes no la toca.
+   del otro lado. Entra en dos momentos y ninguno es con la partida en curso:
+   al crearse la sala (el uno contra uno, que por eso ya nace en el reparto) o
+   en la espera con `addBot`, del anfitrión, hasta tres por sala. No hay un
+   `removeBot`: se saca con el mismo `kick`. Nunca es anfitriona y el barrido
+   de ausentes no la toca.
 8. **El nivel de la máquina viene de afuera**, así que se pregunta con
    `esNivel()` y no con `NIVELES[x]`: `toString` y `__proto__` contestan que sí
    por herencia y dejarían una máquina con un nivel que no existe.
