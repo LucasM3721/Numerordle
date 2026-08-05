@@ -268,6 +268,35 @@ Tres decisiones que importan más que el número:
   retuviera el estado completo también se demoraría *tu* resultado, que es lo
   contrario de lo que se busca.
 
+## El uno contra uno no tiene sala de espera
+
+La sala que nace con máquina nace en el reparto: `create` la mete en el círculo
+y deja `phase` en `'secret'`. No es un atajo del cliente, es la sala la que
+arranca ahí.
+
+La espera existe para tres cosas —ver quién va llegando, acomodar el orden y
+decidir cuándo se empieza— y **ninguna aplica a un uno contra uno**: no hay a
+quién esperar, con dos jugadores el círculo es mutuo y el único que decide ya
+apretó el botón. Lo que quedaba era una pantalla con un botón "Empezar" entre
+el que quiere jugar y el juego.
+
+Lo que no cambia:
+
+- **El mínimo de dos lo sigue haciendo cumplir `everyoneReady`**, que es quien
+  arranca la partida, y no el botón que desapareció. Una sala en `'secret'` con
+  un solo jugador no puede empezar aunque él elija su número.
+- **`join` ya aceptaba gente en `'secret'`**, así que el que la creó entra
+  derecho a elegir. No hizo falta tocar la puerta.
+- **El anfitrión sigue siendo una persona**: el bot está en la sala antes que
+  nadie, pero `nuevoAnfitrion` solo mira humanos.
+- **La máquina elige su número al crearse la sala**, no cuando vos mandás el
+  tuyo. Así la lista ya la muestra lista y se ve que lo único que falta sos vos.
+
+El precio es que desde el uno contra uno ya no se puede cambiar de modo, subir
+el cupo ni invitar a nadie, porque todo eso era de la espera. Está bien: para
+eso está el camino de crear una sala normal y sumarle gente o máquinas, que
+hace lo mismo y se explica solo.
+
 ## Qué pasa si se agota el cupo del día
 
 El plan gratis da 100.000 requests diarios al Worker, y **no factura por
