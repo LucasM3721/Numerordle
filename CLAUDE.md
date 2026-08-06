@@ -16,7 +16,10 @@
 > - **El desafío del día**, completo: un jugador solo contra el número de hoy,
 >   tope de 12, en `src/reto.js` y la pantalla `screen-reto`. El número se
 >   deriva de la fecha con HMAC y no se guarda en ningún lado. Va por HTTP y no
->   por websocket, así que se prueba entero sin abrir un socket.
+>   por websocket, así que se prueba entero sin abrir un socket. **Al agotar los
+>   doce no revela el número: pregunta** si querés seguir buscándolo. Se pierde
+>   igual, pero el número queda registrado, y eso es lo que convierte un
+>   "necesitaba más de doce" en un dato que sirve para calibrar.
 > - **El registro de partidas anota qué era cada jugador** —persona o máquina, y
 >   de qué nivel—, sin lo cual no se puede calibrar nada, y se guarda noventa
 >   días en Analytics Engine. Los logs solos duran tres.
@@ -24,6 +27,15 @@
 > Antes, ese mismo día: el cliente dejó de reconectarse a la sala anterior, el
 > uno contra uno dejó de pasar por la sala de espera, y el título tiene fuente
 > propia (Anton, 18 KB, en `public/fuentes/`).
+>
+> **Lo único que quedó a medio camino** (6 de agosto): el
+> [PR 27](https://github.com/LucasM3721/Numerordle/pull/27), que separa los
+> botones del último intento —quedaban pegados— y deja **revelar el número en
+> cualquier momento** después del tope, para que el que eligió seguir no quede
+> encerrado hasta los treinta. Está verificado en el navegador pero **sin
+> mergear**: GitHub Actions estuvo en interrupción mayor toda la tarde y su CI
+> nunca arrancó. Se retoma mergeándolo cuando Actions ande; si no, `npx wrangler
+> deploy` publica a mano, que es lo que se hizo con el commit anterior.
 >
 > **Cuatro cosas de operación que no se deducen del código:**
 >
