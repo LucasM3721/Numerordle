@@ -430,8 +430,9 @@ details.card[open] > summary { margin-bottom: 14px; }
 }
 .guess-row.active { border-color: var(--accent); border-style: solid; background: rgba(255, 200, 87, .06); }
 
-/* Los botones del desafío arrancan a la misma distancia que hay entre dos
-   intentos. Pegados al último renglón se leían como parte del tablero. */
+/* Los botones que van debajo del tablero arrancan a la misma distancia que hay
+   entre dos intentos. Pegados al último renglón se leían como parte de él. */
+#btn-guess,
 #btn-reto-guess,
 #reto-decidir { margin-top: 5px; }
 .pad.inline { gap: 4px; margin: 0; justify-content: flex-start; }
