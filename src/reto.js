@@ -11,6 +11,14 @@ import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta, scoreGuess } from '.
 
 export const TOPE_INTENTOS = 12;
 
+/**
+ * Tope de verdad, para el que eligió seguir después de los doce. No es una
+ * regla del juego: es para que el estado no crezca sin freno si alguien tira
+ * números a la bartola. Treinta deja terminar hasta al que va muy perdido —el
+ * nivel `facil` del bot promedia 15,9— sin dejar la puerta abierta.
+ */
+export const TOPE_DURO = 30;
+
 // El día corre en UTC−3 y no en UTC como el resto del proyecto. Con UTC el
 // número cambiaría a las nueve de la noche de acá, en plena hora de jugar.
 const DESFASE_MS = 3 * 60 * 60 * 1000;
@@ -80,21 +88,36 @@ export async function numeroDelDia(fecha, clave) {
 // está. Guardar además cuándo se creó invitaría a usarla para vencerlo, que es
 // justo lo que estaba mal.
 function nuevoReto(fecha) {
-  return { fecha, intentos: [], terminado: false, gano: false };
+  return { fecha, intentos: [], terminado: false, gano: false, encontro: false, siguio: false };
 }
+
+/**
+ * Al agotar los doce el desafío no termina: se pregunta. Es la misma decisión
+ * que ofrece una sala cuando otro ya ganó —seguir por el gusto de encontrarlo—
+ * y estaba en el juego desde el principio.
+ *
+ * Para los datos es lo que más cambia: un desafío perdido y abandonado solo
+ * dice "necesitaba más de doce", que es una medición censurada. El que sigue
+ * hasta encontrarlo deja el número entero.
+ */
+const debeDecidir = (e) => !e.terminado && !e.siguio && e.intentos.length >= TOPE_INTENTOS;
 
 /**
  * Lo que ve el jugador. **El número solo sale cuando el reto terminó**, igual
  * que `revealed` en una sala: hasta entonces la respuesta lleva fijos y picas y
- * nada más.
+ * nada más. Mientras está decidiendo tampoco sale: todavía puede seguir.
  */
 function vista(estado, numero) {
   return {
     fecha: estado.fecha,
     tope: TOPE_INTENTOS,
+    topeDuro: TOPE_DURO,
     intentos: estado.intentos,
     terminado: estado.terminado,
     gano: estado.gano,
+    encontro: estado.encontro,
+    siguio: estado.siguio,
+    decidiendo: debeDecidir(estado),
     numero: estado.terminado ? numero : null,
   };
 }
@@ -156,22 +179,27 @@ export class RetoDelDia {
     }
 
     if (accion === 'intento') {
-      return this.intento(request, numero);
+      // Un solo POST para las dos cosas: el cuerpo dice si es un intento o la
+      // decisión de después del tope. Se lee una sola vez porque el stream no
+      // se puede volver a abrir.
+      let body = null;
+      try {
+        body = await request.json();
+      } catch {
+        /* ilegible: cae como intento inválido */
+      }
+      if (typeof body?.seguir === 'boolean') return this.decidir(body.seguir, numero);
+      return this.intento(String(body?.guess ?? ''), numero);
     }
 
     return json({ error: 'No encontrado.' }, 404);
   }
 
-  async intento(request, numero) {
+  async intento(guess, numero) {
     const e = this.estado;
     if (e.terminado) return json({ error: 'El desafío de hoy ya terminó para vos.' }, 409);
-
-    let guess = '';
-    try {
-      const body = await request.json();
-      guess = String(body?.guess ?? '');
-    } catch {
-      /* body ilegible: cae en la validación de abajo */
+    if (debeDecidir(e)) {
+      return json({ error: 'Elegí si seguís o ves el número.' }, 409);
     }
     if (!isValidSecret(guess)) {
       return json({ error: 'Tienen que ser 4 dígitos del 1 al 9, sin repetir.' }, 400);
@@ -182,10 +210,28 @@ export class RetoDelDia {
 
     if (fijos === 4) {
       e.terminado = true;
-      e.gano = true;
-    } else if (e.intentos.length >= TOPE_INTENTOS) {
+      e.encontro = true;
+      // Ganar es sacarlo dentro de los doce. El que pidió seguir lo encuentra,
+      // pero el desafío ya lo había perdido: son dos cosas distintas y por eso
+      // se guardan por separado.
+      e.gano = !e.siguio;
+    } else if (e.siguio && e.intentos.length >= TOPE_DURO) {
       e.terminado = true;
     }
+
+    if (e.terminado) this.registrar();
+    await this.guardar();
+    return json(vista(e, numero));
+  }
+
+  /** Después del tope: seguir hasta encontrarlo, o que se lo revelen. */
+  async decidir(seguir, numero) {
+    const e = this.estado;
+    if (e.terminado) return json({ error: 'El desafío de hoy ya terminó para vos.' }, 409);
+    if (!debeDecidir(e)) return json({ error: 'No hay nada que decidir ahora.' }, 409);
+
+    if (seguir) e.siguio = true;
+    else e.terminado = true;
 
     if (e.terminado) this.registrar();
     await this.guardar();
@@ -198,15 +244,16 @@ export class RetoDelDia {
    * en "Qué es cada columna" (docs/DECISIONES.md): acá no se reordena nada.
    *
    * Lo que este registro tiene y el del uno contra uno no: cuando `gano` es 0,
-   * la censura está en el tope y no en un punto que dependió del rival.
+   * la censura está en el tope y no en un punto que dependió del rival. Y con
+   * `encontro` puede no haber censura en absoluto — ver abajo.
    */
   registrar() {
     const e = this.estado;
     const n = e.intentos.length;
     console.log(JSON.stringify({
       evento: 'partida', modo: 'reto', fecha: e.fecha, jugadores: 1, rondas: n,
-      descuento: false,
-      intentos: [{ quien: 'humano', n, gano: e.gano, ronda: e.gano ? n : null }],
+      descuento: e.siguio,
+      intentos: [{ quien: 'humano', n, gano: e.gano, encontro: e.encontro, ronda: e.encontro ? n : null }],
     }));
 
     if (!this.env.PARTIDAS) return;
@@ -218,7 +265,12 @@ export class RetoDelDia {
         // de gracia uno del 5 se puede cerrar el 6: contarlo como del 6 movería
         // la partida de día. Va al final del esquema, como manda la regla.
         blobs: ['reto', 'humano', e.fecha],
-        doubles: [n, e.gano ? 1 : 0, e.gano ? n : 0, 1, n, 0],
+        // `double7` es lo que separa "necesitaba más de doce" de "necesitaba
+        // diecisiete": sin él, el que pierde y sigue hasta encontrarlo queda
+        // indistinguible del que pierde y se va, y su número —que es un dato
+        // completo, de los pocos— se desperdicia. Va al final, como manda la
+        // regla del esquema.
+        doubles: [n, e.gano ? 1 : 0, e.encontro ? n : 0, 1, n, e.siguio ? 1 : 0, e.encontro ? 1 : 0],
       });
     } catch (err) {
       // Igual que en una partida: un registro que se rompe no puede voltear el

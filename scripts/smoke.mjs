@@ -817,14 +817,16 @@ async function desafioDelDia() {
   igual('no arranca terminado', estado.terminado, false);
   chequear('el número no viaja antes de terminar', estado.numero === null, JSON.stringify(estado.numero));
 
-  const tirar = async (guess) => {
+  const postear = async (cuerpo) => {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ guess }),
+      body: JSON.stringify(cuerpo),
     });
     return { status: res.status, cuerpo: await res.json() };
   };
+  const tirar = (guess) => postear({ guess });
+  const decidir = (seguir) => postear({ seguir });
 
   // Antes de gastar el desafío: lo que no es un número válido se rechaza y no
   // cuenta como intento. Va acá y no al final porque una vez terminado el
@@ -847,11 +849,26 @@ async function desafioDelDia() {
   }
 
   chequear('el número nunca se filtró mientras el desafío seguía', filtrado);
-  igual('el desafío terminó', estado.terminado, true);
-  chequear('al terminar sí se revela el número', isValidSecret(estado.numero ?? ''), String(estado.numero));
+
+  // Sin acertar, los doce **no terminan** el desafío: preguntan. Es lo que
+  // convierte un "necesitaba más de doce" en un número entero.
   if (!estado.gano) {
+    igual('a los doce no termina, pregunta', estado.terminado, false);
+    igual('y queda esperando la decisión', estado.decidiendo, true);
+    chequear('todavía no se revela el número', estado.numero === null, JSON.stringify(estado.numero));
+
+    const suelto = await tirar('9876');
+    igual('no se puede tirar sin decidir', suelto.status, 409);
+
+    // Ver el número: se termina y no lo encontró.
+    const visto = await decidir(false);
+    estado = visto.cuerpo;
+    igual('al pedir verlo, termina', estado.terminado, true);
+    igual('y queda como que no lo encontró', estado.encontro, false);
     igual('sin acertar, termina justo en el tope', estado.intentos.length, TOPE_INTENTOS);
   }
+
+  chequear('al terminar sí se revela el número', isValidSecret(estado.numero ?? ''), String(estado.numero));
 
   // Terminado es terminado: no se sigue tirando.
   const extra = await tirar('9876');
@@ -881,6 +898,63 @@ async function desafioDelDia() {
   igual('una fecha cualquiera cae en la de hoy', viejo.fecha, fechaDeHoy());
 }
 
+// ------------------------------------------ seguir después de los doce
+
+/**
+ * El camino que existe por los datos: el que agota los doce puede seguir hasta
+ * encontrarlo. Pierde igual, pero su número deja de ser "más de doce" y pasa a
+ * ser un número. Sin esto, los jugadores lentos —los que más corren la
+ * distribución que hay que medir— son justo los que no se pueden medir.
+ */
+async function seguirDespuesDelTope() {
+  console.log('\n— seguir después de los doce');
+
+  const pid = `sigue${Math.random().toString(36).slice(2, 12)}`;
+  const url = `${BASE}/api/reto?pid=${pid}`;
+  const postear = async (c) => {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(c),
+    });
+    return { status: res.status, cuerpo: await res.json() };
+  };
+
+  let estado = await (await fetch(url)).json();
+  if (estado.error) {
+    chequear('el desafío del día está disponible', false, estado.error);
+    return;
+  }
+
+  const candidatos = [
+    '1234', '5678', '1357', '2468', '1235', '1236',
+    '1237', '1238', '1239', '1245', '1246', '1247',
+  ];
+  for (const guess of candidatos) {
+    if (estado.terminado || estado.decidiendo) break;
+    estado = (await postear({ guess })).cuerpo;
+  }
+  if (estado.gano) {
+    console.log('  ...  lo acertó de casualidad; el tope no se puede probar en esta corrida');
+    return;
+  }
+
+  igual('a los doce queda esperando la decisión', estado.decidiendo, true);
+
+  estado = (await postear({ seguir: true })).cuerpo;
+  igual('al elegir seguir, el desafío no termina', estado.terminado, false);
+  igual('y deja de preguntar', estado.decidiendo, false);
+  igual('queda anotado que siguió', estado.siguio, true);
+  chequear('y todavía no se revela el número', estado.numero === null, JSON.stringify(estado.numero));
+
+  const trece = await postear({ guess: '9876' });
+  igual('ahora sí entra el intento trece', trece.status, 200);
+  igual('y se cuenta', trece.cuerpo.intentos.length, 13);
+
+  const otraVez = await postear({ seguir: false });
+  igual('no se decide dos veces', otraVez.status, 409);
+}
+
 // ------------------------------------------------------------------ main
 
 console.log(`Probando contra ${BASE}`);
@@ -888,6 +962,7 @@ try {
   formaDelRegistro();
   await numeroDelDiaAndaBien();
   await desafioDelDia();
+  await seguirDespuesDelTope();
   await partidaPorTurnos();
   await partidaSimultanea();
   await cupoDeLaSala();

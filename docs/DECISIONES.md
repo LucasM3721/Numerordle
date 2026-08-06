@@ -258,7 +258,8 @@ ningún otro lado, y una fila es **un jugador de una partida**, no una partida.
 | `double3` | en qué ronda ganó, 0 si no ganó |
 | `double4` | cuántos jugaron |
 | `double5` | cuántas rondas duró |
-| `double6` | si hubo descuento: 1 o 0 |
+| `double6` | si hubo descuento: 1 o 0. En un desafío, si siguió después del tope |
+| `double7` | solo en desafíos: si terminó encontrando el número, aunque fuera del tope |
 
 `blob2` repite `index1` a propósito y no hace falta para consultar —se pregunta
 por `index1`—, pero mover las posiciones ahora partiría el histórico en dos
@@ -306,6 +307,41 @@ hasta encontrarlo**. Si elige eso, la partida sigue en descuento y su número
 queda registrado entero. Se ve en los datos: las 3 partidas con
 `descuento: true` son exactamente las 3 que terminaron con dos `gano: true`. Las
 otras 20 tienen un solo ganador y una fila censurada.
+
+### El que pierde el desafío puede seguir, y eso cambia el dato
+
+Al agotar los doce el desafío no revela el número: pregunta. Se puede pedir
+verlo, o seguir buscándolo hasta encontrarlo. Se pierde igual —ganar es sacarlo
+dentro de los doce— pero el número queda registrado.
+
+Existe por los datos, no por el juego. Un desafío perdido y abandonado solo dice
+"necesitaba más de doce", y eso es una medición censurada. El que sigue hasta
+encontrarlo deja el número entero. Y son justo **los jugadores lentos los que
+más corren la distribución que hay que medir**, o sea que sin esto los que peor
+se miden son los que más importan.
+
+Por eso `gano` y `encontro` son dos cosas distintas y se guardan por separado:
+
+| | `double2` (ganó) | `double7` (lo encontró) | qué es |
+| --- | --- | --- | --- |
+| Lo sacó en ≤12 | 1 | 1 | dato completo |
+| Perdió y se fue | 0 | 0 | **censurado en 12** |
+| Perdió, siguió, lo sacó en 17 | 0 | 1 | dato completo, vale 17 |
+
+**Al calibrar hay que tener presente un sesgo que esto introduce.** El que elige
+seguir no es un jugador cualquiera: es más obstinado, o le está gustando más la
+partida. Así que los números que salen de esa tercera fila **no son una muestra
+al azar de los que pasaron de doce** — probablemente vengan de gente que además
+juega mejor que el promedio de ese grupo, y subestimen la cola.
+
+No invalida el dato: información parcial le gana a censura pura, y es la misma
+concesión que ya se hace en el uno contra uno. Pero al comparar contra el bot,
+esa tercera fila se mira aparte antes de mezclarla con las otras dos. Si la cola
+que muestra es sospechosamente corta, es por esto y no porque la gente sea
+rápida.
+
+El tope de verdad es 30, y no es una regla del juego: es para que el estado no
+crezca sin freno. Llegar ahí sin encontrarlo vuelve a ser censura, ahora en 30.
 
 Así que la regla para juntar datos es corta:
 
