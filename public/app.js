@@ -1234,9 +1234,7 @@ function renderReto() {
 
   const n = reto.intentos.length;
   const quedan = reto.tope - n;
-  $('reto-banner').textContent = reto.terminado
-    ? (reto.gano ? '¡Lo encontraste!' : 'Se te acabaron los intentos.')
-    : `Te ${quedan === 1 ? 'queda' : 'quedan'} ${quedan} de ${reto.tope}.`;
+  $('reto-banner').textContent = bannerReto(n, quedan);
 
   // `n` es el índice de la anotación, que acá es la posición en la lista: los
   // intentos solo se agregan al final, así que no se corre nunca.
@@ -1245,26 +1243,66 @@ function renderReto() {
     empty: '',
   });
 
+  // Jugando se ve el pad; en la decisión, los dos botones; terminado, ninguno.
+  const jugando = !reto.terminado && !reto.decidiendo;
   $('reto-idx').textContent = `${n + 1}`;
-  show('reto-row', !reto.terminado);
-  show('btn-reto-guess', !reto.terminado);
-  retoPad.disabled = reto.terminado;
+  show('reto-row', jugando);
+  show('btn-reto-guess', jugando);
+  show('reto-decidir', !!reto.decidiendo);
+  retoPad.disabled = !jugando;
 
   show('reto-final', reto.terminado);
   if (!reto.terminado) return;
 
   $('reto-final-titulo').textContent = reto.gano ? 'Lo sacaste' : 'Casi';
-  $('reto-final-texto').textContent = reto.gano
-    ? `En ${n} ${n === 1 ? 'intento' : 'intentos'}. Mañana hay otro.`
-    : 'El número era:';
-  // Si ganaste ya está en el tablero, arriba y en verde: repetirlo abajo es
-  // contarte algo que acabás de hacer.
+  $('reto-final-texto').textContent = textoFinalReto(n);
+  // Si lo encontraste ya está en el tablero, arriba y marcado: repetirlo abajo
+  // es contarte algo que acabás de hacer.
   $('reto-final-numero').textContent = reto.numero ?? '····';
-  show('reto-final-numero', !reto.gano);
+  show('reto-final-numero', !reto.encontro);
+}
+
+/** El cartel de arriba, que cambia según en cuál de los tres momentos estés. */
+function bannerReto(n, quedan) {
+  if (reto.decidiendo) return `Se te acabaron los doce. ¿Lo seguís buscando?`;
+  if (reto.terminado) {
+    if (reto.gano) return '¡Lo encontraste!';
+    return reto.encontro ? `Lo encontraste, pero fuera de los doce.` : 'Se te acabaron los intentos.';
+  }
+  if (reto.siguio) return `Vas ${n} intentos, y el desafío ya lo perdiste. A encontrarlo igual.`;
+  return `Te ${quedan === 1 ? 'queda' : 'quedan'} ${quedan} de ${reto.tope}.`;
+}
+
+function textoFinalReto(n) {
+  const veces = `${n} ${n === 1 ? 'intento' : 'intentos'}`;
+  if (reto.gano) return `En ${veces}. Mañana hay otro.`;
+  // Perdió el desafío pero lo sacó: el número que importa es cuántos necesitó
+  // de verdad, y lo interesante es decírselo.
+  if (reto.encontro) return `Te llevó ${veces}. El desafío estaba perdido en el doce, pero lo sacaste.`;
+  return 'El número era:';
+}
+
+/** Después del tope: seguir buscándolo, o que te lo revelen. */
+async function decidirReto(seguir) {
+  if (!reto?.decidiendo) return;
+  $('btn-reto-seguir').disabled = true;
+  $('btn-reto-ver').disabled = true;
+  const { ok, cuerpo } = await pedirReto('POST', { seguir }, reto.fecha);
+  $('btn-reto-seguir').disabled = false;
+  $('btn-reto-ver').disabled = false;
+  if (!ok) {
+    if (cuerpo.vencido) return arrancarDeNuevo();
+    return flash('reto-guess-error', cuerpo.error ?? 'No se pudo mandar la decisión.');
+  }
+  reto = cuerpo;
+  renderReto();
+  if (!reto.terminado) retoPad.focus();
 }
 
 $('btn-reto').onclick = abrirReto;
 $('btn-reto-guess').onclick = arriesgarReto;
+$('btn-reto-seguir').onclick = () => decidirReto(true);
+$('btn-reto-ver').onclick = () => decidirReto(false);
 $('btn-reto-salir').onclick = () => {
   show('screen-reto', false);
   show('screen-home', true);

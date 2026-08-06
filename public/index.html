@@ -329,6 +329,14 @@
 
       <p id="reto-guess-error" class="error hidden"></p>
       <button id="btn-reto-guess" class="btn primary big">Arriesgar</button>
+
+      <!-- Al agotar los doce se pregunta en vez de terminar, igual que una sala
+           cuando otro ya ganó. El que sigue pierde igual, pero se lleva el
+           número. -->
+      <div id="reto-decidir" class="row hidden">
+        <button id="btn-reto-seguir" class="btn primary">Seguir intentando</button>
+        <button id="btn-reto-ver" class="btn ghost">Ver el número</button>
+      </div>
       <p class="hint">Tocá cada dígito de tus intentos para marcarlo: <b class="k-no">✕ no está</b> · <b class="k-pica">pica</b> · <b class="k-fijo">fijo</b>. Son anotaciones tuyas.</p>
     </div>
 
