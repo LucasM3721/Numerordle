@@ -1244,11 +1244,14 @@ function renderReto() {
   });
 
   // Jugando se ve el pad; en la decisión, los dos botones; terminado, ninguno.
+  // Y mientras seguís después del tope queda el de revelar, solo: seguir ya lo
+  // elegiste, pero salir tiene que poder hacerse sin llegar a los treinta.
   const jugando = !reto.terminado && !reto.decidiendo;
   $('reto-idx').textContent = `${n + 1}`;
   show('reto-row', jugando);
   show('btn-reto-guess', jugando);
-  show('reto-decidir', !!reto.decidiendo);
+  show('reto-decidir', !reto.terminado && (reto.decidiendo || reto.siguio));
+  show('btn-reto-seguir', !!reto.decidiendo);
   retoPad.disabled = !jugando;
 
   show('reto-final', reto.terminado);
@@ -1284,7 +1287,8 @@ function textoFinalReto(n) {
 
 /** Después del tope: seguir buscándolo, o que te lo revelen. */
 async function decidirReto(seguir) {
-  if (!reto?.decidiendo) return;
+  if (!reto || reto.terminado) return;
+  if (seguir && !reto.decidiendo) return;
   $('btn-reto-seguir').disabled = true;
   $('btn-reto-ver').disabled = true;
   const { ok, cuerpo } = await pedirReto('POST', { seguir }, reto.fecha);

@@ -951,8 +951,16 @@ async function seguirDespuesDelTope() {
   igual('ahora sí entra el intento trece', trece.status, 200);
   igual('y se cuenta', trece.cuerpo.intentos.length, 13);
 
-  const otraVez = await postear({ seguir: false });
-  igual('no se decide dos veces', otraVez.status, 409);
+  const deNuevo = await postear({ seguir: true });
+  igual('seguir se elige una sola vez', deNuevo.status, 409);
+
+  // Revelar sí queda disponible: el que siguió puede cansarse, y no tiene por
+  // qué llegar a los treinta para poder salir.
+  const rendirse = await postear({ seguir: false });
+  igual('pero revelar se puede en cualquier momento', rendirse.status, 200);
+  igual('y ahí sí termina', rendirse.cuerpo.terminado, true);
+  igual('sin haberlo encontrado', rendirse.cuerpo.encontro, false);
+  chequear('con el número a la vista', isValidSecret(rendirse.cuerpo.numero ?? ''), String(rendirse.cuerpo.numero));
 }
 
 // ------------------------------------------------------------------ main
