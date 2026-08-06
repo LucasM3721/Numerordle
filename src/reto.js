@@ -224,11 +224,20 @@ export class RetoDelDia {
     return json(vista(e, numero));
   }
 
-  /** Después del tope: seguir hasta encontrarlo, o que se lo revelen. */
+  /**
+   * Después del tope: seguir hasta encontrarlo, o que se lo revelen.
+   *
+   * Seguir se elige una sola vez, en el tope. **Revelar se puede en cualquier
+   * momento a partir de ahí**: el que siguió puede cansarse, y obligarlo a
+   * llegar a los treinta para salir sería quedarse con su número a la fuerza.
+   */
   async decidir(seguir, numero) {
     const e = this.estado;
     if (e.terminado) return json({ error: 'El desafío de hoy ya terminó para vos.' }, 409);
-    if (!debeDecidir(e)) return json({ error: 'No hay nada que decidir ahora.' }, 409);
+
+    const enElTope = debeDecidir(e);
+    const puede = seguir ? enElTope : enElTope || e.siguio;
+    if (!puede) return json({ error: 'No hay nada que decidir ahora.' }, 409);
 
     if (seguir) e.siguio = true;
     else e.terminado = true;
