@@ -128,7 +128,15 @@ npm run check    # sintaxis de src/ y public/
 npm test         # juega partidas de prueba contra el servidor local
 npm run deploy   # publica a Cloudflare (a mano)
 npm run tail     # logs de producción en vivo
+npm run datos    # resumen del dataset, con las reglas de censura aplicadas
 ```
+
+**`npm run datos` necesita dos variables** que no están en el repo:
+`CF_ANALYTICS_TOKEN` (se crea en el panel: API Tokens → Custom Token → *Account ·
+Account Analytics · Read*, un solo permiso, solo lectura) y `CF_ACCOUNT_ID` (sale
+de `npx wrangler whoami`). En Windows se dejan puestas con `setx NOMBRE "valor"`,
+que aplica recién en la próxima terminal. No vuelca filas: separa lo completo de
+lo censurado, que es lo único que hace que el número sirva.
 
 **`npm test` necesita `npm run dev:test` en otra terminal, no `npm run dev`.** La
 diferencia es una variable que baja a 2,5 s el margen con el que se pasa el turno
