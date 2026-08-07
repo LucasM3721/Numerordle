@@ -24,6 +24,12 @@
 > - **Compartir el resultado**: emoji por intento, sin el número ni lo que se
 >   tiró. Es lo único del juego que se pasa sin coordinar con nadie, y por eso es
 >   la mejor herramienta que hay para el cuello de botella real (ver abajo).
+> - **La racha del desafío**: cuántos días seguidos jugaste y cómo te fue en cada
+>   uno, en la portada y en la pantalla final. Compartir trae gente nueva; esto
+>   es la otra mitad, que es que vuelvan. **Vive entera en `localStorage` y no
+>   viaja nada**: no hay tabla de posiciones ni nadie identificado. La cuenta
+>   está en `public/racha.js`, aparte de `app.js` porque es pura y la suite la
+>   prueba sin navegador.
 > - **El registro anota qué era cada jugador** —persona o máquina, y de qué
 >   nivel— y se guarda noventa días en Analytics Engine. Los logs solos duran
 >   tres.
@@ -104,12 +110,7 @@
 >    perfecto), qué se puede hacer con las colas y qué no, y la pregunta que va
 >    primero: si con una mediana humana de 6 no habrá que **bajar** las tres
 >    medias para que perder vuelva a ser posible.
-> 2. **Que vuelva la gente**: una **racha con historial propio** —cuántos días
->    seguidos jugaste y cómo te fue— entera en `localStorage`, sin que viaje
->    nada. Compartir el resultado trae gente nueva; esto es la otra mitad. Está
->    pensada y sin hacer: el porqué, en "Lo que falta no es una función, es
->    gente" (DECISIONES).
-> 3. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
+> 2. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día, y si
 >    el tope de 12 del desafío está bien puesto.
 >
@@ -201,7 +202,8 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 | `src/index.js` | Worker de entrada: crea salas, enruta el websocket |
 | `src/bot.js` | la cabeza de la máquina: su cuaderno y los tres niveles |
 | `src/reto.js` | el desafío del día: el número derivado de la fecha y su Durable Object |
-| `public/` | cliente completo: un HTML, un CSS, un JS y una fuente. Sin build ni dependencias |
+| `public/` | cliente completo: un HTML, un CSS, dos JS y una fuente. Sin build ni dependencias |
+| `public/racha.js` | la cuenta de la racha del desafío. Puro: no toca el DOM ni `localStorage`, y por eso la suite lo prueba sin navegador |
 
 ## Invariantes que no hay que romper
 

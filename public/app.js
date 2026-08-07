@@ -1,12 +1,17 @@
 /* Fijos y Picas — cliente. Sin build, sin dependencias. */
 
+// El único import del cliente, y es a otro archivo de `public/`. Está aparte
+// porque no toca el DOM y así la suite lo prueba sin navegador; el navegador lo
+// resuelve solo, porque `app.js` entra como `type="module"`.
+import { DIAS_A_LA_VISTA, anotarDia, fechaDeHoy, resumen } from './racha.js';
+
 const $ = (id) => document.getElementById(id);
 
 /**
  * La misma forma que `isValidCode` en src/game.js: cinco caracteres del
  * alfabeto que genera los códigos, sin I, O, 0 ni 1 —se dictan por teléfono—.
- * Acá no hay imports, así que la copia se mantiene a mano; si allá cambia el
- * largo o el alfabeto, cambia acá.
+ * El cliente no importa nada del servidor, así que la copia se mantiene a mano;
+ * si allá cambia el largo o el alfabeto, cambia acá.
  *
  * Vale la pena tenerla: un código imposible rechazado en el navegador no abre
  * un websocket, y cada apertura cuesta un request y come del límite por IP.
@@ -70,6 +75,43 @@ const marks = {
       localStorage.setItem(this.key, JSON.stringify(this.data));
     } catch {
       /* sin espacio: las marcas siguen en memoria */
+    }
+  },
+};
+
+/**
+ * El historial del desafío, que es de donde sale la racha. Todo el cálculo está
+ * en `racha.js`; acá está lo único que ese archivo no puede hacer sin navegador,
+ * que es leerlo y guardarlo.
+ *
+ * No se lee una vez y se cachea: dos pestañas abiertas son el mismo jugador y
+ * comparten `localStorage`, así que la que quedó abierta desde ayer tiene que
+ * ver lo que se anotó en la otra.
+ */
+const historial = {
+  key: 'fp:racha',
+  leer() {
+    try {
+      const data = JSON.parse(localStorage.getItem(this.key) ?? '{}');
+      // Un JSON válido puede no ser un historial: si alguien lo tocó a mano, se
+      // arranca de cero en vez de romper la portada entera.
+      return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+    } catch {
+      return {};
+    }
+  },
+  anotar(fecha, resultado) {
+    const antes = this.leer();
+    const ya = antes[fecha];
+    // El render corre en cada intento y el desafío se termina una sola vez, así
+    // que casi siempre no hay nada nuevo que escribir.
+    if (ya && ya.n === resultado.n && ya.gano === resultado.gano && ya.encontro === resultado.encontro) {
+      return;
+    }
+    try {
+      localStorage.setItem(this.key, JSON.stringify(anotarDia(antes, fecha, resultado)));
+    } catch {
+      /* sin espacio: la racha de hoy no queda anotada, y el desafío sigue igual */
     }
   },
 };
@@ -1284,6 +1326,14 @@ function renderReto() {
   // es contarte algo que acabás de hacer.
   $('reto-final-numero').textContent = reto.numero ?? '····';
   show('reto-final-numero', !reto.encontro);
+
+  // Las partidas de prueba no entran, por el mismo motivo por el que no entran
+  // en la calibración: son de alguien verificando, y una racha inflada a mano
+  // no le sirve ni a quien la infló.
+  if (!reto.prueba) {
+    historial.anotar(reto.fecha, { n, gano: reto.gano, encontro: reto.encontro });
+  }
+  renderRacha();
 }
 
 /**
@@ -1320,6 +1370,101 @@ function textoFinalReto(n) {
   // de verdad, y lo interesante es decírselo.
   if (reto.encontro) return `Te llevó ${veces}. El desafío estaba perdido en el doce, pero lo sacaste.`;
   return 'El número era:';
+}
+
+// ------------------------------------------------------------------ racha
+
+/**
+ * Dibuja la racha en los dos lugares donde va: la línea de la portada y el
+ * bloque de la pantalla final. Los dos salen del mismo `resumen`, así que no
+ * pueden discrepar.
+ *
+ * El día lo pone el reloj de acá y no `reto.fecha`: con las tres horas de
+ * gracia, uno del 5 se puede terminar el 6, y en ese caso la tira tiene que
+ * llegar hasta hoy —con el 5 lleno y el 6 vacío— y no cortar en el 5.
+ */
+function renderRacha() {
+  const r = resumen(historial.leer(), fechaDeHoy());
+
+  const linea = textoRachaHome(r);
+  $('home-racha').textContent = linea;
+  show('home-racha', Boolean(linea));
+
+  show('reto-racha', r.jugados > 0);
+  if (!r.jugados) return;
+
+  $('reto-racha-texto').textContent = textoRachaFinal(r);
+  $('reto-racha-pie').textContent = textoRachaPie(r);
+  renderDiasDeRacha($('reto-racha-dias'), r.dias);
+}
+
+/**
+ * La tira de los últimos días.
+ *
+ * Cada estado tiene **forma propia además de color** —un tilde, una cruz, un
+ * más, o nada—, igual que las marcas por dígito: el color solo no puede ser lo
+ * único que distingue dos cosas. Y como los glifos no dicen de qué día son, la
+ * fecha y el resultado van en el `aria-label`.
+ */
+function renderDiasDeRacha(cont, dias) {
+  cont.replaceChildren();
+  for (const d of dias) {
+    let cls = 'dia';
+    let glifo = '';
+    let que = 'no jugaste';
+
+    if (d.entrada?.gano) {
+      cls += ' ok';
+      glifo = '✓';
+      que = `lo sacaste en ${d.entrada.n}`;
+    } else if (d.entrada?.encontro) {
+      cls += ' tarde';
+      glifo = '+';
+      que = `lo sacaste en ${d.entrada.n}, fuera de los 12`;
+    } else if (d.entrada) {
+      cls += ' no';
+      glifo = '✕';
+      que = 'no lo sacaste';
+    }
+    if (d.esHoy) cls += ' hoy';
+
+    const nodo = el('span', cls, glifo);
+    const [, mes, dia] = d.fecha.split('-');
+    nodo.setAttribute('aria-label', `${d.esHoy ? 'Hoy' : `${Number(dia)}/${Number(mes)}`}: ${que}`);
+    cont.append(nodo);
+  }
+}
+
+/**
+ * La línea de la portada. **Sin racha no dice nada**: al que llega por primera
+ * vez un "racha de 0 días" le explica una función que todavía no le importa, y
+ * le ocupa el lugar donde va lo que sí —de qué se trata el desafío—.
+ */
+function textoRachaHome(r) {
+  if (!r.racha) return '';
+  if (r.jugoHoy) {
+    return r.racha === 1
+      ? 'Arrancaste una racha. Volvé mañana y van dos.'
+      : `Racha de ${r.racha} días. El de hoy ya está.`;
+  }
+  return r.racha === 1
+    ? 'Ayer jugaste. Con el de hoy van dos.'
+    : `Llevás ${r.racha} días seguidos. Jugá el de hoy para no cortarla.`;
+}
+
+function textoRachaFinal(r) {
+  if (r.racha === 1) return 'Arrancaste una racha: 1 día.';
+  // Empatar la mejor cuenta como igualarla, no como quedarse cerca: son los dos
+  // el mismo número y decir "tu mejor fue 5" cuando vas 5 se lee como un reproche.
+  if (r.racha === r.mejor) return `Racha de ${r.racha} días, y es tu mejor.`;
+  return `Racha de ${r.racha} días seguidos.`;
+}
+
+function textoRachaPie(r) {
+  const jugados = `${r.jugados} ${r.jugados === 1 ? 'desafío jugado' : 'desafíos jugados'}`;
+  const sacados = `${r.ganados} ${r.ganados === 1 ? 'sacado' : 'sacados'} en los 12`;
+  const mejor = r.racha < r.mejor ? ` · tu mejor racha fue de ${r.mejor} días` : '';
+  return `${jugados} · ${sacados}${mejor}`;
 }
 
 const MESES = [
@@ -1418,6 +1563,7 @@ $('btn-reto-salir').onclick = () => {
 
 $('home-name').value = store.name;
 fillRange($('home-max'), MIN_JUGADORES, CAP_JUGADORES, CAP_JUGADORES);
+renderRacha();
 
 // El patrón de la ruta es más ancho que el de un código válido a propósito: un
 // link mal copiado tiene que caer acá adentro para poder explicarlo, y no

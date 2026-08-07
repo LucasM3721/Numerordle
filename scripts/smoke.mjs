@@ -10,6 +10,13 @@
 import { filasDePartida } from '../src/room.js';
 import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta } from '../src/game.js';
 import { TOPE_INTENTOS, fechaDeHoy, finDelDia, numeroDelDia } from '../src/reto.js';
+// La racha es del cliente y no del servidor, pero su cuenta es pura y se prueba
+// sin navegador. Por eso vive en un archivo aparte de `public/app.js`, que no se
+// puede importar acá porque busca el DOM apenas se carga.
+import {
+  DIAS_A_LA_VISTA, TOPE_DIAS, anotarDia, diaAnterior,
+  fechaDeHoy as fechaDeHoyDelCliente, resumen,
+} from '../public/racha.js';
 
 const BASE = process.env.BASE ?? 'http://127.0.0.1:8787';
 
@@ -802,6 +809,79 @@ async function numeroDelDiaAndaBien() {
   chequear('otra clave da otro número', a !== d, `${a} vs ${d}`);
 }
 
+// -------------------------------------------------------------- la racha
+
+/**
+ * La racha del desafío, sin navegador. Es aritmética de fechas, que es de lo
+ * que más calladito se equivoca uno: un fin de mes mal contado corta la racha
+ * de alguien el 1 y nadie se entera hasta que pasa.
+ *
+ * `public/racha.js` no toca el DOM ni `localStorage` justamente para poder
+ * entrar acá; lo que guarda y lo que dibuja queda en `app.js` y no se prueba.
+ */
+function laRacha() {
+  console.log('\n— la racha del desafío');
+
+  igual('el día anterior cruza el fin de mes', diaAnterior('2026-08-01'), '2026-07-31');
+  igual('y el fin de año', diaAnterior('2026-01-01'), '2025-12-31');
+  igual('y cae en el 29 de un bisiesto', diaAnterior('2024-03-01'), '2024-02-29');
+
+  // La regla del día está escrita de los dos lados —`src/reto.js` y
+  // `public/racha.js`— porque el cliente no importa nada del servidor. Que se
+  // corran no rompe el juego, pero desfasa la racha un día, y en silencio.
+  const momentos = [
+    '2026-08-06T02:00:00Z', '2026-08-06T03:00:00Z',
+    '2026-01-01T02:59:00Z', '2024-02-29T23:00:00Z',
+  ].map(Date.parse);
+  const acuerdan = momentos.every((m) => fechaDeHoy(m) === fechaDeHoyDelCliente(m));
+  chequear('el cliente corta el día donde lo corta el servidor', acuerdan,
+    momentos.map((m) => `${fechaDeHoy(m)}/${fechaDeHoyDelCliente(m)}`).join(' '));
+
+  const jugados = (...fechas) => Object.fromEntries(
+    fechas.map((f) => [f, { n: 6, gano: true, encontro: true }]),
+  );
+
+  const seguidos = jugados('2026-08-05', '2026-08-06', '2026-08-07');
+  igual('tres días seguidos son una racha de tres', resumen(seguidos, '2026-08-07').racha, 3);
+
+  // Lo que más importa de toda la cuenta: al que entra a jugar el de hoy la
+  // racha todavía no se le cortó, y decirle 0 sería mentirle justo ahí.
+  igual('sin haber jugado hoy sigue viva', resumen(seguidos, '2026-08-08').racha, 3);
+  chequear('y se sabe que hoy falta', !resumen(seguidos, '2026-08-08').jugoHoy);
+  igual('se corta al pasar un día entero sin jugar', resumen(seguidos, '2026-08-09').racha, 0);
+  igual('un hueco no se saltea', resumen(jugados('2026-08-01', '2026-08-06', '2026-08-07'), '2026-08-07').racha, 2);
+
+  const conPasado = resumen(jugados('2026-07-01', '2026-07-02', '2026-07-03', '2026-08-07'), '2026-08-07');
+  igual('la racha de ahora es de un día', conPasado.racha, 1);
+  igual('y la mejor se acuerda de la de julio', conPasado.mejor, 3);
+
+  const mixto = resumen({
+    '2026-08-06': { n: 12, gano: false, encontro: false },
+    '2026-08-07': { n: 6, gano: true, encontro: true },
+  }, '2026-08-07');
+  igual('cuenta los desafíos jugados', mixto.jugados, 2);
+  igual('y los sacados dentro de los doce', mixto.ganados, 1);
+  igual('la tira mide lo que se ve', mixto.dias.length, DIAS_A_LA_VISTA);
+  igual('termina en hoy', mixto.dias.at(-1).fecha, '2026-08-07');
+  chequear('con hoy marcado', mixto.dias.at(-1).esHoy);
+  igual('y arranca nueve días antes', mixto.dias[0].fecha, '2026-07-29');
+  igual('los días sin jugar quedan vacíos', mixto.dias.filter((d) => d.entrada).length, 2);
+
+  const antes = jugados('2026-08-06');
+  const despues = anotarDia(antes, '2026-08-07', { n: 5, gano: true, encontro: true });
+  igual('anotar no toca el historial que recibe', Object.keys(antes).length, 1);
+  igual('y devuelve uno con el día nuevo', despues['2026-08-07'].n, 5);
+
+  // El historial no crece para siempre: es del navegador y no de una cuenta.
+  const fechas = [];
+  for (let f = '2026-08-07', i = 0; i < TOPE_DIAS + 5; i++, f = diaAnterior(f)) fechas.push(f);
+  let largo = {};
+  for (const fecha of fechas) largo = anotarDia(largo, fecha, { n: 6, gano: true, encontro: true });
+  igual('el historial se corta en el tope', Object.keys(largo).length, TOPE_DIAS);
+  chequear('y lo que se va es lo más viejo',
+    Boolean(largo['2026-08-07']) && !largo[fechas.at(-1)], fechas.at(-1));
+}
+
 // ------------------------------------------------------ el desafío del día
 
 /**
@@ -1013,6 +1093,7 @@ console.log(`Probando contra ${BASE}`);
 try {
   formaDelRegistro();
   await numeroDelDiaAndaBien();
+  laRacha();
   await desafioDelDia();
   await seguirDespuesDelTope();
   await laMarcaDePrueba();

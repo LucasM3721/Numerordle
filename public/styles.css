@@ -659,3 +659,57 @@ details.card[open] > summary { margin-bottom: 14px; }
 .winner.late b { color: var(--text); }
 
 .tools { display: flex; gap: 8px; justify-content: center; }
+
+/* ---------------------------------------------------------------- racha */
+
+/* Va en el amarillo de la casa y no en el verde de los fijos: acá el verde
+   quiere decir "acertaste", y la racha no habla de haber acertado sino de haber
+   vuelto. */
+.racha {
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin: 10px 0 0;
+}
+
+.racha-bloque {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.racha-bloque .racha { margin-top: 0; }
+
+.racha-dias { display: flex; gap: 6px; margin: 10px 0 8px; }
+
+/* Cuadrados y no píldoras: son diez seguidos, y a esta escala una tira de
+   píldoras se lee como un solo bloque en vez de como diez días.
+
+   Encogen antes que partirse en dos filas: los diez de 26 px más los huecos no
+   entran en un teléfono de 375 —quedaban nueve arriba y uno abajo, que se lee
+   como que algo se rompió—. Con `flex-shrink` pierden medio píxel cada uno y la
+   tira sigue siendo una línea de días, que es lo único que tiene que ser. El
+   `aspect-ratio` los mantiene cuadrados mientras encogen, y así tampoco hay que
+   escribir acá cuántos son. */
+.dia {
+  flex: 0 1 26px;
+  aspect-ratio: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--bg-soft);
+  color: var(--faint);
+  font-family: var(--fuente-num);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+/* Cada estado tiene su glifo además del color —✓, +, ✕, o vacío—, igual que las
+   marcas por dígito. El color solo no puede ser lo único que los distinga. */
+.dia.ok { color: var(--fijo); border-color: rgba(74, 222, 128, .45); background: rgba(74, 222, 128, .12); }
+.dia.tarde { color: var(--pica); border-color: rgba(96, 165, 250, .45); background: rgba(96, 165, 250, .12); }
+.dia.no { color: var(--danger); border-color: rgba(248, 113, 113, .4); background: rgba(248, 113, 113, .1); }
+/* Hoy se marca por afuera: el relleno ya está diciendo cómo te fue, y pisarlo
+   con otro color perdería ese dato. */
+.dia.hoy { outline: 2px solid var(--accent); outline-offset: 1px; }
