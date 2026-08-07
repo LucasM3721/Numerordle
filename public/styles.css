@@ -430,11 +430,12 @@ details.card[open] > summary { margin-bottom: 14px; }
 }
 .guess-row.active { border-color: var(--accent); border-style: solid; background: rgba(255, 200, 87, .06); }
 
-/* Los botones que van debajo del tablero arrancan a la misma distancia que hay
-   entre dos intentos. Pegados al último renglón se leían como parte de él. */
-#btn-guess,
-#btn-reto-guess,
-#reto-decidir { margin-top: 5px; }
+/* La norma para lo que va apilado debajo de algo, sin bloque propio que lo
+   separe: arranca a la misma distancia que hay entre dos intentos del tablero.
+   Pegado a lo de arriba se lee como parte de eso.
+   **Si agregás un botón así, ponele esta clase** — antes era una lista de ids
+   que había que acordarse de ampliar, y con el de compartir ya se olvidó una. */
+.apilado { margin-top: 5px; }
 
 /* El texto de respaldo cuando el portapapeles no está: va tal cual, con sus
    saltos de línea, para que se pueda seleccionar y copiar a mano. */
@@ -498,6 +499,16 @@ details.card[open] > summary { margin-bottom: 14px; }
 }
 .mark.f { color: var(--fijo); border-color: rgba(74, 222, 128, .45); background: rgba(74, 222, 128, .1); }
 .mark.p { color: var(--pica); border-color: rgba(96, 165, 250, .45); background: rgba(96, 165, 250, .1); }
+
+/* Todas las píldoras del tablero miden lo mismo, con el texto centrado.
+   Si no, "1 fijo" mide 48 px y "4 picas" 60, y de un intento al siguiente los
+   bordes bailan doce píxeles: el tablero se lee desprolijo aunque cada fila
+   esté bien. El ancho es el del texto más largo ("N picas"), en em para que
+   acompañe al tamaño de fuente; si la fuente no cargara y el fallback fuera más
+   ancho, el mínimo simplemente no ata y cada píldora vuelve a lo suyo.
+   Va acotado a `.try` a propósito: en el historial las marcas son "3F" y "1P",
+   y ahí un ancho pensado para "4 picas" sería un agujero. */
+.try .mark { min-width: 4.8em; text-align: center; }
 .try.hit { border-color: var(--fijo); background: rgba(74, 222, 128, .09); }
 .try.skip .digits { color: var(--muted); letter-spacing: normal; font-size: .95rem; font-weight: 400; }
 
