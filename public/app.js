@@ -1242,10 +1242,16 @@ function renderReto() {
   // limpio sin que haya que borrar nada.
   marks.use('reto', reto.fecha);
   $('reto-fecha').textContent = reto.fecha;
-  // Lo dice el servidor, no el cliente: si la clave no era la buena, esto no
-  // aparece y la partida cuenta. Un modo invisible es cómo uno termina creyendo
+  // Quién manda es el servidor: si la clave no era la buena, `reto.prueba` es
+  // falso y la partida cuenta. Un modo invisible es cómo uno termina creyendo
   // que estaba probando cuando no.
-  show('reto-prueba', !!reto.prueba);
+  //
+  // El segundo caso es el que confunde de verdad, y ya pasó: se puso la clave,
+  // no apareció nada, y el silencio se leyó como que la clave estaba mal. La
+  // marca se fija **al crear** el desafío, así que sobre uno ya empezado la
+  // clave no hace nada. Que lo diga en vez de callarse.
+  $('reto-prueba').textContent = textoDeMarca();
+  show('reto-prueba', Boolean(textoDeMarca()));
 
   const n = reto.intentos.length;
   const quedan = reto.tope - n;
@@ -1278,6 +1284,22 @@ function renderReto() {
   // es contarte algo que acabás de hacer.
   $('reto-final-numero').textContent = reto.numero ?? '····';
   show('reto-final-numero', !reto.encontro);
+}
+
+/**
+ * El cartel del modo prueba, o la explicación de por qué no está activo.
+ *
+ * No se distingue una clave equivocada de un desafío ya empezado —las dos dan
+ * lo mismo del lado del servidor— así que el aviso nombra los dos casos en vez
+ * de adivinar. Decir "la clave está mal" cuando el problema es otro manda a
+ * buscar donde no hay nada.
+ */
+function textoDeMarca() {
+  if (reto.prueba) return 'Modo prueba: esta partida queda marcada y no entra en el análisis.';
+  if (!CLAVE_PRUEBA) return '';
+  return 'Pusiste la clave de prueba pero el desafío no quedó marcado, así que'
+    + ' cuenta como una partida de verdad. O la clave no es la correcta, o este'
+    + ' desafío ya estaba empezado sin ella: la marca se fija al crearlo.';
 }
 
 /** El cartel de arriba, que cambia según en cuál de los tres momentos estés. */
