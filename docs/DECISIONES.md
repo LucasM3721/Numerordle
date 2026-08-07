@@ -361,6 +361,67 @@ solo jugador, rápido —mediana de 6, cuando la referencia de alguien que juega
 bien es de 6 a 10— y casi siempre contra `dificil`. Sirvió para descubrir la
 censura, no para calibrar nada.
 
+## Los niveles, cuando haya datos
+
+**Nada de esto está decidido.** Son las mediciones que van a hacer falta el día
+que se calibre, hechas ahora para no medirlas de nuevo desde cero. Se corren
+con `npm run bot`; lo de la cola y el techo, con variantes de una tarde que no
+quedaron en el repo pero cuyos números están acá.
+
+### Dónde están parados los niveles
+
+| | media | mediana | máx (jugando sola) |
+| --- | --- | --- | --- |
+| `facil` | 15,9 | 15 | ~40 |
+| `normal` | 12,0 | 12 | ~31 |
+| `dificil` | 8,0 | 8 | ~25 |
+| *todo destrabado, olvido 0* | **5,17** | 5 | 8 |
+| *resolvedor por descarte* | 5,17 | 5 | 8 |
+
+Que las dos últimas filas den igual dice algo del bot: **no imita a un
+resolvedor, es uno con anteojeras**. Sacándole el olvido y dejándolo imaginar
+sin límite llega al óptimo del juego. O sea que hay lugar de sobra para
+endurecer los niveles sin cambiar cómo piensa.
+
+### La pregunta que va primero
+
+Al 6 de agosto de 2026 hay 17 observaciones completas de personas —todas del
+mismo jugador— con **mediana 6**. Si eso se sostiene con más gente, `dificil`
+en 8 es un rival al que **casi no se puede perder**, y un rival así decora.
+
+Entonces lo primero no es la cola: es si hay que **correr las tres medias hacia
+abajo** para que perder vuelva a ser posible. Eso se contesta con datos de
+varias personas, no con los de uno.
+
+### Sobre la cola, que llama la atención pero engaña
+
+Los máximos altos son la máquina **jugando sola hasta terminar**, que es lo que
+mide `npm run bot`. En un uno contra uno la partida corta cuando alguien gana, y
+contra una persona que anda por 6 la máquina nunca llega a su intento 40. La
+cola casi no se ve jugando; donde sí aparece es con **dos máquinas
+enfrentadas**, que el juego permite.
+
+Se probó bajarla haciendo que el olvido caiga cuando la partida se alarga —lo
+que le pasa a una persona que lleva veinte intentos y empieza a fijarse más—:
+
+| | mediana | p99 | máx |
+| --- | --- | --- | --- |
+| `dificil`, cayendo desde el intento 8 | 8 → **8** | 14 → 14 | 25 → **18** |
+| `normal`, desde el 10 | 12 → 12 | 24 → 22 | 31 → 29 |
+| `facil`, desde el 18 | 15 → 15 | 31 → 29 | 40 → 38 |
+| `facil`, desde el 8 | 15 → **14** | 31 → 24 | 40 → 34 |
+
+En `dificil` sale gratis. En `facil` no hay caso, y el motivo importa: **el
+olvido destruye, no demora**. Una deducción descartada no vuelve, así que bajar
+el olvido tarde no recupera nada — solo protege lo que quede por deducir, y con
+0,45 para el intento 18 ya no queda nada que proteger.
+
+### Y un cuarto nivel, si alguna vez
+
+Un nivel sin olvido daría media 5,17 y **nunca más de 8**. Contra una persona
+que anda por 6 ganaría casi siempre. Si eso es la gracia de llamarlo
+"imposible" o si arruina el juego es una decisión de diseño, no de números.
+
 ## Escribir antes de que te toque
 
 En modo por turnos el pad está habilitado aunque no sea tu turno: pensar el
