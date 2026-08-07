@@ -934,13 +934,55 @@ no costaba backend ni estado nuevo.
 ### La otra mitad: que vuelvan
 
 Compartir trae gente nueva; no hace que nadie vuelva al día siguiente. Para eso
-está pensada —y **todavía no hecha**— una **racha con historial propio**: cuántos
-días seguidos jugaste y cómo te fue en cada uno.
+está la **racha con historial propio**: cuántos días seguidos jugaste y cómo te
+fue en cada uno.
 
-Va entero en `localStorage`, sin que viaje nada al servidor, así que no roza la
+Va entera en `localStorage`, sin que viaje nada al servidor, así que no roza la
 sección de privacidad ni necesita identificar a nadie. Y tiene un efecto de
 costado que interesa: hace que a la persona **le importe su propio número**, que
 es justo lo que hace falta que produzcan.
+
+**No jugar todavía hoy no corta la racha.** Se corta cuando pasó un día entero
+sin jugar, no cuando el día de hoy está sin empezar. Es la única decisión de la
+cuenta que se puede tomar mal sin que se note: contarlo al revés le diría "0" al
+que justo viene a jugar, que es el único momento en que esto tiene que empujar
+para el otro lado.
+
+**Se anota por la fecha del desafío, no por el día en que se terminó.** Es lo
+mismo que hace `blob3` en el registro del servidor y por el mismo motivo: con
+las tres horas de gracia, uno del 5 se puede cerrar el 6, y contarlo como del 6
+movería la racha de lugar. La tira de días, en cambio, llega hasta **hoy** según
+el reloj de acá, así el que terminó el del 5 a la madrugada del 6 ve el 6 vacío
+y sabe que le falta.
+
+**Las partidas marcadas como prueba no entran**, por la misma razón por la que
+no entran en la calibración: son de alguien verificando, y una racha inflada a
+mano no le sirve ni a quien la infló.
+
+En la portada, **sin racha no dice nada**. Al que llega por primera vez un
+"racha de 0 días" le explica una función que todavía no le importa, y le ocupa
+el lugar donde va lo que sí: de qué se trata el desafío. En la tira, los días
+que no jugaste van igual, vacíos: sin los huecos, diez días seguidos y diez
+salteados dibujarían lo mismo, que es justo lo que la racha viene a contar. Cada
+estado tiene forma propia además de color —✓, +, ✕, o nada— y la fecha y el
+resultado van en el `aria-label`, igual que las marcas por dígito.
+
+La cuenta vive en `public/racha.js` y no en `app.js`. Es el segundo archivo del
+cliente y está aparte por una sola razón: ahí no se toca el DOM ni
+`localStorage`, así que la suite lo importa y lo prueba sin navegador. Es
+aritmética de fechas, que es de lo que más calladito se equivoca uno —un fin de
+mes mal contado le corta la racha a alguien el día 1 y nadie se entera— y no
+había forma de probarlo mientras estuviera adentro de `app.js`, que busca el DOM
+apenas se carga.
+
+Eso deja la regla del día escrita de los dos lados, como `CODE_LEN` y
+`CODIGO_RE`: el desfase de UTC−3 está en `src/reto.js` y en `public/racha.js`,
+porque el cliente no importa nada del servidor. La suite compara las dos en
+cuatro momentos para que no se corran. Si igual se corrieran, lo que se rompe es
+chico y conviene saberlo: quién manda sobre cuál es el desafío de hoy sigue
+siendo el servidor, que manda su `fecha` en cada respuesta; la copia del cliente
+se usa solo para dibujar la racha en la portada, antes de haberle preguntado
+nada a nadie.
 
 ### Y algo que ya está y no se ve
 

@@ -132,6 +132,10 @@
         <span>Desafío del día</span>
         <small class="hint">El mismo número para todo el mundo, con 12 intentos. Cambia a la medianoche.</small>
       </div>
+      <!-- La racha, si hay alguna. Va acá arriba y no adentro del desafío
+           porque es lo único de la portada que da una razón para entrar hoy;
+           al que llega por primera vez no le dice nada y por eso no está. -->
+      <p id="home-racha" class="racha hidden" role="status"></p>
       <button id="btn-reto" class="btn primary big">Jugar el de hoy</button>
       <p id="reto-error" class="error hidden"></p>
     </div>
@@ -347,6 +351,17 @@
       <h2 id="reto-final-titulo"></h2>
       <p id="reto-final-texto" class="hint"></p>
       <div id="reto-final-numero" class="secret-num">····</div>
+
+      <!-- Lo único de esta pantalla que habla de mañana. Va antes de Compartir
+           a propósito: compartir es para el otro, la racha es para vos, y el
+           orden dice cuál de las dos cosas es la que te devuelve mañana.
+           Nada de esto sale del navegador. -->
+      <div id="reto-racha" class="racha-bloque hidden">
+        <p id="reto-racha-texto" class="racha"></p>
+        <div id="reto-racha-dias" class="racha-dias"></div>
+        <p id="reto-racha-pie" class="hint"></p>
+      </div>
+
       <!-- Se comparte la forma de la partida, nunca el número ni los intentos.
            El desafío es lo único que se juega sin coordinar con nadie, así que
            es lo único que tiene sentido pasarle a otro. -->

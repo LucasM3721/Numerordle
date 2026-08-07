@@ -8,7 +8,7 @@
     "dev:test": "wrangler dev --port 8787 --var DESTRABE_MS:2500 --var RETO_CLAVE:clave-local-no-es-la-de-produccion --var PRUEBA_CLAVE:marca-local",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "check": "node --check src/game.js && node --check src/index.js && node --check src/room.js && node --check src/bot.js && node --check src/reto.js && node --check public/app.js && node --check scripts/smoke.mjs && node --check scripts/bot-medicion.mjs && node --check scripts/consultar-datos.mjs && node --check scripts/servir-estatico.mjs",
+    "check": "node --check src/game.js && node --check src/index.js && node --check src/room.js && node --check src/bot.js && node --check src/reto.js && node --check public/app.js && node --check public/racha.js && node --check scripts/smoke.mjs && node --check scripts/bot-medicion.mjs && node --check scripts/consultar-datos.mjs && node --check scripts/servir-estatico.mjs",
     "test": "node --experimental-websocket scripts/smoke.mjs",
     "bot": "node scripts/bot-medicion.mjs",
     "datos": "node scripts/consultar-datos.mjs",
