@@ -14,6 +14,14 @@ const $ = (id) => document.getElementById(id);
 const CODIGO_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}$/;
 const CODIGO_MAL = 'Los códigos son de 5 caracteres, y no llevan I, O, 0 ni 1.';
 
+/**
+ * La clave de prueba, si vino en la URL (`?prueba=...`). No se guarda en
+ * `localStorage` a propósito: pegada quedaría marcando partidas de verdad sin
+ * que nadie se entere, que es peor que el problema que vino a resolver. Dura lo
+ * que dura la pestaña.
+ */
+const CLAVE_PRUEBA = new URLSearchParams(location.search).get('prueba') ?? '';
+
 // --------------------------------------------------------------- guardado
 
 const store = {
@@ -583,7 +591,9 @@ async function createRoom(opciones = {}) {
   const max = opciones.max ?? Number($('home-max').value);
   $(boton).disabled = true;
   try {
-    const res = await fetch('/api/rooms', {
+    // La marca va también acá: probar un uno contra uno ensucia los datos
+    // igual que probar un desafío, y el servidor ya la acepta en esta puerta.
+    const res = await fetch(CLAVE_PRUEBA ? `/api/rooms?prueba=${encodeURIComponent(CLAVE_PRUEBA)}` : '/api/rooms', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ mode, max, bot: opciones.bot }),
@@ -1147,14 +1157,6 @@ $('btn-end').onclick = () => {
  * para volver a dibujar.
  */
 let reto = null;
-
-/**
- * La clave de prueba, si vino en la URL (`?prueba=...`). No se guarda en
- * `localStorage` a propósito: pegada quedaría marcando partidas de verdad sin
- * que nadie se entere, que es peor que el problema que vino a resolver. Dura lo
- * que dura la pestaña.
- */
-const CLAVE_PRUEBA = new URLSearchParams(location.search).get('prueba') ?? '';
 
 const retoPad = new DigitPad($('reto-pad'), () => arriesgarReto());
 
