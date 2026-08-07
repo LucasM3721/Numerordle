@@ -1,32 +1,37 @@
 # Fijos y Picas — guía del repo
 
-> **Dónde quedamos** (5 de agosto de 2026)
+> **Dónde quedamos** (7 de agosto de 2026)
 >
 > El juego está terminado, en vivo y **con todo mergeado y desplegado**. El
 > deploy automático funciona de punta a punta: cada push a `main` corre
-> *Verificar* y *Desplegar*, y `npm test` son 127 verificaciones que pasan.
+> *Verificar* y *Desplegar*, y `npm test` son 147 verificaciones que pasan.
 >
 > Esta guía se lee sola. Lo que no está acá está en
 > [docs/DECISIONES.md](docs/DECISIONES.md), que es donde vive el **porqué** de
 > cada cosa —incluidas las ideas que se evaluaron y no entraron—. El historial
 > de cambios es `git log`, no esta nota: acá va solo lo que sigue siendo cierto.
 >
-> **Lo último que se hizo** (5 de agosto). Dos cosas grandes, las dos en vivo:
+> **Lo que hay hoy, además del juego original:**
 >
-> - **El desafío del día**, completo: un jugador solo contra el número de hoy,
->   tope de 12, en `src/reto.js` y la pantalla `screen-reto`. El número se
->   deriva de la fecha con HMAC y no se guarda en ningún lado. Va por HTTP y no
->   por websocket, así que se prueba entero sin abrir un socket. **Al agotar los
->   doce no revela el número: pregunta** si querés seguir buscándolo. Se pierde
->   igual, pero el número queda registrado, y eso es lo que convierte un
->   "necesitaba más de doce" en un dato que sirve para calibrar.
-> - **El registro de partidas anota qué era cada jugador** —persona o máquina, y
->   de qué nivel—, sin lo cual no se puede calibrar nada, y se guarda noventa
->   días en Analytics Engine. Los logs solos duran tres.
->
-> Antes, ese mismo día: el cliente dejó de reconectarse a la sala anterior, el
-> uno contra uno dejó de pasar por la sala de espera, y el título tiene fuente
-> propia (Anton, 18 KB, en `public/fuentes/`).
+> - **El desafío del día**: un jugador solo contra el número de hoy, tope de 12,
+>   en `src/reto.js` y la pantalla `screen-reto`. El número se deriva de la fecha
+>   con HMAC y no se guarda en ningún lado. Va por HTTP y no por websocket, así
+>   que se prueba entero sin abrir un socket. **Al agotar los doce pregunta** si
+>   querés seguir buscándolo; se pierde igual, pero el número queda entero, y eso
+>   convierte un "necesitaba más de doce" en un dato usable. Se puede revelar en
+>   cualquier momento después del tope, y el que quedó jugando cuando cambia el
+>   día tiene tres horas de gracia para terminar.
+> - **Compartir el resultado**: emoji por intento, sin el número ni lo que se
+>   tiró. Es lo único del juego que se pasa sin coordinar con nadie, y por eso es
+>   la mejor herramienta que hay para el cuello de botella real (ver abajo).
+> - **El registro anota qué era cada jugador** —persona o máquina, y de qué
+>   nivel— y se guarda noventa días en Analytics Engine. Los logs solos duran
+>   tres.
+> - **`npm run datos`** lee ese dataset y aplica las reglas de censura. No es un
+>   `SELECT` con formato lindo: sin separar lo completo de lo truncado, el
+>   promedio sale más bajo que la verdad.
+> - **La marca de prueba** (`?prueba=<clave>`), para que probar en producción no
+>   ensucie la calibración.
 >
 > **Si el deploy automático no sale, se publica a mano.** El 6 de agosto de 2026
 > GitHub Actions estuvo en interrupción mayor media tarde: las corridas quedaban
@@ -68,10 +73,19 @@
 >    partidas reales. **No queda nada que programar: falta que juegue gente.**
 >
 >    El lado del bot ya está medido y no depende de producción: `npm run bot` da
->    15,9 / 12,0 / 8,0 de media. Falta el lado humano, y **arranca casi de
->    cero**: al 5 de agosto hay un desafío jugado y nada más. Las 23 partidas
->    que había de antes **no se pueden usar** —no decían quién era máquina— y ya
->    se vencieron.
+>    15,9 / 12,0 / 8,0 de media. Del lado humano, al 7 de agosto hay **17
+>    observaciones completas** con mediana 6 — pocas, y de poca gente. `npm run
+>    datos` lo dice solo y avisa cuando la muestra no alcanza.
+>
+>    **Un dato que ya cambió una hipótesis:** el 6 de agosto jugaron 7 personas
+>    el desafío, con conteos de 5, 6, 7, 10 y 10, y una que no lo sacó en doce.
+>    O sea que la gente está bastante más repartida que Lucas, que anda por 6
+>    siempre. La sospecha de que a `dificil` no se le puede perder vale para él,
+>    no necesariamente para el resto.
+>
+>    **Ojo con una fila**: el desafío de 30 intentos del 6 de agosto fue una
+>    prueba de Lucas, hecha antes de que existiera la marca. Hay que excluirla a
+>    mano; de ahí en adelante las pruebas se marcan solas.
 >
 >    Dos cosas para que lo que se junte sirva. **El desafío del día es la fuente
 >    limpia**: sin rival no hay partida que corte antes de tiempo, así que el
@@ -121,6 +135,11 @@
 >   vos, tarde, que es de donde salen los bugs— y pisar también `fetch` para
 >   que cada sala nueva devuelva un código distinto. Después se maneja a
 >   botonazos y se cuentan los sockets abiertos.
+> - **Encadená con `&&`, no con `;`.** Dos veces se dio por bueno un
+>   `npm run check` que estaba fallando, porque el `echo OK` iba después de un
+>   punto y coma. Y ojo con meter `grep` en una cadena `&&`: sale con estado 1
+>   cuando no encuentra nada, así que corta todo lo que venga después — una vez
+>   se comió el `git commit` y la rama se empujó vacía.
 > - Para probar CSS desde la consola, **un `<style>` inyectado no sirve**: lo
 >   bloquea la CSP (`style-src 'self'`). `insertRule` sobre la hoja que ya está
 >   cargada sí anda, y se borra con `deleteRule`.
