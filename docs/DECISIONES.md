@@ -416,6 +416,48 @@ olvido destruye, no demora**. Una deducción descartada no vuelve, así que baja
 el olvido tarde no recupera nada — solo protege lo que quede por deducir, y con
 0,45 para el intento 18 ya no queda nada que proteger.
 
+### No hay números más difíciles que otros
+
+Es la primera idea que aparece mirando esas colas: que el máximo alto venga de
+números que el bot maneja mal, en cuyo caso arreglarle el orden de exploración
+bajaría la cola **sin tocar la mediana** — justo lo que no se consigue bajando
+el olvido. Está medido y **no es así**.
+
+Se corrieron los 3024 números, seis veces cada uno, comparando la dispersión
+entre números contra la que produciría el puro azar:
+
+| | dispersión observada | esperada por azar | cociente |
+| --- | --- | --- | --- |
+| `dificil` | 0,83 | 0,79 | **1,05** |
+| sin olvido | 0,48 | 0,50 | **0,95** |
+
+Un cociente de 1,00 quiere decir indistinguible del azar. Agrupando por el
+dígito más alto que contiene el número, las medias salen planas: 8,15 · 8,10 ·
+7,99 · 8,05 · 8,05 · 8,02.
+
+El listado ordenado tienta —hay números que salen 11 y otros que salen 5— pero
+con seis vueltas y un desvío por partida de 3,4, el error de cada media es 1,4.
+Esa dispersión sobre 3024 números es exactamente la de tirar dados.
+
+**Y hay un motivo, no es casualidad.** El juego es simétrico ante relabelear los
+dígitos: para cualquier permutación `π`,
+
+    puntaje(π(intento), π(secreto)) = puntaje(intento, secreto)
+
+Entre dos números cualesquiera siempre existe una `π` que lleva uno al otro, y
+esa misma `π` convierte una estrategia que resuelve el primero en `k` pasos en
+otra que resuelve el segundo en `k`. **Ningún número puede ser intrínsecamente
+más difícil.** Encima el bot baraja todo lo que elige (`intentoDeBusqueda`), así
+que ni siquiera rompe la simetría en promedio.
+
+La afirmación precisa es que **la dificultad es del par (estrategia, número), no
+del número**. Si el bot abriera siempre `1234`, entonces sí habría números peores
+—los de dígitos altos— pero la asimetría la pondría la estrategia.
+
+Donde el análisis de peor caso **sí** corresponde es para evaluar una
+estrategia: "el máximo sobre todos los números" es el p100 que se mide arriba, y
+minimizarlo es un objetivo legítimo y distinto de minimizar la media.
+
 ### Y un cuarto nivel, si alguna vez
 
 Un nivel sin olvido daría media 5,17 y **nunca más de 8**. Contra una persona
