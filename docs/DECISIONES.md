@@ -253,6 +253,7 @@ ningún otro lado, y una fila es **un jugador de una partida**, no una partida.
 | `blob1` | el modo: `strict` o `sim` |
 | `blob2` | lo mismo que `index1` |
 | `blob3` | el día del desafío; vacío en las partidas |
+| `blob4` | `prueba` si la partida fue una prueba nuestra; vacío si fue de verdad |
 | `double1` | intentos que tiró |
 | `double2` | si ganó: 1 o 0 |
 | `double3` | en qué ronda ganó, 0 si no ganó |
@@ -285,6 +286,37 @@ ORDER BY timestamp DESC
 `ORDER BY` se resuelve contra las columnas proyectadas, no contra el esquema, y
 si no está contesta `unable to find type of column: "timestamp"` — que suena a
 que la columna no existe, y no es eso.
+
+### Las pruebas se marcan
+
+Probar contra producción ensucia justo el dato que se está juntando. Ya pasó: un
+desafío llevado a los treinta a propósito, para ver cómo seguía, se leyó después
+como un jugador que había sufrido muchísimo. Y la suite corrida contra
+producción es peor —doce salas de Ana, Beto y Cami metidas en el análisis—.
+
+Con `?prueba=<clave>` la partida queda marcada en `blob4` y se excluye
+filtrando por `blob4 = ''`. La suite se marca sola si tiene `PRUEBA_CLAVE` en el
+entorno.
+
+**Va con clave y no con un `?prueba=1` a secas, y el motivo no es de
+seguridad.** Que se filtre no hace daño: lo peor que puede hacer alguien es
+sacarse a sí mismo del análisis. Lo que aporta la clave es **certeza al leer**:
+si una fila está marcada, es nuestra. Con una marca abierta, cualquier fila
+marcada podría venir de cualquiera y no se sabría si corresponde excluirla.
+
+Dos detalles que la hacen segura de usar:
+
+- **Falla cerrada.** Sin `PRUEBA_CLAVE` cargada, o con la clave equivocada, no
+  se marca nada. En duda, el dato cuenta — marcar de más sería tirar datos
+  buenos sin que nadie se entere.
+- **Se fija al empezar.** Una partida no puede arrancar de verdad y terminar
+  como prueba según con qué parámetro se mandó el último intento.
+
+En el cliente no hay ningún botón: se activa poniendo el parámetro en la URL, y
+la clave **no se guarda** en el navegador. Pegada quedaría marcando partidas de
+verdad sin que nadie se entere. Cuando está activa, el desafío lo dice en
+pantalla — y lo dice el servidor, no el cliente, así que si la clave no era la
+buena el cartel no aparece.
 
 ## La trampa al leer los intentos
 

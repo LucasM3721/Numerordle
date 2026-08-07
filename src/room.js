@@ -78,6 +78,9 @@ function newState(code, mode, maxPlayers) {
     logSeq: 0, // numerador del historial: no se reinicia aunque el log se recorte
     revealed: [], // ids cuyos secretos ya son públicos
     game: 1,
+    // Se fija al crear la sala y no cambia: una partida no puede empezar de
+    // verdad y terminar como prueba.
+    prueba: false,
   };
 }
 
@@ -406,7 +409,10 @@ function registrarPartida(state) {
     for (const f of filas) {
       partidas.writeDataPoint({
         indexes: [f.quien],
-        blobs: [state.mode, f.quien],
+        // `blob3` queda vacío acá —es el día del desafío— pero se escribe igual
+        // para que `blob4` caiga en la misma posición en los dos registros. Una
+        // columna que significa distinto según la fila no es una columna.
+        blobs: [state.mode, f.quien, '', state.prueba ? 'prueba' : ''],
         doubles: [
           f.n,
           f.gano ? 1 : 0,
@@ -677,6 +683,8 @@ export class GameRoom {
         url.searchParams.get('mode'),
         url.searchParams.get('max'),
       );
+      // Lo decide el Worker contra la clave; acá solo se guarda.
+      this.state.prueba = url.searchParams.get('prueba') === '1';
       // La máquina entra al crearse la sala, antes que nadie, así ya está en el
       // círculo cuando llega el primero. Con dos jugadores el objetivo es mutuo.
       const nivel = url.searchParams.get('bot');

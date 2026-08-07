@@ -43,7 +43,7 @@ jobs:
       # es un secreto del Worker y no está en el repo ni en este archivo.
       - name: Levantar el servidor local
         run: |
-          npx wrangler dev --port 8787 --var DESTRABE_MS:2500 --var RETO_CLAVE:clave-de-prueba-de-ci > wrangler-dev.log 2>&1 &
+          npx wrangler dev --port 8787 --var DESTRABE_MS:2500 --var RETO_CLAVE:clave-de-prueba-de-ci --var PRUEBA_CLAVE:marca-de-ci > wrangler-dev.log 2>&1 &
           for i in $(seq 1 60); do
             if curl -sf http://127.0.0.1:8787/ > /dev/null; then
               echo "servidor listo"
@@ -55,8 +55,12 @@ jobs:
           cat wrangler-dev.log
           exit 1
 
+      # La misma clave que la del servidor de arriba: así la suite puede
+      # verificar que marcar funciona, y no solo que sin clave no marca.
       - name: Jugar una partida de prueba
         run: npm test
+        env:
+          PRUEBA_CLAVE: marca-de-ci
 
       - name: Log del servidor si algo falló
         if: failure()

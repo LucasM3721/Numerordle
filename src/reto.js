@@ -87,8 +87,13 @@ export async function numeroDelDia(fecha, clave) {
 // Sin marca de creación: lo único que decide cuánto vive es su fecha, y esa ya
 // está. Guardar además cuándo se creó invitaría a usarla para vencerlo, que es
 // justo lo que estaba mal.
-function nuevoReto(fecha) {
-  return { fecha, intentos: [], terminado: false, gano: false, encontro: false, siguio: false };
+function nuevoReto(fecha, prueba = false) {
+  return {
+    fecha, intentos: [], terminado: false, gano: false, encontro: false, siguio: false,
+    // Se fija al empezar y no cambia: un desafío no puede arrancar de verdad y
+    // terminar como prueba según con qué parámetro se mandó el último intento.
+    prueba,
+  };
 }
 
 /**
@@ -118,6 +123,7 @@ function vista(estado, numero) {
     encontro: estado.encontro,
     siguio: estado.siguio,
     decidiendo: debeDecidir(estado),
+    prueba: estado.prueba,
     numero: estado.terminado ? numero : null,
   };
 }
@@ -171,7 +177,9 @@ export class RetoDelDia {
 
     // El objeto es por jugador y por día, así que su fecha no debería cambiar
     // nunca. Si cambió, es un objeto reciclado y lo que había no sirve.
-    if (!this.estado || this.estado.fecha !== fecha) this.estado = nuevoReto(fecha);
+    if (!this.estado || this.estado.fecha !== fecha) {
+      this.estado = nuevoReto(fecha, url.searchParams.get('prueba') === '1');
+    }
 
     if (accion === 'estado') {
       await this.guardar();
@@ -261,7 +269,7 @@ export class RetoDelDia {
     const n = e.intentos.length;
     console.log(JSON.stringify({
       evento: 'partida', modo: 'reto', fecha: e.fecha, jugadores: 1, rondas: n,
-      descuento: e.siguio,
+      descuento: e.siguio, prueba: e.prueba,
       intentos: [{ quien: 'humano', n, gano: e.gano, encontro: e.encontro, ronda: e.encontro ? n : null }],
     }));
 
@@ -273,7 +281,7 @@ export class RetoDelDia {
         // `timestamp` de la fila dice cuándo se escribió, y con las tres horas
         // de gracia uno del 5 se puede cerrar el 6: contarlo como del 6 movería
         // la partida de día. Va al final del esquema, como manda la regla.
-        blobs: ['reto', 'humano', e.fecha],
+        blobs: ['reto', 'humano', e.fecha, e.prueba ? 'prueba' : ''],
         // `double7` es lo que separa "necesitaba más de doce" de "necesitaba
         // diecisiete": sin él, el que pierde y sigue hasta encontrarlo queda
         // indistinguible del que pierde y se va, y su número —que es un dato

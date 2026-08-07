@@ -1148,6 +1148,14 @@ $('btn-end').onclick = () => {
  */
 let reto = null;
 
+/**
+ * La clave de prueba, si vino en la URL (`?prueba=...`). No se guarda en
+ * `localStorage` a propósito: pegada quedaría marcando partidas de verdad sin
+ * que nadie se entere, que es peor que el problema que vino a resolver. Dura lo
+ * que dura la pestaña.
+ */
+const CLAVE_PRUEBA = new URLSearchParams(location.search).get('prueba') ?? '';
+
 const retoPad = new DigitPad($('reto-pad'), () => arriesgarReto());
 
 /**
@@ -1164,6 +1172,7 @@ async function pedirReto(metodo = 'GET', cuerpo = null, fecha = null) {
   }
   const qs = new URLSearchParams({ pid: store.pid });
   if (fecha) qs.set('fecha', fecha);
+  if (CLAVE_PRUEBA) qs.set('prueba', CLAVE_PRUEBA);
   try {
     const res = await fetch(`/api/reto?${qs}`, opciones);
     return { ok: res.ok, cuerpo: await res.json() };
@@ -1231,6 +1240,10 @@ function renderReto() {
   // limpio sin que haya que borrar nada.
   marks.use('reto', reto.fecha);
   $('reto-fecha').textContent = reto.fecha;
+  // Lo dice el servidor, no el cliente: si la clave no era la buena, esto no
+  // aparece y la partida cuenta. Un modo invisible es cómo uno termina creyendo
+  // que estaba probando cuando no.
+  show('reto-prueba', !!reto.prueba);
 
   const n = reto.intentos.length;
   const quedan = reto.tope - n;
