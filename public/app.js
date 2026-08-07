@@ -1285,6 +1285,42 @@ function textoFinalReto(n) {
   return 'El número era:';
 }
 
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+/**
+ * El resumen que se comparte.
+ *
+ * Va la **forma** de la partida y nada más: ni el número, ni los intentos. Cada
+ * fila son los fijos y las picas, y no puede filtrar dónde estaban aunque
+ * quisiera — el servidor nunca manda las posiciones, así que el cliente
+ * tampoco las tiene.
+ *
+ * La fecha se arma a mano con el array de meses en vez de con `Intl`: el
+ * `fecha` viene como `2026-08-07` y pasarlo por `new Date` lo interpreta en UTC,
+ * que del lado de acá puede caer el día anterior. Doce palabras evitan el bug.
+ */
+function textoParaCompartir() {
+  const [, mes, dia] = reto.fecha.split('-').map(Number);
+  const n = reto.intentos.length;
+  const veces = `${n} ${n === 1 ? 'intento' : 'intentos'}`;
+
+  let titulo;
+  if (reto.gano) titulo = `Lo saqué en ${n} de ${reto.tope}`;
+  else if (reto.encontro) titulo = `Lo saqué en ${veces}, fuera de los ${reto.tope}`;
+  else titulo = `No lo saqué en ${reto.tope}`;
+
+  const filas = reto.intentos.map((e) => {
+    const vacios = 4 - e.fijos - e.picas;
+    return '🟩'.repeat(e.fijos) + '🟨'.repeat(e.picas) + '⬜'.repeat(vacios);
+  });
+
+  return `Fijos y Picas · ${dia} de ${MESES[mes - 1]}\n${titulo}\n\n`
+    + `${filas.join('\n')}\n\n${location.origin}`;
+}
+
 /** Después del tope: seguir buscándolo, o que te lo revelen. */
 async function decidirReto(seguir) {
   if (!reto || reto.terminado) return;
@@ -1302,6 +1338,35 @@ async function decidirReto(seguir) {
   renderReto();
   if (!reto.terminado) retoPad.focus();
 }
+
+$('btn-reto-compartir').onclick = async () => {
+  const texto = textoParaCompartir();
+  const boton = $('btn-reto-compartir');
+  flash('reto-compartir-aviso', '');
+
+  // En el celular el menú de compartir es el camino natural, y es donde esto
+  // sirve de verdad. En escritorio casi nunca existe y el portapapeles alcanza.
+  if (navigator.share) {
+    try {
+      await navigator.share({ text: texto });
+      return;
+    } catch (err) {
+      // Cerrar el menú no es un error: no hay nada que avisarle a nadie.
+      if (err?.name === 'AbortError') return;
+    }
+  }
+
+  try {
+    await navigator.clipboard.writeText(texto);
+    boton.textContent = '¡Copiado!';
+    setTimeout(() => (boton.textContent = 'Compartir'), 1800);
+  } catch {
+    // Sin portapapeles —contexto inseguro, o permiso denegado— se muestra el
+    // texto para que lo copie a mano. Persistente: no lo disparó un gesto que
+    // se pueda repetir sin volver a leerlo.
+    flash('reto-compartir-aviso', texto, true);
+  }
+};
 
 $('btn-reto').onclick = abrirReto;
 $('btn-reto-guess').onclick = arriesgarReto;

@@ -435,6 +435,14 @@ details.card[open] > summary { margin-bottom: 14px; }
 #btn-guess,
 #btn-reto-guess,
 #reto-decidir { margin-top: 5px; }
+
+/* El texto de respaldo cuando el portapapeles no está: va tal cual, con sus
+   saltos de línea, para que se pueda seleccionar y copiar a mano. */
+#reto-compartir-aviso {
+  white-space: pre-wrap;
+  text-align: left;
+  font-family: var(--fuente-num), monospace;
+}
 .pad.inline { gap: 4px; margin: 0; justify-content: flex-start; }
 .pad.inline input {
   width: 36px;
