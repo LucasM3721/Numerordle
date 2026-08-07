@@ -76,9 +76,16 @@
 >    está en "La trampa al leer los intentos", en DECISIONES, y conviene leerlo
 >    antes de sacar cualquier cuenta.
 >
->    Para leer los datos, la consulta y el mapa de columnas están en "Qué es
->    cada columna". Ojo con una: se agrupa por `blob3` y no por `timestamp`,
->    porque un desafío del 5 se puede cerrar el 6.
+>    Para leer los datos, `npm run datos` aplica solo las reglas de censura y
+>    compara contra el bot; el mapa de columnas está en "Qué es cada columna".
+>    Ojo con una: se agrupa por `blob3` y no por `timestamp`, porque un desafío
+>    del 5 se puede cerrar el 6.
+>
+>    **Antes de tocar los niveles, leé "Los niveles, cuando haya datos"** en
+>    DECISIONES. Están medidos el techo del bot (5,17, igual que un resolvedor
+>    perfecto), qué se puede hacer con las colas y qué no, y la pregunta que va
+>    primero: si con una mediana humana de 6 no habrá que **bajar** las tres
+>    medias para que perder vuelva a ser posible.
 > 2. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día, y si
 >    el tope de 12 del desafío está bien puesto.
