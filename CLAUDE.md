@@ -28,14 +28,13 @@
 > uno contra uno dejó de pasar por la sala de espera, y el título tiene fuente
 > propia (Anton, 18 KB, en `public/fuentes/`).
 >
-> **Lo único que quedó a medio camino** (6 de agosto): el
-> [PR 27](https://github.com/LucasM3721/Numerordle/pull/27), que separa los
-> botones del último intento —quedaban pegados— y deja **revelar el número en
-> cualquier momento** después del tope, para que el que eligió seguir no quede
-> encerrado hasta los treinta. Está verificado en el navegador pero **sin
-> mergear**: GitHub Actions estuvo en interrupción mayor toda la tarde y su CI
-> nunca arrancó. Se retoma mergeándolo cuando Actions ande; si no, `npx wrangler
-> deploy` publica a mano, que es lo que se hizo con el commit anterior.
+> **Si el deploy automático no sale, se publica a mano.** El 6 de agosto de 2026
+> GitHub Actions estuvo en interrupción mayor media tarde: las corridas quedaban
+> encoladas o se cancelaban solas, y dos cambios se desplegaron con
+> `npx wrangler deploy` desde la máquina de Lucas. Publica el mismo commit que
+> ya está en `main`, así que no saltea ninguna verificación —solo al mensajero—.
+> Para comprobar que llegó, `/api/reto` tiene que contestar con los campos de la
+> versión nueva, o el `styles.css` servido traer la regla que se tocó.
 >
 > **Cuatro cosas de operación que no se deducen del código:**
 >
