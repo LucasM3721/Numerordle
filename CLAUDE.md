@@ -104,7 +104,12 @@
 >    perfecto), qué se puede hacer con las colas y qué no, y la pregunta que va
 >    primero: si con una mediana humana de 6 no habrá que **bajar** las tres
 >    medias para que perder vuelva a ser posible.
-> 2. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
+> 2. **Que vuelva la gente**: una **racha con historial propio** —cuántos días
+>    seguidos jugaste y cómo te fue— entera en `localStorage`, sin que viaje
+>    nada. Compartir el resultado trae gente nueva; esto es la otra mitad. Está
+>    pensada y sin hacer: el porqué, en "Lo que falta no es una función, es
+>    gente" (DECISIONES).
+> 3. **Jugarlo y ver qué molesta**: la pausa de un segundo, los 90 s de
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día, y si
 >    el tope de 12 del desafío está bien puesto.
 >

@@ -915,6 +915,52 @@ conocida**. Un `double2 = 0` quiere decir "necesitaba más de 12", siempre el
 mismo número, y eso es algo con lo que se puede trabajar. En el uno contra uno
 la partida corta en un punto que depende del rival.
 
+## Lo que falta no es una función, es gente
+
+Todo lo que queda pendiente —calibrar los niveles, decidir si hay que correr las
+medias, si va un cuarto nivel— **está bloqueado por lo mismo: juega poca gente**.
+Con diecisiete observaciones de unas pocas personas no se mueve ningún número.
+
+Conviene tenerlo presente al elegir qué hacer, porque cambia el criterio: la
+pregunta útil no es "qué función falta" sino "qué hace que el juego llegue a
+alguien más". Con ese filtro, la mayoría de las ideas se caen solas.
+
+**El desafío del día es la única puerta que sirve para eso.** El uno contra uno
+pide conseguir a alguien y coordinar; el desafío se juega solo, en dos minutos, y
+se puede pasar. Por eso lo primero que se hizo con ese criterio fue **compartir
+el resultado**: es el mecanismo que hizo crecer a los juegos de este tipo, y acá
+no costaba backend ni estado nuevo.
+
+### La otra mitad: que vuelvan
+
+Compartir trae gente nueva; no hace que nadie vuelva al día siguiente. Para eso
+está pensada —y **todavía no hecha**— una **racha con historial propio**: cuántos
+días seguidos jugaste y cómo te fue en cada uno.
+
+Va entero en `localStorage`, sin que viaje nada al servidor, así que no roza la
+sección de privacidad ni necesita identificar a nadie. Y tiene un efecto de
+costado que interesa: hace que a la persona **le importe su propio número**, que
+es justo lo que hace falta que produzcan.
+
+### Y algo que ya está y no se ve
+
+**El desafío ya mide la audiencia, gratis.** Como hay un Durable Object por
+`(jugador, día)`, cada persona deja como mucho una fila de desafío por jornada.
+Entonces esto no cuenta partidas: cuenta **personas**.
+
+```sql
+SELECT count() FROM numerordle_partidas WHERE blob1 = 'reto' AND blob3 = '2026-08-07'
+```
+
+El uno contra uno no puede dar ese número sin identificar a nadie. Es otra razón
+para que el esfuerzo vaya al desafío y no a las salas.
+
+### Lo que se miró y no hacía falta
+
+La accesibilidad de las marcas por dígito. Se revisó pensando que dependían del
+color, y no: cada estado tiene además forma propia —tachado, subrayado, círculo—
+y todas llevan `aria-label`. No hay nada que arreglar ahí.
+
 ## Ideas que quedaron afuera
 
 - Arrastrar para reordenar el círculo: en el celular se pelea con el scroll. Las
