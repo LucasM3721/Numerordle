@@ -986,8 +986,7 @@ async function seguirDespuesDelTope() {
  * datos buenos sin que nadie se entere.
  */
 async function laMarcaDePrueba() {
-  console.log('
-— la marca de prueba');
+  console.log('\n— la marca de prueba');
   const pid = () => `marca${Math.random().toString(36).slice(2, 12)}`;
 
   const sin = await (await fetch(`${BASE}/api/reto?pid=${pid()}`)).json();
