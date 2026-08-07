@@ -239,7 +239,7 @@
         </div>
 
         <p id="guess-error" class="error hidden"></p>
-        <button id="btn-guess" class="btn primary big">Arriesgar</button>
+        <button id="btn-guess" class="btn primary big apilado">Arriesgar</button>
         <p id="guess-note" class="hint"></p>
         <p class="hint">Tocá cada dígito de tus intentos para marcarlo: <b class="k-no">✕ no está</b> · <b class="k-pica">pica</b> · <b class="k-fijo">fijo</b>. Son anotaciones tuyas, nadie más las ve.</p>
       </div>
@@ -328,12 +328,12 @@
       </div>
 
       <p id="reto-guess-error" class="error hidden"></p>
-      <button id="btn-reto-guess" class="btn primary big">Arriesgar</button>
+      <button id="btn-reto-guess" class="btn primary big apilado">Arriesgar</button>
 
       <!-- Al agotar los doce se pregunta en vez de terminar, igual que una sala
            cuando otro ya ganó. El que sigue pierde igual, pero se lleva el
            número. -->
-      <div id="reto-decidir" class="row hidden">
+      <div id="reto-decidir" class="row apilado hidden">
         <button id="btn-reto-seguir" class="btn primary">Seguir intentando</button>
         <button id="btn-reto-ver" class="btn ghost">Ver el número</button>
       </div>
@@ -347,7 +347,7 @@
       <!-- Se comparte la forma de la partida, nunca el número ni los intentos.
            El desafío es lo único que se juega sin coordinar con nadie, así que
            es lo único que tiene sentido pasarle a otro. -->
-      <button id="btn-reto-compartir" class="btn primary big">Compartir</button>
+      <button id="btn-reto-compartir" class="btn primary big apilado">Compartir</button>
       <p id="reto-compartir-aviso" class="error hidden"></p>
     </div>
   </section>
