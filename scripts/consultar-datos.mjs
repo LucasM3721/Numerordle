@@ -67,6 +67,14 @@ const linea = (r) => r
   ? `n=${r.n}  mediana ${r.mediana}  media ${r.media.toFixed(1)}  rango ${r.min}–${r.max}`
   : 'sin datos';
 
+/**
+ * Ganar implica haber encontrado el número, y hay que decirlo a mano: las filas
+ * escritas antes de que existiera `double7` traen `encontro` en cero aunque el
+ * jugador haya ganado. Sin esto, esas victorias se cuentan dos veces —como
+ * ganadas y como no encontradas— y las categorías dejan de sumar el total.
+ */
+const encontro = (f) => num(f.encontro) === 1 || num(f.gano) === 1;
+
 const retos = filas.filter((f) => f.modo === 'reto');
 const salas = filas.filter((f) => f.modo !== 'reto');
 const personas = salas.filter((f) => f.quien === 'humano');
@@ -86,12 +94,17 @@ console.log(`  filas de máquina: ${maquinas.length}`);
 // ---------------------------------------------------------- el desafío
 console.log('\nDESAFÍO DEL DÍA');
 const dentro = retos.filter((f) => num(f.gano) === 1).map((f) => num(f.intentos));
-const fuera = retos.filter((f) => num(f.gano) !== 1 && num(f.encontro) === 1).map((f) => num(f.intentos));
-const nunca = retos.filter((f) => num(f.encontro) !== 1);
+const fuera = retos.filter((f) => num(f.gano) !== 1 && encontro(f)).map((f) => num(f.intentos));
+const nunca = retos.filter((f) => !encontro(f));
 console.log(`  desafíos terminados: ${retos.length}`);
 console.log(`    lo sacaron dentro de 12: ${linea(resumen(dentro))}`);
 console.log(`    lo sacaron pasado el tope: ${linea(resumen(fuera))}`);
 console.log(`    no lo sacaron: ${nunca.length} — censurados en el tope`);
+// Las tres categorías tienen que partir el total. Si no suman, algo se está
+// contando dos veces o quedando afuera, y el resumen miente sin avisar.
+if (dentro.length + fuera.length + nunca.length !== retos.length) {
+  console.log(`    ⚠ las categorías suman ${dentro.length + fuera.length + nunca.length} y hay ${retos.length} desafíos`);
+}
 if (retos.length) {
   const dias = new Set(retos.map((f) => f.dia).filter(Boolean));
   console.log(`  días distintos jugados: ${dias.size}`);
@@ -107,6 +120,20 @@ const censuradas = cortadas.length + nunca.length;
 console.log('\nLO QUE SE PUEDE COMPARAR');
 console.log(`  personas, solo observaciones completas: ${linea(resumen(completas))}`);
 console.log(`  descartadas por censura: ${censuradas}`);
+
+// Las dos fuentes por separado, que es lo que manda DECISIONES: si coinciden,
+// ninguno de sus problemas es material; si difieren, el desacuerdo dice dónde
+// mirar. Y se espera que difieran en una dirección concreta —ver abajo—, así
+// que juntarlas sin haberlas visto aparte esconde justo eso.
+const enSala = resumen(ganadas);
+const enReto = resumen([...dentro, ...fuera]);
+console.log(`    de partidas de sala: ${linea(enSala)}`);
+console.log(`    de desafíos:         ${linea(enReto)}`);
+if (enSala && enReto && enSala.media < enReto.media) {
+  console.log('    Las de sala salen más bajas, y es lo esperable: una partida');
+  console.log('    solo deja observación completa si ganaste, y ganarle al bot');
+  console.log('    pide ser rápido. El desafío no tiene ese filtro.');
+}
 const bot = Object.entries(BOT).map(([n, v]) => `${n} ${v.toFixed(1)}`).join(' · ');
 console.log(`  el bot: ${bot}`);
 
