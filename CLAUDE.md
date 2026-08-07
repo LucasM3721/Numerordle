@@ -44,6 +44,11 @@
 >   otro número sin enterarse. Si falta, el desafío contesta 503 y el resto del
 >   juego sigue andando. En local y en CI va como `--var` con un valor de
 >   juguete; la de producción no está en el repo.
+> - **`PRUEBA_CLAVE` marca las partidas de prueba** para que no ensucien la
+>   calibración. Con `?prueba=<clave>` en la URL, o `PRUEBA_CLAVE` en el entorno
+>   al correr `npm test` contra producción, la partida queda con `blob4 =
+>   'prueba'` y se excluye filtrando. Sin la clave no se marca nada: en duda, el
+>   dato cuenta. Ver "Las pruebas se marcan" en DECISIONES.
 > - **Los tres secretos opcionales están cargados y probados**
 >   (`DISCORD_WEBHOOK_URL`, `CF_ACCOUNT_ID`, `CF_ANALYTICS_TOKEN`). De acá en
 >   más **el silencio es la señal buena**: solo escribe a Discord si se pasa el
@@ -150,7 +155,9 @@ de un ausente; con los 90 s de verdad, dos casos tardarían más que toda la sui
 y fallan por tiempo agotado. Para jugar a mano usá `npm run dev`, que respeta el
 margen real.
 
-Para probar contra producción: `BASE=https://numerordle.lucasm3721.workers.dev npm test`.
+Para probar contra producción: `BASE=https://numerordle.lucasm3721.workers.dev
+PRUEBA_CLAVE=… npm test`. **Sin `PRUEBA_CLAVE` las doce partidas que juega la
+suite entran en los datos de calibración** como si las hubiera jugado gente.
 Tarda un minuto de más: la suite pide doce salas y el límite es de diez por
 minuto, así que las que sobran esperan a que se libere la ventana.
 

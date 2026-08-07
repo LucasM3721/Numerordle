@@ -12,6 +12,18 @@ import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta } from '../src/game.j
 import { TOPE_INTENTOS, fechaDeHoy, finDelDia, numeroDelDia } from '../src/reto.js';
 
 const BASE = process.env.BASE ?? 'http://127.0.0.1:8787';
+
+/**
+ * Corriendo contra producción, la suite juega partidas enteras y **cada una
+ * queda registrada**: doce salas de Ana, Beto y Cami metidas en los datos con
+ * los que se calibra al bot. Con `PRUEBA_CLAVE` puesta se marcan y quedan
+ * afuera del análisis.
+ *
+ * Sin la clave sigue funcionando igual —no se rompe nada— pero ensucia. Contra
+ * el servidor local da lo mismo: ahí no hay dataset.
+ */
+const PRUEBA = process.env.PRUEBA_CLAVE ?? '';
+const marca = (qs) => (PRUEBA ? `${qs}${qs.includes('?') ? '&' : '?'}prueba=${encodeURIComponent(PRUEBA)}` : qs);
 const WS_BASE = BASE.replace(/^http/, 'ws');
 const TIMEOUT_MS = 10000;
 
@@ -47,7 +59,7 @@ function igual(descripcion, obtenido, esperado) {
 async function crearSala(mode, max, bot) {
   const limite = Date.now() + 90000;
   for (;;) {
-    const res = await fetch(`${BASE}/api/rooms`, {
+    const res = await fetch(marca(`${BASE}/api/rooms`), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ mode, max, bot }),
@@ -805,7 +817,7 @@ async function desafioDelDia() {
   console.log('\n— el desafío del día');
 
   const pid = `reto${Math.random().toString(36).slice(2, 12)}`;
-  const url = `${BASE}/api/reto?pid=${pid}`;
+  const url = marca(`${BASE}/api/reto?pid=${pid}`);
 
   let estado = await (await fetch(url)).json();
   if (estado.error) {
@@ -887,14 +899,14 @@ async function desafioDelDia() {
   // y el tope de doce no protegería nada.
   const ayer = fechaDeHoy(Date.now() - 86400000);
   const nuevo = `reto${Math.random().toString(36).slice(2, 12)}`;
-  const deAyer = await fetch(`${BASE}/api/reto?pid=${nuevo}&fecha=${ayer}`);
+  const deAyer = await fetch(marca(`${BASE}/api/reto?pid=${nuevo}&fecha=${ayer}`));
   igual('no se puede empezar el desafío de ayer', deAyer.status, 410);
   const cuerpoAyer = await deAyer.json();
   chequear('y no viene ningún número', cuerpoAyer.numero == null, JSON.stringify(cuerpoAyer));
 
   // Cualquier otra fecha ni siquiera despierta a esa sala: cae en la de hoy.
   const otro = `reto${Math.random().toString(36).slice(2, 12)}`;
-  const viejo = await (await fetch(`${BASE}/api/reto?pid=${otro}&fecha=2020-01-01`)).json();
+  const viejo = await (await fetch(marca(`${BASE}/api/reto?pid=${otro}&fecha=2020-01-01`))).json();
   igual('una fecha cualquiera cae en la de hoy', viejo.fecha, fechaDeHoy());
 }
 
@@ -910,7 +922,7 @@ async function seguirDespuesDelTope() {
   console.log('\n— seguir después de los doce');
 
   const pid = `sigue${Math.random().toString(36).slice(2, 12)}`;
-  const url = `${BASE}/api/reto?pid=${pid}`;
+  const url = marca(`${BASE}/api/reto?pid=${pid}`);
   const postear = async (c) => {
     const res = await fetch(url, {
       method: 'POST',
@@ -963,6 +975,39 @@ async function seguirDespuesDelTope() {
   chequear('con el número a la vista', isValidSecret(rendirse.cuerpo.numero ?? ''), String(rendirse.cuerpo.numero));
 }
 
+// ------------------------------------------------- la marca de prueba
+
+/**
+ * Probar contra producción ensucia el dato con el que se calibra: una partida
+ * de prueba se lee después como alguien que jugó mal. La marca la separa.
+ *
+ * Lo que más importa verificar es que **falle cerrado**: sin clave, o con una
+ * equivocada, la partida cuenta. Si se marcara de más, se estarían tirando
+ * datos buenos sin que nadie se entere.
+ */
+async function laMarcaDePrueba() {
+  console.log('
+— la marca de prueba');
+  const pid = () => `marca${Math.random().toString(36).slice(2, 12)}`;
+
+  const sin = await (await fetch(`${BASE}/api/reto?pid=${pid()}`)).json();
+  if (sin.error) {
+    chequear('el desafío del día está disponible', false, sin.error);
+    return;
+  }
+  igual('sin clave, la partida cuenta', sin.prueba, false);
+
+  const mala = await (await fetch(`${BASE}/api/reto?pid=${pid()}&prueba=no-es-la-clave`)).json();
+  igual('con la clave equivocada tampoco se marca', mala.prueba, false);
+
+  if (!PRUEBA) {
+    console.log('  ...  sin PRUEBA_CLAVE en el entorno, el caso positivo no se puede probar');
+    return;
+  }
+  const bien = await (await fetch(marca(`${BASE}/api/reto?pid=${pid()}`))).json();
+  igual('con la clave, queda marcada', bien.prueba, true);
+}
+
 // ------------------------------------------------------------------ main
 
 console.log(`Probando contra ${BASE}`);
@@ -971,6 +1016,7 @@ try {
   await numeroDelDiaAndaBien();
   await desafioDelDia();
   await seguirDespuesDelTope();
+  await laMarcaDePrueba();
   await partidaPorTurnos();
   await partidaSimultanea();
   await cupoDeLaSala();

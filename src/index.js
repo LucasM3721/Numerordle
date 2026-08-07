@@ -58,7 +58,7 @@ export default {
         const res = await roomFetch(
           env,
           code,
-          `create?code=${code}&mode=${mode}&max=${max}&bot=${bot}`,
+          `create?code=${code}&mode=${mode}&max=${max}&bot=${bot}&prueba=${esPrueba(env, url) ? '1' : ''}`,
           'POST',
         );
         if (res.ok) return json({ code });
@@ -99,7 +99,11 @@ export default {
       // response has been sent". No es un error que se pueda atrapar: **mata al
       // Worker**, y los pedidos siguientes se cuelgan hasta agotar el tiempo.
       const cuerpo = request.method === 'POST' ? await request.text() : undefined;
-      const qs = new URLSearchParams({ fecha, hoy: fecha === hoy ? '1' : '0' });
+      const qs = new URLSearchParams({
+        fecha,
+        hoy: fecha === hoy ? '1' : '0',
+        prueba: esPrueba(env, url) ? '1' : '',
+      });
       return stub.fetch(new Request(`https://reto/${accion}?${qs}`, {
         method: request.method,
         headers: { 'content-type': 'application/json' },
@@ -212,6 +216,28 @@ async function requestsDeHoy(env) {
   const filas = data?.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptive;
   if (!Array.isArray(filas)) throw new Error('la respuesta no tiene la forma esperada');
   return filas.reduce((total, f) => total + (f.sum?.requests ?? 0), 0);
+}
+
+/**
+ * ¿Esta partida es una prueba?
+ *
+ * Existe porque probar contra producción ensucia justo el dato que se está
+ * juntando para calibrar: una partida de prueba parece alguien que jugó mal, y
+ * después no hay forma de distinguirla. Ya pasó —un desafío llevado a los
+ * treinta a propósito se leyó como un jugador que sufrió.
+ *
+ * Va con clave y no con un `?prueba=1` a secas por una razón que no es de
+ * seguridad: si cualquiera pudiera marcar, una fila marcada podría venir de
+ * cualquiera y no se sabría si corresponde excluirla. Con clave, si está
+ * marcada es nuestra. Que se filtre no hace daño —lo peor que puede hacer
+ * alguien es sacarse a sí mismo del análisis— pero sí arruinaría esa certeza.
+ *
+ * Sin `PRUEBA_CLAVE` cargada no se puede marcar nada, que es lo correcto: en
+ * duda, el dato cuenta.
+ */
+function esPrueba(env, url) {
+  const clave = env.PRUEBA_CLAVE;
+  return Boolean(clave) && url.searchParams.get('prueba') === clave;
 }
 
 /**
