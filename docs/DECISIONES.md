@@ -318,6 +318,13 @@ verdad sin que nadie se entere. Cuando está activa, el desafío lo dice en
 pantalla — y lo dice el servidor, no el cliente, así que si la clave no era la
 buena el cartel no aparece.
 
+Y si la clave está puesta pero el desafío **no** quedó marcado, también lo dice.
+Ese caso confunde y ya pasó: se puso la clave, no apareció nada, y el silencio
+se leyó como que la clave estaba mal. La causa era otra —la marca se fija al
+**crear** el desafío, y ese ya estaba empezado—. Como del lado del servidor las
+dos situaciones son iguales, el aviso nombra las dos en vez de adivinar: mandar
+a revisar la clave cuando el problema es otro hace perder el tiempo dos veces.
+
 ## La trampa al leer los intentos
 
 En una partida por turnos los dos juegan todas las rondas, y la partida corta en
