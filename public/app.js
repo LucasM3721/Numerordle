@@ -745,7 +745,10 @@ function playerEl(p, opts = {}) {
     btn.title = `Hacer anfitrión a ${p.name}`;
     btn.setAttribute('aria-label', `Hacer anfitrión a ${p.name}`);
     btn.onclick = () => {
-      if (confirm(`¿Dejarle la sala a ${p.name}? Vos dejás de ser el anfitrión y no lo podés deshacer solo.`)) {
+      // Nombra lo que se pierde, no solo que se pierde: "dejás de ser el
+      // anfitrión" no dice nada si no sabés qué hacía el anfitrión.
+      const aviso = `¿Dejarle la sala a ${p.name}?\n\nPasa a ser el anfitrión y vos perdés los controles: acomodar el orden, el cupo, el modo, sumar máquinas y empezar la partida.\n\nSolo ${p.name} te los puede devolver.`;
+      if (confirm(aviso)) {
         send({ t: 'makeHost', id: p.id });
       }
     };
@@ -909,6 +912,32 @@ function render() {
   show('host-tools', canSkip || canEnd);
 }
 
+/**
+ * El plegable del anfitrión arranca abierto **la primera vez que a alguien le
+ * toca serlo**, y cerrado de ahí en más. Cerrado siempre no lo abre nadie —es
+ * justo lo que pasaba con la línea que había antes, que estaba a la vista y aun
+ * así no se entendía—; abierto siempre le repite la explicación en cada partida
+ * al que ya la sabe.
+ *
+ * Dos cosas que lo hacen andar. Se decide **una sola vez por carga**, porque
+ * `renderLobby` corre en cada estado que llega y volvería a abrirle el plegable
+ * al que acaba de cerrarlo. Y se marca en `localStorage` para que la segunda
+ * partida no vuelva a empezar con un texto largo desplegado; si no hay lugar
+ * para escribirlo, lo peor que pasa es que se abra de nuevo la próxima.
+ */
+let ayudaDelAnfitrionDecidida = false;
+
+function abrirAyudaLaPrimeraVez(isHost) {
+  if (!isHost || ayudaDelAnfitrionDecidida) return;
+  ayudaDelAnfitrionDecidida = true;
+  $('lobby-ayuda').open = !localStorage.getItem('fp:ayuda-anfitrion');
+  try {
+    localStorage.setItem('fp:ayuda-anfitrion', '1');
+  } catch {
+    /* sin espacio: se vuelve a abrir la próxima vez, que no es grave */
+  }
+}
+
 function renderLobby(isHost) {
   const list = $('lobby-players');
   list.replaceChildren();
@@ -925,7 +954,8 @@ function renderLobby(isHost) {
   });
   $('lobby-circle').textContent = circleText();
   show('lobby-host', isHost);
-  show('lobby-order-hint', isHost && state.players.length > 1);
+  show('lobby-ayuda', isHost);
+  abrirAyudaLaPrimeraVez(isHost);
   show('lobby-wait', !isHost);
   const radio = document.querySelector(`input[name="rmode"][value="${state.mode}"]`);
   if (radio) radio.checked = true;
@@ -1127,6 +1157,7 @@ function renderFinished(isHost) {
 
   renderFeed($('final-feed'));
   show('btn-rematch', isHost);
+  show('rematch-hint', isHost);
   show('final-wait', !isHost);
   document.title = 'Fijos y Picas';
 }

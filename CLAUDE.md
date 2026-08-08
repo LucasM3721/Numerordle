@@ -46,6 +46,9 @@
 >   promedio sale más bajo que la verdad.
 > - **La marca de prueba** (`?prueba=<clave>`), para que probar en producción no
 >   ensucie la calibración.
+> - **La revancha vuelve a la sala de espera**, no al reparto. Es lo único que
+>   deja entrar a alguien nuevo: una sala terminada rechazaba con "esperá a que
+>   terminen" para siempre. Ahí también se cambia el cupo, el modo y el orden.
 >
 > **Si el deploy automático no sale, se publica a mano.** El 6 de agosto de 2026
 > GitHub Actions estuvo en interrupción mayor media tarde: las corridas quedaban
@@ -220,7 +223,9 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 1. **El orden de `state.players` es el círculo.** El objetivo de cada uno es
    `players[(i + 1) % n]`. Cambiar el orden o sacar a alguien del array le cambia
    el objetivo a otro jugador y ensucia el historial. Por eso el orden se congela
-   al empezar y en partida se retira (`status: 'quit'`) en vez de borrar.
+   al empezar y en partida se retira (`status: 'quit'`) en vez de borrar. Es
+   además lo único que hay que entender para usar ▲▼, así que la interfaz lo
+   dice con todas las letras: "Quién le adivina a quién".
 2. **Los secretos no salen del servidor.** Todo lo que se manda al cliente pasa por
    `viewFor()`, que arma una vista por jugador. Si agregás campos al estado,
    fijate que no filtren el número de nadie.

@@ -199,12 +199,31 @@ ese turno (o cerrar la ronda sin los que faltan) y que la partida siga.
 ## El anfitrión
 
 Es el que creó la sala. Si se le cae la conexión, el rol pasa solo al primer
-jugador conectado, así la partida nunca queda sin quién la maneje. También lo
-puede ceder a mano con 👑 (a alguien conectado, en cualquier momento).
+jugador conectado, así la partida nunca queda sin quién la maneje.
 
-En la sala de espera arma el círculo: **▲▼** mueve a cada uno un lugar y
-**Mezclar orden** lo sortea. El orden define a quién le adivina cada uno, así que
-se congela al empezar el reparto de números.
+Lo que puede hacer, todo desde la sala de espera:
+
+| | Qué hace |
+| --- | --- |
+| **▲▼** | Mueve a alguien un lugar en el círculo. **El orden de la lista *es* el círculo**: cada uno le adivina al que tiene justo abajo, y el último al primero. Se congela al empezar. |
+| **Mezclar orden** | Sortea el círculo de una. |
+| **👑** | Le deja la sala a otro. Pasa a ser él el anfitrión y **el que la cede pierde los controles**: solo el nuevo se los puede devolver. Se le da a cualquiera que esté conectado, en cualquier momento. |
+| **✕** | Antes de empezar saca de la sala. Ya en partida retira: deja de jugar, pero su número sigue en el círculo. |
+| **Modo y cupo** | Se eligen acá y solo acá. El cupo nunca baja de los que ya entraron. |
+
+En el juego esto está explicado adentro de la sala, en un plegable que arranca
+abierto la primera vez que a alguien le toca ser anfitrión.
+
+## La revancha
+
+Al terminar, el anfitrión tiene **Revancha**, y devuelve a todos **a la sala de
+espera** en vez de arrancar otra partida de una. Así se puede cambiar el modo y
+el cupo, acomodar el círculo, sumar máquinas y —sobre todo— **dejar entrar a
+quien haya llegado tarde**: una sala en partida o recién terminada no acepta a
+nadie, y la espera es el único momento en que la puerta se vuelve a abrir.
+
+El círculo se sortea al pedir la revancha, así nadie repite el mismo objetivo,
+y queda a la vista para acomodarlo antes de arrancar.
 
 ## Quién entra y quién se va
 
@@ -234,7 +253,7 @@ sola y no queda esperándolo.
   puede cambiar en la sala de espera, pero nunca por debajo de los que ya
   entraron.
 - Se puede entrar mientras el resto elige su número; la sala se cierra a los de
-  afuera recién cuando arranca la primera ronda.
+  afuera cuando arranca la primera ronda y se vuelve a abrir con la revancha.
 - Recargar la página o cambiar de dispositivo no te saca: la identidad va en
   `localStorage` y el estado vive en el servidor.
 - Las salas se borran solas a las 24 h sin actividad (una alarma del Durable
