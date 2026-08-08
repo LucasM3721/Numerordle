@@ -20,9 +20,19 @@
  * ninguno** —a propósito, ver "Lo único que se registra" en DECISIONES—. Por eso
  * conviene que la lista sea corta: si crece, el problema no es la lista, es que
  * se está probando sin marca.
+ *
+ * **Cada regla lleva el minuto en que pasó**, y no solo la forma. La primera
+ * versión de la segunda regla decía "strict, humano, 0 intentos, no ganó" y en
+ * la primera corrida contra los datos de verdad se llevó puesta **una fila que
+ * no era nuestra**: otra partida del mismo día, veintitrés horas antes, con la
+ * misma forma. Una regla que saca de más se ve igual de razonable que una que
+ * saca bien, así que el criterio es el de siempre: **en duda, el dato cuenta**.
  */
 
 const num = (v) => Number(v ?? 0);
+
+/** El timestamp viene como `2026-08-08 23:29:35`, en UTC. */
+const enElMinuto = (f, minuto) => String(f.timestamp ?? '').startsWith(minuto);
 
 export const A_MANO = [
   {
@@ -30,8 +40,10 @@ export const A_MANO = [
     es: (f) => f.modo === 'reto' && f.dia === '2026-08-06' && num(f.intentos) === 30,
   },
   {
-    porque: '8 de agosto de 2026: una verificación post-deploy contra producción, sin la marca puesta (dos filas, 0 intentos)',
-    es: (f) => f.modo === 'strict' && f.quien === 'humano' && num(f.intentos) === 0 && num(f.gano) === 0,
+    porque: '8 de agosto de 2026, 23:29 UTC: las dos filas de una verificación post-deploy contra producción, sin la marca puesta',
+    es: (f) => enElMinuto(f, '2026-08-08 23:29')
+      && f.modo === 'strict' && f.quien === 'humano'
+      && num(f.intentos) === 0 && num(f.gano) === 0,
   },
 ];
 
