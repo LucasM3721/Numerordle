@@ -9,6 +9,7 @@
 
 import { readFileSync } from 'node:fs';
 
+import { separarPruebas } from './filas-de-prueba.mjs';
 import { filasDePartida } from '../src/room.js';
 import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta } from '../src/game.js';
 import { TOPE_INTENTOS, fechaDeHoy, finDelDia, numeroDelDia } from '../src/reto.js';
@@ -36,13 +37,34 @@ const PRODUCCION = 'https://numerordle.lucasm3721.workers.dev';
  * los que se calibra al bot. Con `PRUEBA_CLAVE` puesta se marcan y quedan
  * afuera del análisis.
  *
- * Sin la clave sigue funcionando igual —no se rompe nada— pero ensucia. Contra
- * el servidor local da lo mismo: ahí no hay dataset.
+ * Contra el servidor local da lo mismo: ahí no hay dataset.
  */
 const PRUEBA = process.env.PRUEBA_CLAVE ?? '';
 const marca = (qs) => (PRUEBA ? `${qs}${qs.includes('?') ? '&' : '?'}prueba=${encodeURIComponent(PRUEBA)}` : qs);
 const WS_BASE = BASE.replace(/^http/, 'ws');
 const TIMEOUT_MS = 10000;
+
+/**
+ * Contra producción y sin la clave, no arranca.
+ *
+ * Antes esto era una advertencia escrita en la guía, y una advertencia escrita
+ * no alcanza: ya se ensuciaron los datos dos veces, la última con una
+ * verificación post-deploy que había leído la advertencia. Lo que se olvida no
+ * se arregla explicándolo mejor, se arregla haciendo que falle temprano.
+ *
+ * Corta antes de la primera sala, así no deja media docena de partidas sueltas
+ * en el dataset y después el error.
+ */
+const ES_LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/.test(BASE);
+if (!ES_LOCAL && !PRUEBA) {
+  console.error(`\nEsta suite juega doce partidas de verdad, y contra ${BASE} cada una queda`);
+  console.error('registrada en los datos con los que se calibra al bot.\n');
+  console.error('Poné la clave para que se marquen y queden afuera del análisis:');
+  console.error('  PRUEBA_CLAVE=<la clave> BASE=… npm test\n');
+  console.error('La clave es el secreto PRUEBA_CLAVE del Worker. Contra el servidor local');
+  console.error('no hace falta: ahí no hay dataset.\n');
+  process.exit(1);
+}
 
 let fallos = 0;
 let pruebas = 0;
@@ -1142,6 +1164,50 @@ async function laMarcaDePrueba() {
   igual('con la clave, queda marcada', bien.prueba, true);
 }
 
+// ------------------------------------------ las filas que no cuentan
+
+/**
+ * Qué se saca del dataset antes de calibrar. Se prueba acá porque
+ * `filas-de-prueba.mjs` es puro: no toca la red ni el entorno, así que no hace
+ * falta el token de analytics.
+ *
+ * Vale la pena tenerlo escrito: esto decide qué números se van a mirar para
+ * mover los niveles del bot, y si excluye de más o de menos **el resultado
+ * igual se ve razonable**. Ya pasó una vez en silencio: la consulta ni siquiera
+ * leía la columna de la marca, así que todo el mecanismo de `PRUEBA_CLAVE`
+ * marcaba filas que después se contaban igual.
+ */
+function lasFilasQueNoCuentan() {
+  console.log('\n— las filas que no cuentan');
+
+  const real = { modo: 'reto', quien: 'humano', dia: '2026-08-09', intentos: 7, gano: 1, marca: '' };
+  const marcada = { modo: 'sim', quien: 'humano', dia: '', intentos: 3, gano: 1, marca: 'prueba' };
+  const treinta = { modo: 'reto', quien: 'humano', dia: '2026-08-06', intentos: 30, gano: 0, marca: '' };
+  const postDeploy = { modo: 'strict', quien: 'humano', dia: '', intentos: 0, gano: 0, marca: '' };
+
+  const r = separarPruebas([real, marcada, treinta, postDeploy, { ...postDeploy }]);
+
+  igual('la partida de verdad queda', r.filas, [real]);
+  igual('la marcada con PRUEBA_CLAVE se va sola', r.marcadas.length, 1);
+  igual('y las de a mano también', r.cuantas, 4);
+
+  // Cada exclusión se nombra, porque una silenciosa es indistinguible de no
+  // tener esos datos.
+  chequear('cada regla dice por qué', r.aMano.every((x) => x.porque.length > 20));
+
+  // Sin esto, una fila marcada que además encaja con una regla se contaría dos
+  // veces y el total diría más exclusiones que filas hay.
+  const dobles = separarPruebas([{ ...treinta, marca: 'prueba' }]);
+  igual('una fila marcada no se cuenta dos veces', dobles.cuantas, 1);
+
+  // Y la regla del 6 no puede llevarse puesto un desafío normal de otro día.
+  const otroDia = { modo: 'reto', quien: 'humano', dia: '2026-08-07', intentos: 30, gano: 0, marca: '' };
+  igual('la regla está atada a su fecha', separarPruebas([otroDia]).filas, [otroDia]);
+
+  // Un dataset sin nada raro no pierde ninguna fila.
+  igual('sin filas de prueba no se saca nada', separarPruebas([real]).cuantas, 0);
+}
+
 // ------------------------------------------- la puerta del desafío
 
 /**
@@ -1194,6 +1260,7 @@ function laPuertaDelDesafio() {
 console.log(`Probando contra ${BASE}`);
 try {
   formaDelRegistro();
+  lasFilasQueNoCuentan();
   laPuertaDelDesafio();
   await numeroDelDiaAndaBien();
   laRacha();
