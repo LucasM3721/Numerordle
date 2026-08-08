@@ -1190,6 +1190,22 @@ Se identifican **por forma y no por un id**, porque el dataset no guarda
 ninguno: es la misma decisión de "Lo único que se registra", y acá se paga.
 Por eso la lista tiene que quedar corta. Si crece, el problema no es la lista.
 
+**Y cada regla lleva el minuto en que pasó, no solo la forma.** La primera
+versión de la regla del 8 decía "strict, humano, 0 intentos, no ganó", y en la
+primera corrida contra los datos de verdad sacó **tres** filas cuando la
+verificación había dejado dos: la tercera era otra partida del mismo día,
+veintitrés horas antes, con exactamente la misma forma.
+
+Vale la pena detenerse en cómo se notó, porque es el argumento entero de esta
+sección. No lo dijo una prueba: lo dijo que el resumen **nombra lo que saca**.
+Con un total ya limpio, "6 filas afuera" se habría leído igual de bien que "5" y
+la fila ajena se habría perdido sin que nadie sospechara nada. Una regla que
+saca de más se ve idéntica a una que saca bien.
+
+En duda, el dato cuenta. Es la misma regla que ya gobierna el marcado del lado
+del servidor, y acá aplica igual: sacar una fila de alguien es peor que dejar
+una nuestra.
+
 ### Por qué la advertencia pasó a ser un mecanismo
 
 La segunda de esas filas la escribió alguien que **había leído la advertencia**

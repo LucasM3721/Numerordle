@@ -1180,10 +1180,10 @@ async function laMarcaDePrueba() {
 function lasFilasQueNoCuentan() {
   console.log('\n— las filas que no cuentan');
 
-  const real = { modo: 'reto', quien: 'humano', dia: '2026-08-09', intentos: 7, gano: 1, marca: '' };
-  const marcada = { modo: 'sim', quien: 'humano', dia: '', intentos: 3, gano: 1, marca: 'prueba' };
-  const treinta = { modo: 'reto', quien: 'humano', dia: '2026-08-06', intentos: 30, gano: 0, marca: '' };
-  const postDeploy = { modo: 'strict', quien: 'humano', dia: '', intentos: 0, gano: 0, marca: '' };
+  const real = { timestamp: '2026-08-09 12:00:00', modo: 'reto', quien: 'humano', dia: '2026-08-09', intentos: 7, gano: 1, marca: '' };
+  const marcada = { timestamp: '2026-08-09 12:00:00', modo: 'sim', quien: 'humano', dia: '', intentos: 3, gano: 1, marca: 'prueba' };
+  const treinta = { timestamp: '2026-08-06 20:00:00', modo: 'reto', quien: 'humano', dia: '2026-08-06', intentos: 30, gano: 0, marca: '' };
+  const postDeploy = { timestamp: '2026-08-08 23:29:35', modo: 'strict', quien: 'humano', dia: '', intentos: 0, gano: 0, marca: '' };
 
   const r = separarPruebas([real, marcada, treinta, postDeploy, { ...postDeploy }]);
 
@@ -1201,8 +1201,14 @@ function lasFilasQueNoCuentan() {
   igual('una fila marcada no se cuenta dos veces', dobles.cuantas, 1);
 
   // Y la regla del 6 no puede llevarse puesto un desafío normal de otro día.
-  const otroDia = { modo: 'reto', quien: 'humano', dia: '2026-08-07', intentos: 30, gano: 0, marca: '' };
+  const otroDia = { timestamp: '2026-08-07 20:00:00', modo: 'reto', quien: 'humano', dia: '2026-08-07', intentos: 30, gano: 0, marca: '' };
   igual('la regla está atada a su fecha', separarPruebas([otroDia]).filas, [otroDia]);
+
+  // Esta fila existe de verdad y no es nuestra: misma forma que la verificación
+  // del 8, veintitrés horas antes. La primera versión de la regla se la llevaba
+  // puesta, y por eso las reglas ahora llevan el minuto además de la forma.
+  const ajena = { timestamp: '2026-08-08 00:21:18', modo: 'strict', quien: 'humano', dia: '', intentos: 0, gano: 0, marca: '' };
+  igual('una partida ajena con la misma forma no se saca', separarPruebas([ajena]).filas, [ajena]);
 
   // Un dataset sin nada raro no pierde ninguna fila.
   igual('sin filas de prueba no se saca nada', separarPruebas([real]).cuantas, 0);
