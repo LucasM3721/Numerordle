@@ -67,10 +67,12 @@
 >   juego sigue andando. En local y en CI va como `--var` con un valor de
 >   juguete; la de producción no está en el repo.
 > - **`PRUEBA_CLAVE` marca las partidas de prueba** para que no ensucien la
->   calibración. Con `?prueba=<clave>` en la URL, o `PRUEBA_CLAVE` en el entorno
->   al correr `npm test` contra producción, la partida queda con `blob4 =
->   'prueba'` y se excluye filtrando. Sin la clave no se marca nada: en duda, el
->   dato cuenta. Ver "Las pruebas se marcan" en DECISIONES.
+>   calibración. La partida queda con `blob4 = 'prueba'` y `npm run datos` la
+>   excluye. **Hasta el 8 de agosto no la excluía**: la consulta ni siquiera
+>   leía esa columna, así que el mecanismo entero marcaba filas que después se
+>   contaban igual. Cualquier número de calibración sacado antes de esa fecha
+>   está inflado con partidas de prueba. Ver "Cualquier cosa contra producción
+>   va marcada", más abajo.
 > - **Los tres secretos opcionales están cargados y probados**
 >   (`DISCORD_WEBHOOK_URL`, `CF_ACCOUNT_ID`, `CF_ANALYTICS_TOKEN`). De acá en
 >   más **el silencio es la señal buena**: solo escribe a Discord si se pasa el
@@ -192,11 +194,45 @@ de un ausente; con los 90 s de verdad, dos casos tardarían más que toda la sui
 y fallan por tiempo agotado. Para jugar a mano usá `npm run dev`, que respeta el
 margen real.
 
-Para probar contra producción: `BASE=https://numerordle.lucasm3721.workers.dev
-PRUEBA_CLAVE=… npm test`. **Sin `PRUEBA_CLAVE` las doce partidas que juega la
-suite entran en los datos de calibración** como si las hubiera jugado gente.
-Tarda un minuto de más: la suite pide doce salas y el límite es de diez por
-minuto, así que las que sobran esperan a que se libere la ventana.
+## Cualquier cosa contra producción va marcada
+
+**Regla, sin excepciones: todo lo que juegue contra producción —la suite, un
+script suelto, una verificación post-deploy, una prueba a mano— lleva la marca
+de prueba.** Cada partida terminada escribe filas en el dataset con el que se
+calibra al bot, y una partida de prueba sin marcar parece alguien que jugó mal.
+Después no hay forma de distinguirla: el dataset no guarda ningún id.
+
+Ya ensució dos veces. La segunda fue una verificación post-deploy escrita por
+alguien que había leído la advertencia, así que la advertencia ahora es un
+mecanismo:
+
+- **`npm test` contra un `BASE` que no sea local se niega a arrancar sin
+  `PRUEBA_CLAVE`**, y corta antes de crear la primera sala.
+- Un script suelto tiene que mandar `?prueba=<clave>` **al crear la sala**
+  (`POST /api/rooms`) o en cada pedido del desafío (`/api/reto`). Para las salas
+  la marca se fija al crearla: ponerla después no hace nada.
+- Si la clave está mal, no se marca nada y **no se avisa** en las salas —el
+  desafío sí lo dice en pantalla—. Ante la duda, mirá el `blob4` con
+  `npm run datos`, que ahora nombra cuántas filas sacó y por qué.
+
+Lo cómodo es dejar la clave puesta de una vez en la máquina, así ningún comando
+depende de acordarse:
+
+```bash
+setx PRUEBA_CLAVE "el-valor-del-secreto-del-worker"
+```
+
+Aplica recién en la próxima terminal. El valor es el secreto `PRUEBA_CLAVE` del
+Worker; no está en el repo.
+
+Con eso, probar contra producción es
+`BASE=https://numerordle.lucasm3721.workers.dev npm test`. Tarda un minuto de
+más: la suite pide doce salas y el límite es de diez por minuto, así que las que
+sobran esperan a que se libere la ventana.
+
+Las filas que ya se ensuciaron antes de todo esto se sacan a mano, y están
+listadas con su fecha en `scripts/filas-de-prueba.mjs`. Si esa lista crece, el
+problema no es la lista.
 
 **Cada push a `main` despliega solo**, pero únicamente si pasan `check`, el build
 y `npm test` (ver `.github/workflows/deploy.yml`). Trabajá en ramas y abrí un pull
@@ -216,6 +252,7 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 | `src/reto.js` | el desafío del día: el número derivado de la fecha y su Durable Object |
 | `public/` | cliente completo: un HTML, un CSS, dos JS, una fuente y la tarjeta de preview. Sin build ni dependencias |
 | `public/racha.js` | la cuenta de la racha del desafío. Puro: no toca el DOM ni `localStorage`, y por eso la suite lo prueba sin navegador |
+| `scripts/filas-de-prueba.mjs` | qué filas del dataset no cuentan para calibrar. Puro por el mismo motivo: la suite lo prueba sin token ni red |
 | `public/og.png` | la tarjeta que se ve al pegar el link. 1200×630, y las medidas están declaradas en el HTML: la suite compara las dos |
 
 ## Invariantes que no hay que romper

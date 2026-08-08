@@ -12,6 +12,8 @@
  * El token necesita un solo permiso: Account · Account Analytics · Read.
  */
 
+import { separarPruebas } from './filas-de-prueba.mjs';
+
 const TOKEN = process.env.CF_ANALYTICS_TOKEN;
 const CUENTA = process.env.CF_ACCOUNT_ID;
 const DATASET = 'numerordle_partidas';
@@ -26,8 +28,15 @@ if (!TOKEN || !CUENTA) {
   process.exit(1);
 }
 
+/**
+ * `blob4` es la marca de prueba, y sin leerla todo el mecanismo de
+ * `PRUEBA_CLAVE` no servía para nada: se marcaba la fila y después el resumen
+ * la contaba igual. Se filtra en `filas-de-prueba.mjs` y no en el `WHERE` por
+ * dos razones: para poder decir cuántas se sacaron, y para que la regla se
+ * pueda probar sin token ni red.
+ */
 const SQL = `
-  SELECT timestamp, blob1 AS modo, blob2 AS quien, blob3 AS dia,
+  SELECT timestamp, blob1 AS modo, blob2 AS quien, blob3 AS dia, blob4 AS marca,
          double1 AS intentos, double2 AS gano, double6 AS siguio, double7 AS encontro
   FROM ${DATASET}
   ORDER BY timestamp DESC
@@ -49,14 +58,28 @@ if (!res.ok) {
 }
 
 const { data } = await res.json();
-const filas = data ?? [];
+const crudas = data ?? [];
 
-if (!filas.length) {
+if (!crudas.length) {
   console.log('El dataset está vacío. Todavía no terminó ninguna partida ni ningún desafío.');
   process.exit(0);
 }
 
 const num = (v) => Number(v ?? 0);
+
+const { filas, marcadas, aMano, cuantas } = separarPruebas(crudas);
+
+if (cuantas) {
+  console.log(`\nFuera del análisis: ${cuantas} de ${crudas.length} filas`);
+  if (marcadas.length) console.log(`  ${marcadas.length} marcadas con PRUEBA_CLAVE`);
+  for (const r of aMano) console.log(`  ${r.filas.length} a mano — ${r.porque}`);
+}
+
+if (!filas.length) {
+  console.log('\nNo queda ninguna fila que no sea de prueba.');
+  process.exit(0);
+}
+
 const resumen = (xs) => {
   if (!xs.length) return null;
   const o = [...xs].sort((a, b) => a - b);

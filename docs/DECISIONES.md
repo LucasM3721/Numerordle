@@ -1146,6 +1146,64 @@ El aviso de la corona también cambió: antes decía "dejás de ser el anfitrió
 que no dice nada si no sabés qué hacía el anfitrión. Ahora **nombra lo que se
 pierde**, uno por uno.
 
+## La marca que no servía para nada
+
+`PRUEBA_CLAVE` existía desde el 7 de agosto: el servidor escribía `blob4 =
+'prueba'` en las partidas marcadas, el cliente lo avisaba en pantalla, y la
+suite sabía pasarla. Todo eso andaba.
+
+Lo que no andaba es el otro extremo: **`npm run datos` nunca leía `blob4`.** El
+`SELECT` traía `blob1`, `blob2`, `blob3` y los `double`, y no había ningún
+filtro más abajo. O sea que se marcaba la fila y después el resumen la contaba
+igual, exactamente como si no se hubiera marcado nada.
+
+Es la peor forma que puede tomar un error así: **no falla, no avisa, y el
+número que devuelve se ve razonable**. Cualquier cuenta de calibración sacada
+antes del 8 de agosto está inflada con partidas de prueba, y no hay manera de
+saber cuántas sin volver a mirar.
+
+Dos cosas cambiaron a partir de eso.
+
+**La regla se puede probar.** Vive en `scripts/filas-de-prueba.mjs`, aparte del
+script que consulta, por el mismo motivo por el que `public/racha.js` está
+aparte de `app.js`: ahí no hay red ni entorno, así que la suite lo importa y lo
+prueba sin token. Y conviene probarlo, porque decide qué números se van a mirar
+para mover los niveles del bot; si excluye de más o de menos, el resultado igual
+se ve razonable.
+
+**Las exclusiones se nombran.** El resumen dice cuántas filas sacó y por qué,
+en vez de mostrar un total ya limpio. Una exclusión silenciosa es
+indistinguible de no tener esos datos, y ahí es donde uno empieza a creerle a un
+número que no es.
+
+### Lo que se ensucia se saca a mano, y con fecha
+
+Quedan dos casos anteriores a todo esto, listados en `A_MANO` con qué los
+delata:
+
+- El desafío llevado al tope de 30 el 6 de agosto, a propósito, antes de que la
+  marca existiera.
+- Dos filas del 8 de agosto: una verificación post-deploy contra producción a la
+  que no se le puso la marca.
+
+Se identifican **por forma y no por un id**, porque el dataset no guarda
+ninguno: es la misma decisión de "Lo único que se registra", y acá se paga.
+Por eso la lista tiene que quedar corta. Si crece, el problema no es la lista.
+
+### Por qué la advertencia pasó a ser un mecanismo
+
+La segunda de esas filas la escribió alguien que **había leído la advertencia**
+—está en CLAUDE.md, con todas las letras— y aun así armó un script suelto sin la
+marca. Lo que se olvida no se arregla explicándolo mejor.
+
+Ahora `npm test` contra un `BASE` que no sea local **se niega a arrancar** sin
+`PRUEBA_CLAVE`, y corta antes de crear la primera sala: si cortara después,
+dejaría media docena de partidas sueltas en el dataset y recién ahí el error.
+
+Lo que **no** se puede blindar es un script suelto contra producción, que es
+justo por donde entró el problema. Contra eso solo queda la regla escrita y la
+clave puesta en el entorno de la máquina, para que no dependa de acordarse.
+
 ## Ideas que quedaron afuera
 
 - Arrastrar para reordenar el círculo: en el celular se pelea con el scroll. Las
