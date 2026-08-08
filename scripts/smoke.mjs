@@ -232,7 +232,52 @@ async function partidaPorTurnos() {
     !JSON.stringify(final).includes('smoke-ana'),
   );
 
-  [ana, beto, cami].forEach((w) => w.close());
+  // --- La revancha, sobre esta misma sala ---------------------------------
+  //
+  // Va acá y no en una suite propia porque necesita una partida terminada, y
+  // acá ya hay una. Crear otra sala cuesta una del cupo de diez por minuto.
+
+  // Primero, lo que estaba roto: terminada, la sala rechaza al que quiere
+  // entrar con un mensaje que le dice que espere a que terminen. Ya terminaron.
+  const tarde = await conectar(code, 'smoke-dani', 'Dani');
+  const motivo = await esperarRechazo(tarde);
+  chequear('con la partida terminada no se puede entrar', motivo.includes('ya empezó'), motivo);
+  tarde.close();
+
+  // El cupo tampoco se puede tocar, así que no hay forma de hacerle lugar.
+  decir(ana, { t: 'setMax', max: 5 });
+  chequear(
+    'y el cupo no se puede mover para hacerle lugar',
+    (await esperarError(ana, 2)).includes('antes de empezar'),
+  );
+
+  decir(ana, { t: 'rematch' });
+  const espera = await esperar(ana, (s) => s.phase === 'lobby', 'la vuelta a la sala de espera');
+
+  igual('la revancha vuelve a la sala de espera, no al reparto', espera.phase, 'lobby');
+  igual('siguen los tres', nombres(espera).length, 3);
+  igual('nadie arranca con número', espera.players.map((p) => p.secret), [null, null, null]);
+  igual('y todos vuelven a estar en juego', [...new Set(espera.players.map((p) => p.status))], ['playing']);
+  igual('el historial arranca limpio', espera.log.length, 0);
+  igual('y es otra partida, así las marcas del cuaderno no se arrastran', espera.game, final.game + 1);
+  igual('Ana sigue siendo la anfitriona', espera.you.isHost, true);
+
+  // Lo que la revancha vino a habilitar, que es todo lo que solo pasa acá.
+  decir(ana, { t: 'setMax', max: 5 });
+  const conCupo = await esperar(ana, (s) => s.maxPlayers === 5, 'el cupo nuevo');
+  igual('ahora sí se puede mover el cupo', conCupo.maxPlayers, 5);
+
+  const dani = await conectar(code, 'smoke-dani', 'Dani');
+  const cuatro = await esperar(dani, (s) => s.players.length === 4, 'que entre alguien nuevo');
+  chequear('y entra alguien que antes quedaba afuera', nombres(cuatro).includes('Dani'));
+
+  // Y desde acá se arranca de nuevo, que es que la espera sea una espera de
+  // verdad y no una pantalla de paso.
+  decir(ana, { t: 'start' });
+  const deNuevo = await esperar(ana, (s) => s.phase === 'secret', 'la partida nueva');
+  igual('y se vuelve a empezar con los cuatro', deNuevo.players.length, 4);
+
+  [ana, beto, cami, dani].forEach((w) => w.close());
 }
 
 // ---------------------------------------------- partida simultánea

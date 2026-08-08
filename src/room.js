@@ -1071,6 +1071,26 @@ export class GameRoom {
         return true;
       }
 
+      /**
+       * La revancha vuelve a **la sala de espera**, no al reparto de números.
+       *
+       * El motivo de peso es que una sala terminada no deja entrar a nadie: el
+       * rechazo dice "esperá a que terminen" y, terminada, seguía diciendo lo
+       * mismo para siempre. El que esperaba de verdad nunca entraba. La espera
+       * es el único estado que abre la puerta *y* deja subir el cupo, que es lo
+       * que hace falta para que entre.
+       *
+       * De paso queda a mano todo lo que solo se toca ahí —modo, cupo, orden,
+       * máquinas—, que era lo otro que no se podía hacer sin rearmar la sala.
+       *
+       * Cuesta un clic más al que solo quiere jugar de nuevo: la espera es la
+       * pantalla anterior a "Empezar", no una escala nueva. Se paga barato.
+       *
+       * El orden se sigue sorteando acá y no en la espera: si no, la revancha
+       * repite el mismo círculo y cada uno vuelve a adivinarle a la misma
+       * persona. La diferencia es que ahora el sorteo **se ve** antes de
+       * arrancar, y el anfitrión lo puede acomodar con ▲▼.
+       */
       case 'rematch': {
         requireHost();
         if (s.phase !== 'finished') throw new Error('Todavía hay una partida en curso.');
@@ -1081,7 +1101,9 @@ export class GameRoom {
           wonRound: null,
           decision: null,
         }));
-        s.phase = 'secret';
+        // Las máquinas quedan sin número y lo eligen solas cuando la partida
+        // arranque: `unaJugadaDeBot` lo hace en cuanto la fase pasa a 'secret'.
+        s.phase = 'lobby';
         s.overtime = false;
         s.round = 0;
         s.roundQueue = [];

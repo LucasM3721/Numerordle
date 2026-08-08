@@ -193,8 +193,36 @@
         <h2>Sala de espera</h2>
         <p class="hint">Pasales el link a tus amigos. Arrancan cuando estén todos. El que cierre la página y no vuelva en un minuto y medio sale solo de la lista.</p>
         <div id="lobby-players" class="players"></div>
-        <p class="hint circle-hint">El círculo: <span id="lobby-circle"></span></p>
-        <p id="lobby-order-hint" class="hint hidden">Con ▲▼ acomodás el orden a gusto y con 👑 le dejás la sala a otro. El orden se congela al empezar.</p>
+        <!-- El orden de la lista de arriba ES este círculo. Decirlo acá, y no
+             solo en el plegable, es lo que hace que la lista se lea como algo
+             que significa y no como una lista de presentes. -->
+        <p class="hint circle-hint">Quién le adivina a quién: <span id="lobby-circle"></span></p>
+
+        <!-- Antes esto era una sola línea con ▲▼ y 👑 metidos en la misma
+             oración, y no se entendía: nombraba los botones sin decir para qué
+             sirven. Lo que faltaba es lo primero de acá abajo —que el orden de
+             la lista es el círculo—, sin lo cual mover a alguien no significa
+             nada. Va abierto para el anfitrión la primera vez que ve la sala. -->
+        <details class="card rules" id="lobby-ayuda">
+          <summary>Qué podés hacer como anfitrión</summary>
+          <ul>
+            <li><b>▲▼ — acomodar el círculo.</b> El orden de la lista <i>es</i> el
+              círculo: cada uno le adivina el número al que tiene justo abajo, y el
+              último al primero. Mover a alguien cambia a quién le toca adivinarle
+              a quién. <b>Mezclar orden</b> lo sortea de una.
+              <b>Se congela al empezar</b>, porque cambiarle el objetivo a alguien
+              que ya está pensando su número le invalida lo que venía deduciendo.</li>
+            <li><b>👑 — dejarle la sala a otro.</b> Pasa a ser él el anfitrión y
+              estos controles quedan de su lado: <b>vos los perdés</b> y no los
+              recuperás solo, te los tiene que devolver. Se le puede dar a
+              cualquiera que esté conectado, en cualquier momento.</li>
+            <li><b>✕ — sacar a alguien.</b> Antes de empezar se va de la sala. Ya en
+              partida queda retirado: deja de jugar, pero su número sigue en el
+              círculo, así no le cambia el objetivo a nadie.</li>
+            <li><b>El modo y el cupo</b> se eligen acá y solo acá. El cupo nunca
+              baja de los que ya entraron.</li>
+          </ul>
+        </details>
         <div id="lobby-host" class="host-controls hidden">
           <div class="field">
             <span>Modo</span>
@@ -307,6 +335,9 @@
         <div class="row">
           <button id="btn-rematch" class="btn primary hidden">Revancha</button>
         </div>
+        <!-- Dice a dónde lleva, porque no arranca la partida: vuelve a la
+             espera. Sin esto el botón promete una cosa y hace otra. -->
+        <p id="rematch-hint" class="hint hidden">Vuelven todos a la sala de espera, con el círculo mezclado. Ahí podés cambiar el modo y el cupo, sumar máquinas y dejar entrar gente nueva antes de arrancar.</p>
         <p id="final-wait" class="hint hidden">Esperando al anfitrión para la revancha…</p>
       </div>
       <div class="card">

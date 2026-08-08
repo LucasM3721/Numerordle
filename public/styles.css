@@ -281,9 +281,15 @@ details.card[open] > summary { margin-bottom: 14px; }
 
 /* ---------------------------------------------------------------- reglas */
 
-.rules ol { margin: 0; padding-left: 20px; color: var(--muted); font-size: 0.9rem; }
+/* El `>` es a propósito: la lista suelta del anfitrión se lee como las reglas,
+   pero la `ul` anidada adentro de un paso de "Cómo se juega" no, o quedaría con
+   el margen de arriba de un bloque en el medio de una oración. */
+.rules ol, .rules > ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 0.9rem; }
 .rules li { margin-bottom: 7px; }
-.rules ul { margin: 5px 0; padding-left: 18px; }
+.rules ol ul { margin: 5px 0; padding-left: 18px; }
+/* Lo resaltado de cada punto es el botón del que habla: tiene que saltar antes
+   que el párrafo, o hay que leerlos todos para encontrar el que interesa. */
+.rules b { color: var(--text); }
 .rules b.fijo { color: var(--fijo); }
 .rules b.pica { color: var(--pica); }
 

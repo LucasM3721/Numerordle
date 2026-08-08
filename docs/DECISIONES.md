@@ -1081,6 +1081,71 @@ racha—, y el amarillo es el de **tu propia marca** sobre un dígito. Son dos
 cosas distintas y ya convivían en la pantalla del desafío antes de que las
 reglas la nombraran.
 
+## La revancha vuelve a la espera
+
+Antes saltaba derecho al reparto de números. Ahora deja la sala en `lobby`, y el
+motivo de peso no es la comodidad sino un agujero:
+
+**Una sala terminada no dejaba entrar a nadie.** El rechazo dice *"La partida ya
+empezó. Esperá a que terminen para entrar"* y, una vez terminada, seguía
+diciendo lo mismo para siempre. El que hacía caso y esperaba de verdad no
+entraba nunca. La única salida era la revancha, que lo mandaba directo al
+reparto: una ventana angosta, y encima con el cupo ya cerrado.
+
+La espera es el único estado que abre la puerta **y** deja subir el cupo, que es
+lo que hace falta para que el que llegó tarde entre de verdad. De paso queda a
+mano todo lo demás que solo se toca ahí: modo, orden, máquinas.
+
+Tres cosas que no cambian, y una que sí:
+
+- **El orden se sigue sorteando en la revancha**, no en la espera. Si no, la
+  revancha repite el mismo círculo y cada uno vuelve a adivinarle a la misma
+  persona. Lo que cambia es que ahora el sorteo **se ve** antes de arrancar y se
+  puede acomodar con ▲▼.
+- **Las máquinas quedan sin número** y lo eligen solas cuando la partida
+  arranca: `unaJugadaDeBot` lo hace en cuanto la fase pasa a `secret`. No hizo
+  falta tocar nada, porque una máquina esperando en el lobby sin número ya era
+  una situación válida —es lo que pasa con `addBot`—.
+- **`game` se incrementa en la revancha**, no al empezar, así las marcas del
+  cuaderno se limpian apenas se vuelve a la espera.
+- **Cuesta un clic más** al que solo quiere jugar de nuevo. La espera es la
+  pantalla anterior a "Empezar", no una escala nueva, y el botón dice a dónde
+  lleva: un botón que promete "Revancha" y devuelve a una sala de espera sin
+  avisar se lee como que algo salió mal.
+
+## Lo que el anfitrión podía hacer y nadie entendía
+
+La sala de espera tenía **una sola línea** para explicar ▲▼ y 👑, metidos en la
+misma oración. Lucas contó que quien la leía no la entendía, y mirándola se ve
+por qué: **nombraba los botones sin decir para qué sirven**. "Con ▲▼ acomodás el
+orden a gusto" no dice nada si no sabés que el orden importa.
+
+Lo que faltaba es la frase de la que cuelga todo: **el orden de la lista es el
+círculo**, o sea a quién le adivina cada uno. Sin eso, mover a alguien un lugar
+es mover un nombre en una lista.
+
+Dos cambios, y el segundo es el que importa:
+
+- La línea del círculo pasó de "El círculo:" a **"Quién le adivina a quién:"**.
+  Ahí está gratis, la ve todo el mundo —no solo el anfitrión— y convierte la
+  lista de arriba en algo que significa.
+- La línea suelta se reemplazó por un plegable con la misma forma que "Cómo se
+  juega", un punto por botón, cada uno diciendo **qué hace y qué consecuencia
+  tiene**: que el orden se congela al empezar y por qué; que al ceder la corona
+  se pierden los controles y solo el otro los puede devolver; que la ✕ saca
+  antes de empezar pero retira en partida.
+
+**Arranca abierto la primera vez** que a alguien le toca ser anfitrión y cerrado
+de ahí en más, con una marca en `localStorage`. Cerrado siempre no lo abre
+nadie, que es exactamente lo que pasaba con la línea anterior —estaba a la vista
+y aun así no se entendía—; abierto siempre le repite la explicación en cada
+partida al que ya la sabe. Se decide **al entrar y no en cada render**, o le
+volvería a abrir el plegable al que acaba de cerrarlo.
+
+El aviso de la corona también cambió: antes decía "dejás de ser el anfitrión",
+que no dice nada si no sabés qué hacía el anfitrión. Ahora **nombra lo que se
+pierde**, uno por uno.
+
 ## Ideas que quedaron afuera
 
 - Arrastrar para reordenar el círculo: en el celular se pelea con el scroll. Las
