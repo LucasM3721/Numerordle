@@ -7,6 +7,8 @@
  *   BASE=https://numerordle.lucasm3721.workers.dev node --experimental-websocket scripts/smoke.mjs
  */
 
+import { readFileSync } from 'node:fs';
+
 import { filasDePartida } from '../src/room.js';
 import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta } from '../src/game.js';
 import { TOPE_INTENTOS, fechaDeHoy, finDelDia, numeroDelDia } from '../src/reto.js';
@@ -19,6 +21,14 @@ import {
 } from '../public/racha.js';
 
 const BASE = process.env.BASE ?? 'http://127.0.0.1:8787';
+
+/**
+ * El origen de producción, escrito acá porque los `og:` del HTML son absolutos
+ * y tienen que serlo: los leen los robots de WhatsApp y Discord, que no tienen
+ * de dónde sacar el origen. No es `BASE`: contra el servidor local igual se
+ * verifica lo que va a salir publicado.
+ */
+const PRODUCCION = 'https://numerordle.lucasm3721.workers.dev';
 
 /**
  * Corriendo contra producción, la suite juega partidas enteras y **cada una
@@ -1087,11 +1097,59 @@ async function laMarcaDePrueba() {
   igual('con la clave, queda marcada', bien.prueba, true);
 }
 
+// ------------------------------------------- la puerta del desafío
+
+/**
+ * El camino que recorre alguien que recibe un resultado compartido: la tarjeta
+ * de preview, el link, y la ruta que entra derecho al desafío.
+ *
+ * Se prueba leyendo los archivos y no abriendo un navegador, que es lo mismo
+ * que hace la racha. No verifica que se vea lindo —para eso está mirarlo— sino
+ * que las cuatro puntas sigan atadas entre sí, porque cuando se desatan **no se
+ * rompe nada**: el link sigue abriendo, la tarjeta sigue saliendo, y lo único
+ * que pasa es que llega menos gente. Un fallo silencioso es justo el que
+ * conviene tener escrito.
+ */
+function laPuertaDelDesafio() {
+  console.log('\n— la puerta del desafío');
+
+  const raiz = new URL('../', import.meta.url);
+  const leer = (p) => readFileSync(new URL(p, raiz), 'utf8');
+
+  const html = leer('public/index.html');
+  const app = leer('public/app.js');
+
+  const meta = (prop) =>
+    html.match(new RegExp(`<meta property="${prop}" content="([^"]*)"`))?.[1] ?? null;
+
+  chequear('el HTML declara una tarjeta de preview', meta('og:title') !== null);
+  igual('y la imagen apunta a og.png', meta('og:image'), `${PRODUCCION}/og.png`);
+  igual('la tarjeta va ancha y no de estampilla',
+    html.match(/<meta name="twitter:card" content="([^"]*)"/)?.[1], 'summary_large_image');
+
+  // Las tres puntas del link: la que declara el HTML, la que sale de Compartir
+  // y la que el cliente sabe abrir. Si una se corre, el que llega cae en la
+  // portada y tiene que buscar el desafío entre cuatro tarjetas.
+  igual('el og:url apunta al desafío', meta('og:url'), `${PRODUCCION}/reto`);
+  chequear('lo que se comparte lleva al desafío', app.includes('${location.origin}/reto'));
+  chequear('y el cliente sabe abrir esa ruta', app.includes('EN_RETO = /^\\/reto'));
+
+  // El tamaño lo declaran los meta, así que una imagen de otra medida sale
+  // recortada en WhatsApp sin que nadie se entere. En un PNG el ancho y el alto
+  // están en los bytes 16 y 20, que es el principio del IHDR.
+  const png = readFileSync(new URL('public/og.png', raiz));
+  chequear('og.png es un PNG de verdad', png.subarray(1, 4).toString('latin1') === 'PNG');
+  igual('y mide lo que dicen los meta',
+    [png.readUInt32BE(16), png.readUInt32BE(20)],
+    [Number(meta('og:image:width')), Number(meta('og:image:height'))]);
+}
+
 // ------------------------------------------------------------------ main
 
 console.log(`Probando contra ${BASE}`);
 try {
   formaDelRegistro();
+  laPuertaDelDesafio();
   await numeroDelDiaAndaBien();
   laRacha();
   await desafioDelDia();

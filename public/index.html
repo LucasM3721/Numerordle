@@ -6,6 +6,24 @@
 <title>Fijos y Picas</title>
 <meta name="description" content="El juego de adivinar el número de 4 dígitos, para jugar con amigos desde un link." />
 <meta name="theme-color" content="#0a0a0b" />
+<!-- La tarjeta que se ve al pegar el link en WhatsApp o Discord. Es lo único
+     que decide si el que recibe un resultado compartido lo abre o lo pasa de
+     largo, así que el texto habla del desafío y no de crear salas: el link que
+     circula es el del desafío.
+     La URL va absoluta y apuntando a producción a propósito — la leen los
+     robots de esas apps, que no tienen ni idea de dónde salió el HTML. -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Fijos y Picas" />
+<meta property="og:title" content="Fijos y Picas · el desafío del día" />
+<meta property="og:description" content="Un número de 4 dígitos, el mismo para todos, 12 intentos. Cambia a la medianoche." />
+<meta property="og:url" content="https://numerordle.lucasm3721.workers.dev/reto" />
+<meta property="og:image" content="https://numerordle.lucasm3721.workers.dev/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Fijos y Picas: tres filas de casilleros que terminan en cuatro verdes." />
+<meta property="og:locale" content="es_AR" />
+<!-- Sin esto la imagen sale de estampilla en vez de ancha. -->
+<meta name="twitter:card" content="summary_large_image" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>" />
 <!-- El título es lo primero que se ve, así que la fuente se pide junto con el
      CSS y no cuando el CSS la nombra: si no, la portada se dibuja con la del
@@ -318,6 +336,27 @@
       </div>
       <button id="btn-reto-salir" class="btn ghost small">Salir</button>
     </header>
+
+    <!-- Las mismas reglas de la portada, contadas para el que juega solo: sin
+         círculo y sin rival. Están acá porque al desafío se puede llegar
+         derecho por `/reto`, que es el link que circula, y entonces la
+         explicación de la portada no se vio nunca. `abrirReto` lo abre solo la
+         primera vez —cuando todavía no hay ningún día anotado— y de ahí en
+         adelante queda cerrado. -->
+    <details class="card rules" id="reto-reglas">
+      <summary>Cómo se juega</summary>
+      <ol>
+        <li>Hay un número secreto de <b>4 dígitos del 1 al 9</b>, sin repetir ninguno. Es el mismo para todo el mundo y cambia a la medianoche.</li>
+        <li>Arriesgás un número (también 4 dígitos sin repetir) y te responden dos cifras:
+          <ul>
+            <li><b class="fijo">Fijos</b> — dígitos que acertaste <i>en su posición</i>.</li>
+            <li><b class="pica">Picas</b> — dígitos que están en el número, pero <i>en otro lugar</i>.</li>
+          </ul>
+          Nunca se dice <i>cuáles</i>: solo cuántos.
+        </li>
+        <li>Tenés <b><span id="reto-reglas-tope">12</span> intentos</b>. Si se te acaban podés seguir buscándolo, pero ya sin ganarlo.</li>
+      </ol>
+    </details>
 
     <div class="card">
       <!-- Vacío: el texto lo pone el cliente, porque dice una de dos cosas

@@ -1200,6 +1200,16 @@ $('btn-end').onclick = () => {
  */
 let reto = null;
 
+/**
+ * La ruta propia del desafío. Es a donde apunta el texto que se comparte, y es
+ * la única del cliente además de `/r/CODIGO`.
+ *
+ * Se escribe una sola vez porque se pregunta dos: al arrancar, para entrar
+ * derecho, y al abrir el desafío desde la portada, para no apilar dos veces la
+ * misma entrada en el historial del navegador.
+ */
+const EN_RETO = /^\/reto\/?$/;
+
 const retoPad = new DigitPad($('reto-pad'), () => arriesgarReto());
 
 /**
@@ -1226,17 +1236,31 @@ async function pedirReto(metodo = 'GET', cuerpo = null, fecha = null) {
   }
 }
 
-async function abrirReto() {
+/**
+ * `porLaRuta` distingue las dos formas de llegar, y lo único que cambia es
+ * cuánto dura el aviso si no se puede abrir. Al que apretó el botón el error se
+ * le vence a los cinco segundos, como todos; al que llegó por `/reto` no lo
+ * disparó ningún gesto suyo —apareció con la página— y no sabemos cuándo lo va
+ * a mirar, así que se queda. Es la misma regla que el link de una sala.
+ */
+async function abrirReto(porLaRuta = false) {
   flash('reto-error', '');
   $('btn-reto').disabled = true;
   const { ok, cuerpo } = await pedirReto();
   $('btn-reto').disabled = false;
   // El aviso va en el bloque del botón que se apretó, no en un cartel al pie:
   // si falta la clave en el servidor, el desafío contesta que no está
-  // disponible y el resto del juego sigue andando.
-  if (!ok) return flash('reto-error', cuerpo.error ?? 'No se pudo abrir el desafío.');
+  // disponible y el resto del juego sigue andando. Al que llegó por `/reto` lo
+  // deja en la portada con el motivo escrito, que es a dónde puede volver.
+  if (!ok) return flash('reto-error', cuerpo.error ?? 'No se pudo abrir el desafío.', porLaRuta);
 
   reto = cuerpo;
+  // Una sola vez, al abrir: en cada render pelearía con el que las cerró a
+  // mano. Sin ningún día anotado es la primera vez que juega el desafío —y por
+  // `/reto` puede no haber pasado nunca por la portada, que es donde están las
+  // reglas del juego.
+  $('reto-reglas').open = Object.keys(historial.leer()).length === 0;
+  if (!EN_RETO.test(location.pathname)) history.pushState({}, '', '/reto');
   show('screen-home', false);
   show('screen-reto', true);
   renderReto();
@@ -1284,6 +1308,10 @@ function renderReto() {
   // limpio sin que haya que borrar nada.
   marks.use('reto', reto.fecha);
   $('reto-fecha').textContent = reto.fecha;
+  // El tope lo manda el servidor. Se escribe acá en vez de dejarlo fijo en el
+  // HTML porque es justo el número que se va a mover cuando se juegue lo
+  // suficiente para saber si 12 está bien puesto.
+  $('reto-reglas-tope').textContent = reto.tope;
   // Quién manda es el servidor: si la clave no era la buena, `reto.prueba` es
   // falso y la partida cuenta. Un modo invisible es cómo uno termina creyendo
   // que estaba probando cuando no.
@@ -1499,8 +1527,12 @@ function textoParaCompartir() {
     return '🟩'.repeat(e.fijos) + '🟨'.repeat(e.picas) + '⬜'.repeat(vacios);
   });
 
+  // El link va al desafío y no a la portada. Es el momento de más intención que
+  // hay —el que lo recibe acaba de ver un resultado— y desde la portada el
+  // desafío es la cuarta tarjeta: hay que buscarlo entre cosas que piden un
+  // nombre, un modo y una sala. Un paso de más ahí cuesta caro.
   return `Fijos y Picas · ${dia} de ${MESES[mes - 1]}\n${titulo}\n\n`
-    + `${filas.join('\n')}\n\n${location.origin}`;
+    + `${filas.join('\n')}\n\n${location.origin}/reto`;
 }
 
 /** Después del tope: seguir buscándolo, o que te lo revelen. */
@@ -1550,11 +1582,16 @@ $('btn-reto-compartir').onclick = async () => {
   }
 };
 
-$('btn-reto').onclick = abrirReto;
+// Envuelto y no `onclick = abrirReto`: el manejador recibe el evento como
+// primer argumento, y un MouseEvent es tan verdadero como un `true`.
+$('btn-reto').onclick = () => abrirReto();
 $('btn-reto-guess').onclick = arriesgarReto;
 $('btn-reto-seguir').onclick = () => decidirReto(true);
 $('btn-reto-ver').onclick = () => decidirReto(false);
 $('btn-reto-salir').onclick = () => {
+  // Igual que al salir de una sala: la URL tiene que decir dónde estás, o
+  // recargar te devuelve al desafío que acabás de dejar.
+  history.pushState({}, '', '/');
   show('screen-reto', false);
   show('screen-home', true);
 };
@@ -1569,7 +1606,17 @@ renderRacha();
 // link mal copiado tiene que caer acá adentro para poder explicarlo, y no
 // pasar de largo hacia una pantalla de inicio que no dice nada.
 const match = location.pathname.match(/^\/r\/([A-Za-z0-9]{1,12})\/?$/);
-if (match) {
+
+// `/reto` entra derecho al desafío. Es el link que sale de Compartir, así que
+// es por donde llega el que nunca jugó: la portada, de por medio, le pide un
+// nombre y le ofrece crear una sala antes de dejarlo hacer lo que vino a hacer.
+//
+// No hace falta nada del lado del Worker: `not_found_handling` es
+// `single-page-application`, así que cualquier ruta que no sea `/api/*` ya
+// sirve este mismo HTML. Lo mismo que hace andar a `/r/ABC12`.
+if (EN_RETO.test(location.pathname)) {
+  abrirReto(true);
+} else if (match) {
   const code = match[1].toUpperCase();
   if (!CODIGO_RE.test(code)) {
     history.replaceState({}, '', '/');

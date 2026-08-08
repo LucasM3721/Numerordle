@@ -997,11 +997,89 @@ SELECT count() FROM numerordle_partidas WHERE blob1 = 'reto' AND blob3 = '2026-0
 El uno contra uno no puede dar ese número sin identificar a nadie. Es otra razón
 para que el esfuerzo vaya al desafío y no a las salas.
 
+### La puerta: que el link compartido termine en alguien jugando
+
+Compartir estaba hecho, pero el link no llevaba a ninguna parte útil. El texto
+terminaba en `location.origin`, o sea la portada, y desde ahí el desafío es la
+**cuarta** tarjeta: antes hay que pasar por las reglas, por un campo que pide un
+nombre, por el modo de juego con "Crear sala" de botón principal, y por la
+máquina. Nada de eso hace falta para jugar el desafío, y el que llega acaba de
+ver el resultado de otro: es el momento de más intención que va a haber.
+
+Son tres cosas atadas entre sí, y sueltas no sirve ninguna:
+
+- **`/reto` entra derecho al desafío.** No necesitó nada del Worker:
+  `not_found_handling` ya es `single-page-application`, así que cualquier ruta
+  que no sea `/api/*` sirve el mismo HTML. Es lo mismo que hace andar a
+  `/r/ABC12`.
+- **El texto que se comparte apunta ahí** y no a la portada.
+- **La tarjeta de preview** (`og:`), sin la cual el link sale pelado en WhatsApp
+  y en Discord, que es donde circula.
+
+La ruta se comporta como la de una sala: se apila en el historial al abrir el
+desafío y se vuelve a `/` al salir, así recargar no te devuelve a donde ya no
+estás. Y si el desafío no se puede abrir —falta `RETO_CLAVE`, o no hay
+conexión— el aviso queda en la portada **sin vencerse**, porque al que llegó por
+el link no lo disparó ningún gesto suyo y no sabemos cuándo lo va a mirar. Es la
+misma regla que ya tenía el link de una sala; el que aprieta el botón sigue
+teniendo el aviso de cinco segundos.
+
+### Las reglas, adentro del desafío
+
+Estaban solo en la portada, en un plegable. Con `/reto` hay un camino entero que
+no pasa por ahí, así que el que llega por un link compartido podía no leer nunca
+qué es un fijo y qué es una pica.
+
+La copia de la pantalla del desafío está contada para el que juega solo: sin
+círculo y sin rival, que es la mitad de la explicación de la portada y no aplica.
+El tope lo escribe el cliente desde `reto.tope` en vez de quedar fijo en el HTML,
+porque es justo el número que se va a mover si se decide que 12 no está bien
+puesto.
+
+**Se abre sola una sola vez**, cuando el historial de la racha está vacío —o
+sea, la primera vez que esa persona juega el desafío—. Y se decide al abrir la
+pantalla, no en cada render: atado al render le volvería a abrir el plegable al
+que lo cerró, en cada intento.
+
+### El segundo binario del repo
+
+`public/og.png`, 1200×630, 17 KB. Rompe la regla de que el único binario es la
+fuente, y se rompe a propósito: **WhatsApp no renderiza SVG en los previews**,
+así que sin un PNG no hay tarjeta, y sin tarjeta el link que circula es una URL
+pelada.
+
+Cómo se hizo, que es lo que no se deduce del archivo:
+
+- Se dibujó como SVG con los tokens de `styles.css` y se rasterizó con `sharp`,
+  que viene de arrastre con wrangler. **No es una dependencia del proyecto**: se
+  corrió una vez, a mano, y lo que entró al repo es el PNG.
+- **La fuente es Impact y no Anton.** El rasterizador no toma una fuente
+  embebida como data URI —probado: cae en una serif— y Impact es justo el primer
+  fallback que ya declara `--fuente-titulo`.
+- Los casilleros usan el verde y el amarillo **de las marcas del cuaderno**, que
+  son los que coinciden con los 🟩 y 🟨 del texto que se comparte. Quien recibe
+  el mensaje ve la misma cosa dos veces.
+
+Las medidas van declaradas en `og:image:width` y `og:image:height`, y la suite
+compara esos dos números contra el encabezado del PNG. Es la única parte de esto
+que se rompe **en silencio**: una imagen de otra medida sale recortada y el link
+sigue abriendo igual.
+
+Y como el nombre no lleva hash, tampoco lleva `Cache-Control: immutable`, por el
+mismo motivo que la fuente: primero el nombre, después la cabecera.
+
 ### Lo que se miró y no hacía falta
 
 La accesibilidad de las marcas por dígito. Se revisó pensando que dependían del
 color, y no: cada estado tiene además forma propia —tachado, subrayado, círculo—
 y todas llevan `aria-label`. No hay nada que arreglar ahí.
+
+El azul de las picas en las reglas contra el amarillo de las picas en el
+cuaderno. Parece una inconsistencia y no lo es: el azul (`--pica`) es el del
+contador que **da el servidor** —la píldora "2 picas" y el día `tarde` de la
+racha—, y el amarillo es el de **tu propia marca** sobre un dígito. Son dos
+cosas distintas y ya convivían en la pantalla del desafío antes de que las
+reglas la nombraran.
 
 ## Ideas que quedaron afuera
 

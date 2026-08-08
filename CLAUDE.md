@@ -1,10 +1,12 @@
 # Fijos y Picas — guía del repo
 
-> **Dónde quedamos** (7 de agosto de 2026)
+> **Dónde quedamos** (8 de agosto de 2026)
 >
 > El juego está terminado, en vivo y **con todo mergeado y desplegado**. El
 > deploy automático funciona de punta a punta: cada push a `main` corre
-> *Verificar* y *Desplegar*, y `npm test` son 147 verificaciones que pasan.
+> *Verificar* y *Desplegar*, y `npm test` son 176 verificaciones que pasan. (El
+> número se mueve un poco entre corridas: el desafío que juega la suite tiene
+> cuatro verificaciones que solo corren si no lo saca en doce.)
 >
 > Esta guía se lee sola. Lo que no está acá está en
 > [docs/DECISIONES.md](docs/DECISIONES.md), que es donde vive el **porqué** de
@@ -24,6 +26,12 @@
 > - **Compartir el resultado**: emoji por intento, sin el número ni lo que se
 >   tiró. Es lo único del juego que se pasa sin coordinar con nadie, y por eso es
 >   la mejor herramienta que hay para el cuello de botella real (ver abajo).
+> - **La puerta de ese link**: el texto compartido apunta a **`/reto`**, que
+>   entra derecho al desafío sin pasar por la portada, y el HTML declara una
+>   **tarjeta de preview** (`og:`) con `public/og.png` para que en WhatsApp y en
+>   Discord no salga una URL pelada. Las reglas del juego están además **adentro
+>   del desafío**, porque por ese camino la portada no se ve nunca. Las tres
+>   cosas van juntas: sueltas no sirve ninguna.
 > - **La racha del desafío**: cuántos días seguidos jugaste y cómo te fue en cada
 >   uno, en la portada y en la pantalla final. Compartir trae gente nueva; esto
 >   es la otra mitad, que es que vuelvan. **Vive entera en `localStorage` y no
@@ -115,12 +123,13 @@
 >    el tope de 12 del desafío está bien puesto.
 >
 > **Cómo se verifica desde acá.** `wrangler dev` **va y viene** en la máquina de
-> Lucas: el 5 de agosto de 2026 arrancó a la mañana y corrió la suite entera
-> local, y de ahí en adelante no arrancó más —"access violation in the runtime",
-> un Visual C++ Redistributable viejo—. Tratalo como que puede no estar: **la
-> verificación real es la del pull request** y no hay que perder la tarde
-> persiguiéndolo. Lo que sí anda siempre, sin Worker, es `npm run check`,
-> `npm run bot` y las pruebas puras de la suite.
+> Lucas: anduvo el 5 de agosto de 2026, después estuvo días sin arrancar
+> —"access violation in the runtime", un Visual C++ Redistributable viejo— y el
+> 8 volvió a arrancar sin que se tocara nada. Probalo, pero tratalo como que
+> puede no estar: **la verificación real es la del pull request** y no hay que
+> perder la tarde persiguiéndolo. Lo que sí anda siempre, sin Worker, es
+> `npm run check`, `npm run bot`, `npm run estatico` y las pruebas puras de la
+> suite.
 >
 > Y algo que quedó demostrado el mismo día: **un CI en verde sobre una carrera
 > no prueba que no haya bug.** El desafío mataba al Worker al contestar 409 sin
@@ -202,8 +211,9 @@ Para volver atrás un deploy: `npx wrangler rollback`.
 | `src/index.js` | Worker de entrada: crea salas, enruta el websocket |
 | `src/bot.js` | la cabeza de la máquina: su cuaderno y los tres niveles |
 | `src/reto.js` | el desafío del día: el número derivado de la fecha y su Durable Object |
-| `public/` | cliente completo: un HTML, un CSS, dos JS y una fuente. Sin build ni dependencias |
+| `public/` | cliente completo: un HTML, un CSS, dos JS, una fuente y la tarjeta de preview. Sin build ni dependencias |
 | `public/racha.js` | la cuenta de la racha del desafío. Puro: no toca el DOM ni `localStorage`, y por eso la suite lo prueba sin navegador |
+| `public/og.png` | la tarjeta que se ve al pegar el link. 1200×630, y las medidas están declaradas en el HTML: la suite compara las dos |
 
 ## Invariantes que no hay que romper
 
@@ -302,10 +312,13 @@ Detalles que ahorran tiempo:
   consulta previa que diga si una sala existe, y no hay que agregarla: la hubo
   (`/exists`) y se sacó porque servía para barrer códigos a ver cuáles había.
 - Sin dependencias en el cliente y sin paso de build. Si algo necesita un bundler,
-  probablemente no haga falta. El único binario del repo es
+  probablemente no haga falta. Los dos binarios del repo son
   `public/fuentes/anton-latin.woff2`, que se baja de Google Fonts y se commitea
   tal cual —no se recorta ni se genera acá—, con su `anton-OFL.txt` al lado
-  porque la licencia lo pide.
+  porque la licencia lo pide; y `public/og.png`, la tarjeta de preview, que es
+  PNG porque WhatsApp no muestra SVG. Cómo se generó está en DECISIONES, en "El
+  segundo binario del repo": se rasterizó **a mano y una sola vez**, y nada de
+  eso corre en el deploy.
 - **La fuente display va en un solo lugar: el `h1` de la portada.** En los `h2` y
   en los resúmenes de los plegables cansa, porque ahí se lee y no se mira. Los
   números —el pad, la fila de intentos, tu número, fijos y picas— van con
