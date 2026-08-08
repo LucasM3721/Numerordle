@@ -5,3 +5,7 @@
 # escribirlo es barato y un .woff2 corrupto se rompe callado: el navegador
 # vuelve a la del sistema sin decir nada.
 *.woff2 binary
+
+# Lo mismo para la tarjeta de preview, y por el mismo motivo: un og.png roto no
+# rompe nada visible acá, solo hace que el link salga pelado en WhatsApp.
+*.png binary

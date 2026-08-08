@@ -33,7 +33,8 @@ pendientes no se filtren y que fijos y picas den los números exactos.
 ## Subirlo
 
 Está publicado en **https://numerordle.lucasm3721.workers.dev** — ese es el link
-que pasás; el de una sala concreta es `.../r/K7Q4Z`.
+que pasás; el de una sala concreta es `.../r/K7Q4Z` y el del desafío del día,
+que se juega solo y sin coordinar con nadie, es `.../reto`.
 
 **Cada push a `main` despliega solo**, siempre que pasen las verificaciones
 (`.github/workflows/deploy.yml`). Para trabajar sin publicar, usá una rama y abrí
@@ -63,6 +64,23 @@ revoca desde el mismo panel de Cloudflare y se crea otro.
 
 Si el deploy se queja de no poder resolver la cuenta, agregá un segundo secreto
 `CLOUDFLARE_ACCOUNT_ID` (lo ves con `npx wrangler whoami`).
+
+### La clave del desafío del día (obligatoria para que el desafío exista)
+
+El número del día se deriva de la fecha con un hash **con clave**, y esa clave
+es un secreto del Worker:
+
+```bash
+npx wrangler secret put RETO_CLAVE
+```
+
+Poné cualquier cosa larga y difícil de adivinar. Tiene que ser con clave y no un
+`SHA-256(fecha)` a secas: sin clave, cualquiera con la fecha se calcula el
+número del día en su casa.
+
+**No se cambia después.** Cambiarla cambia todos los números futuros, y en medio
+de un día deja a alguien adivinando otro número sin enterarse. Si falta, el
+desafío contesta 503 con un aviso y el resto del juego sigue andando.
 
 ### Avisos cuando se frena la creación de salas (opcional)
 
