@@ -4,7 +4,7 @@
 >
 > El juego está terminado, en vivo y **con todo mergeado y desplegado**. El
 > deploy automático funciona de punta a punta: cada push a `main` corre
-> *Verificar* y *Desplegar*, y `npm test` son 176 verificaciones que pasan. (El
+> *Verificar* y *Desplegar*, y `npm test` son 196 verificaciones que pasan. (El
 > número se mueve un poco entre corridas: el desafío que juega la suite tiene
 > cuatro verificaciones que solo corren si no lo saca en doce.)
 >
@@ -41,9 +41,12 @@
 > - **El registro anota qué era cada jugador** —persona o máquina, y de qué
 >   nivel— y se guarda noventa días en Analytics Engine. Los logs solos duran
 >   tres.
-> - **`npm run datos`** lee ese dataset y aplica las reglas de censura. No es un
->   `SELECT` con formato lindo: sin separar lo completo de lo truncado, el
->   promedio sale más bajo que la verdad.
+> - **`npm run datos`** lee ese dataset, **saca las filas de prueba** y aplica
+>   las reglas de censura. No es un `SELECT` con formato lindo: sin separar lo
+>   completo de lo truncado, el promedio sale más bajo que la verdad. Y **nombra
+>   lo que saca**, que no es cosmético: la primera corrida contra los datos de
+>   verdad delató una regla de exclusión demasiado ancha, que se estaba llevando
+>   puesta una fila de alguien. Con un total ya limpio no se habría notado.
 > - **La marca de prueba** (`?prueba=<clave>`), para que probar en producción no
 >   ensucie la calibración.
 > - **La revancha vuelve a la sala de espera**, no al reparto. Es lo único que
@@ -78,6 +81,16 @@
 >   más **el silencio es la señal buena**: solo escribe a Discord si se pasa el
 >   50 % del cupo diario, si alguien pide más de 10 salas por minuto, o si la
 >   consulta falla.
+> - **Hay dos tokens de analytics vivos, y no tienen el mismo valor.** El
+>   secreto del Worker `CF_ANALYTICS_TOKEN` tiene el **viejo**, que es el que usa
+>   el aviso de cupo; la variable de entorno de la máquina de Lucas, que se llama
+>   igual, tiene uno **nuevo** —el panel lo lista como `CF_ANALYTICS_TOKEN_NEW`—
+>   que es el que usa `npm run datos`. Pasó porque el valor viejo se perdió: ni
+>   el panel ni `wrangler secret list` devuelven un secreto ya cargado. Los dos
+>   solo pueden leer un contador de requests, así que no urge. **Si algún día se
+>   consolida**, el orden es cargar el nuevo en el Worker —redirigiendo desde un
+>   archivo, nunca por tubería—, comprobar que el cron sigue andando, y **recién
+>   ahí** revocar el viejo. Al revés deja el aviso de cupo mudo.
 > - **El límite de creación de salas está en el código** (API de Rate Limiting
 >   de Workers, en `wrangler.jsonc`) y no en el panel, así el cliente puede
 >   mostrar un aviso decente en vez de una página de error de Cloudflare.
@@ -92,19 +105,32 @@
 >    partidas reales. **No queda nada que programar: falta que juegue gente.**
 >
 >    El lado del bot ya está medido y no depende de producción: `npm run bot` da
->    15,9 / 12,0 / 8,0 de media. Del lado humano, al 7 de agosto hay **17
->    observaciones completas** con mediana 6 — pocas, y de poca gente. `npm run
->    datos` lo dice solo y avisa cuando la muestra no alcanza.
+>    15,9 / 12,0 / 8,0 de media.
 >
->    **Un dato que ya cambió una hipótesis:** el 6 de agosto jugaron 7 personas
->    el desafío, con conteos de 5, 6, 7, 10 y 10, y una que no lo sacó en doce.
->    O sea que la gente está bastante más repartida que Lucas, que anda por 6
->    siempre. La sospecha de que a `dificil` no se le puede perder vale para él,
->    no necesariamente para el resto.
+>    **Del lado humano, medido el 8 de agosto con el filtro ya arreglado** (46
+>    filas crudas, 5 afuera: 2 marcadas y 3 a mano):
 >
->    **Ojo con una fila**: el desafío de 30 intentos del 6 de agosto fue una
->    prueba de Lucas, hecha antes de que existiera la marca. Hay que excluirla a
->    mano; de ahí en adelante las pruebas se marcan solas.
+>    ```
+>    personas, solo observaciones completas: n=26  mediana 6  media 6.8  rango 5–17
+>      de partidas de sala: n=15  mediana 6  media 6.7  rango 5–17
+>      de desafíos:         n=11  mediana 6  media 7.1  rango 5–10
+>    ```
+>
+>    **Las dos fuentes coinciden en mediana 6**, y el desafío da la media más
+>    alta. Eso es exactamente lo que predecía "El desafío del día" en DECISIONES:
+>    una partida de sala solo deja observación completa si ganaste, y ganarle al
+>    bot pide ser rápido; el desafío no tiene ese filtro. Que la predicción se
+>    cumpla es la señal de que el marco está bien puesto — y de que **no hay que
+>    ponderarlas a ojo**: si difirieran, el desacuerdo diría dónde mirar.
+>
+>    Siguen siendo pocas: `npm run datos` avisa solo por debajo de 30. Pero la
+>    forma ya se ve, y confirma la hipótesis que había: **la gente está más
+>    repartida que Lucas**, que anda por 6 siempre. El rango va de 5 a 17.
+>
+>    **Las filas que hay que sacar a mano ya no se sacan a mano**: están en
+>    `scripts/filas-de-prueba.mjs` con su fecha y qué las delata, y la suite las
+>    prueba. Si esa lista crece, el problema no es la lista: es que se está
+>    probando sin marca.
 >
 >    Dos cosas para que lo que se junte sirva. **El desafío del día es la fuente
 >    limpia**: sin rival no hay partida que corte antes de tiempo, así que el
@@ -113,10 +139,10 @@
 >    está en "La trampa al leer los intentos", en DECISIONES, y conviene leerlo
 >    antes de sacar cualquier cuenta.
 >
->    Para leer los datos, `npm run datos` aplica solo las reglas de censura y
->    compara contra el bot; el mapa de columnas está en "Qué es cada columna".
->    Ojo con una: se agrupa por `blob3` y no por `timestamp`, porque un desafío
->    del 5 se puede cerrar el 6.
+>    Para leer los datos, `npm run datos` saca las de prueba, aplica las reglas
+>    de censura y compara contra el bot; el mapa de columnas está en "Qué es cada
+>    columna". Ojo con una: se agrupa por `blob3` y no por `timestamp`, porque un
+>    desafío del 5 se puede cerrar el 6.
 >
 >    **Antes de tocar los niveles, leé "Los niveles, cuando haya datos"** en
 >    DECISIONES. Están medidos el techo del bot (5,17, igual que un resolvedor
@@ -130,11 +156,11 @@
 > **Cómo se verifica desde acá.** `wrangler dev` **va y viene** en la máquina de
 > Lucas: anduvo el 5 de agosto de 2026, después estuvo días sin arrancar
 > —"access violation in the runtime", un Visual C++ Redistributable viejo— y el
-> 8 volvió a arrancar sin que se tocara nada. Probalo, pero tratalo como que
-> puede no estar: **la verificación real es la del pull request** y no hay que
-> perder la tarde persiguiéndolo. Lo que sí anda siempre, sin Worker, es
-> `npm run check`, `npm run bot`, `npm run estatico` y las pruebas puras de la
-> suite.
+> 8 volvió a arrancar sin que se tocara nada, y aguantó toda la sesión. Probalo,
+> pero tratalo como que puede no estar: **la verificación real es la del pull
+> request** y no hay que perder la tarde persiguiéndolo. Lo que sí anda siempre,
+> sin Worker, es `npm run check`, `npm run bot`, `npm run estatico` y las
+> pruebas puras de la suite.
 >
 > Y algo que quedó demostrado el mismo día: **un CI en verde sobre una carrera
 > no prueba que no haya bug.** El desafío mataba al Worker al contestar 409 sin
