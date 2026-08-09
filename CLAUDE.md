@@ -153,6 +153,12 @@
 >    tolerancia, si el modo simultáneo sirve para jugar a lo largo del día, y si
 >    el tope de 12 del desafío está bien puesto.
 >
+> **Lo primero de cada sesión: `gh issue list`.** Ahí anota Lucas lo que se le
+> ocurre entre sesión y sesión, desde la computadora o el celular. La
+> conversación no viaja entre dispositivos y los issues sí, así que **lo que
+> esté abierto ahí es parte del pendiente**, tanto como esta lista. Al terminar
+> algo, cerrar el issue con `gh issue close <n>` y decir en qué commit quedó.
+>
 > **Cómo se verifica desde acá.** `wrangler dev` **va y viene** en la máquina de
 > Lucas: anduvo el 5 de agosto de 2026, después estuvo días sin arrancar
 > —"access violation in the runtime", un Visual C++ Redistributable viejo— y el
