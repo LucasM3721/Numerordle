@@ -386,7 +386,7 @@ Así que la regla para juntar datos es corta:
 
 - **Si perdés, seguí jugando.** Ahí tu número llega entero, sea cual sea el
   nivel del rival. Es lo único que hace falta pedirle a quien juegue.
-- Si no, que sea contra `facil`: necesita 15,9 intentos de media, así que la
+- Si no, que sea contra `facil`: necesita 15,3 intentos de media, así que la
   persona gana casi siempre y el truncamiento casi no aparece. Contra `dificil`,
   que necesita 8, se pierde alrededor de la mitad.
 
@@ -400,6 +400,51 @@ solo jugador, rápido —mediana de 6, cuando la referencia de alguien que juega
 bien es de 6 a 10— y casi siempre contra `dificil`. Sirvió para descubrir la
 censura, no para calibrar nada.
 
+## Nadie repite un número
+
+**Un número que ya tiraste no se puede volver a tirar**, ni la persona ni la
+máquina. Es una regla del juego y no una comodidad de la interfaz: la respuesta
+que va a dar ya está en el tablero, así que un intento repetido no puede
+enseñarte nada. Gastar un turno en él solo puede ser un descuido.
+
+Salió de mirar a la máquina. Con el azar de verdad, sobre 5000 partidas por
+nivel, **el 43 % de las de `normal` y el 67 % de las de `facil` tenían al menos
+un intento repetido** —hasta diecinueve en una sola partida—. La causa no era el
+olvido, que es lo que parecía: era que `cierraConLasNotas`, el único filtro que
+el bot pasa antes de tirar, **no puede rechazar un repetido**. Un intento
+repetido da exactamente los mismos fijos y picas que la vez anterior, así que
+nunca contradice lo anotado y siempre "cierra". El filtro no fallaba; la
+pregunta no se hacía.
+
+Corregirlo bajó las tres medias sin tocar ningún nivel: 15,9 → 15,3, 12,0 → 11,7
+y 8,0 → 8,0. Es puro desperdicio que se dejó de gastar. De paso mejoró la cola:
+las partidas de `facil` que llegaban al tope de 40 pasaron de 22 a 7 sobre
+20.000.
+
+Y una vez visto ahí, la pregunta se dio vuelta sola: si no tiene sentido que lo
+haga la máquina, tampoco tiene sentido que se pueda. Así que la regla vale para
+todos.
+
+**Se rechaza, no se acepta con aviso.** Aceptarlo sería cobrarle un turno a
+alguien por un descuido, y el turno es lo único que el juego cobra. El mensaje
+nombra lo que ese número ya había dado —"Ese número ya lo tiraste y dio 1 fijo y
+2 picas"— porque un rechazo sin motivo se lee como que algo se rompió, y porque
+esa información ya la tiene: está en su tablero, dos renglones más arriba.
+
+Tres detalles que no son obvios:
+
+- **Se mira solo el historial propio.** En una sala cada uno le adivina a otro,
+  así que el mismo número en dos manos no es una repetición: lo que Ana ya sabe
+  no lo sabe Beto.
+- **La regla está escrita de los dos lados**, como `CODE_LEN` y `CODIGO_RE`. El
+  servidor la hace cumplir —es el que manda— y el cliente avisa antes de mandar
+  nada, para que el aviso salga en el bloque del botón y sin esperar la vuelta.
+- **La máquina no la esquiva por casualidad.** Después de gastar su paciencia
+  (`verifica`) sigue pensando hasta treinta veces más, y si aun así solo se le
+  ocurren repetidos, juega uno cualquiera de los que le quedan sin tirar. Es la
+  única parte del bot que no sale de su cuaderno, y está para que la regla no
+  dependa de la suerte.
+
 ## Los niveles, cuando haya datos
 
 **Nada de esto está decidido.** Son las mediciones que van a hacer falta el día
@@ -411,11 +456,16 @@ quedaron en el repo pero cuyos números están acá.
 
 | | media | mediana | máx (jugando sola) |
 | --- | --- | --- | --- |
-| `facil` | 15,9 | 15 | ~40 |
-| `normal` | 12,0 | 12 | ~31 |
+| `facil` | 15,3 | 15 | ~40 |
+| `normal` | 11,7 | 11 | ~32 |
 | `dificil` | 8,0 | 8 | ~25 |
 | *todo destrabado, olvido 0* | **5,17** | 5 | 8 |
 | *resolvedor por descarte* | 5,17 | 5 | 8 |
+
+Las tres primeras filas bajaron el 12 de agosto de 2026 —eran 15,9 / 12,0 / 8,0—
+**sin que se tocara ningún nivel**: es lo que se dejó de gastar el día que dejó
+de poder repetir intentos (ver "Nadie repite un número"). Vale como aviso de que
+estos números miden la implementación y no solo los knobs.
 
 Que las dos últimas filas den igual dice algo del bot: **no imita a un
 resolvedor, es uno con anteojeras**. Sacándole el olvido y dejándolo imaginar

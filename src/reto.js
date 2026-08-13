@@ -7,7 +7,7 @@
  * El porqué de cada decisión está en "El desafío del día", en docs/DECISIONES.md.
  */
 
-import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta, scoreGuess } from './game.js';
+import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta, scoreGuess, textoMarcador } from './game.js';
 
 export const TOPE_INTENTOS = 12;
 
@@ -15,7 +15,7 @@ export const TOPE_INTENTOS = 12;
  * Tope de verdad, para el que eligió seguir después de los doce. No es una
  * regla del juego: es para que el estado no crezca sin freno si alguien tira
  * números a la bartola. Treinta deja terminar hasta al que va muy perdido —el
- * nivel `facil` del bot promedia 15,9— sin dejar la puerta abierta.
+ * nivel `facil` del bot promedia 15,3— sin dejar la puerta abierta.
  */
 export const TOPE_DURO = 30;
 
@@ -211,6 +211,16 @@ export class RetoDelDia {
     }
     if (!isValidSecret(guess)) {
       return json({ error: 'Tienen que ser 4 dígitos del 1 al 9, sin repetir.' }, 400);
+    }
+
+    // Un número no se puede tirar dos veces, igual que en una sala. Acá el
+    // historial está entero —no se recorta— así que el rechazo es exacto.
+    // Ver "Nadie repite un número" en docs/DECISIONES.md.
+    const repetido = e.intentos.find((x) => x.guess === guess);
+    if (repetido) {
+      return json({
+        error: `Ese número ya lo tiraste y dio ${textoMarcador(repetido.fijos, repetido.picas)}.`,
+      }, 400);
     }
 
     const { fijos, picas } = scoreGuess(guess, numero);

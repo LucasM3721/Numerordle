@@ -692,6 +692,25 @@ function submitSecret() {
   send({ t: 'setSecret', secret: value });
 }
 
+/**
+ * "1 fijo y 2 picas". Es la misma frase que arma el servidor con
+ * `textoMarcador`, escrita de nuevo porque el cliente no importa nada de `src/`.
+ */
+function textoMarcador(fijos, picas) {
+  return `${fijos} ${fijos === 1 ? 'fijo' : 'fijos'} y ${picas} ${picas === 1 ? 'pica' : 'picas'}`;
+}
+
+/**
+ * El aviso de un número ya jugado. Lo rechaza el servidor igual, pero avisar
+ * acá lo pone en el bloque del botón y sin esperar la vuelta, y de paso puede
+ * decir qué había dado: la respuesta ya está en el tablero, y nombrarla es la
+ * diferencia entre "no te lo tomo" y "mirá que esto ya lo sabés".
+ */
+function avisoRepetido(intentos, valor) {
+  const ya = intentos.find((e) => !e.skipped && e.guess === valor);
+  return ya ? `Ese número ya lo tiraste y dio ${textoMarcador(ya.fijos, ya.picas)}.` : '';
+}
+
 function submitGuess() {
   // Se puede escribir antes de tiempo, así que Enter tiene que avisar acá y no
   // dejar que el servidor conteste "no es tu turno" como si fuera un error.
@@ -702,6 +721,10 @@ function submitGuess() {
   if (!validSecret(value)) {
     return flash('guess-error', 'Tienen que ser 4 dígitos del 1 al 9, sin repetir.');
   }
+  // Solo los propios: cada uno le adivina a otro, así que el mismo número en
+  // dos manos no es una repetición.
+  const repetido = avisoRepetido(state.log.filter((e) => e.playerId === state.you.id), value);
+  if (repetido) return flash('guess-error', repetido);
   flash('guess-error', '');
   send({ t: 'guess', guess: value });
 }
@@ -1304,6 +1327,8 @@ async function arriesgarReto() {
   if (!validSecret(valor)) {
     return flash('reto-guess-error', 'Tienen que ser 4 dígitos del 1 al 9, sin repetir.');
   }
+  const repetido = avisoRepetido(reto.intentos, valor);
+  if (repetido) return flash('reto-guess-error', repetido);
   flash('reto-guess-error', '');
   $('btn-reto-guess').disabled = true;
   const { ok, cuerpo } = await pedirReto('POST', { guess: valor }, reto.fecha);

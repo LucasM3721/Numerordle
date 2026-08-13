@@ -11,7 +11,8 @@ import { readFileSync } from 'node:fs';
 
 import { separarPruebas } from './filas-de-prueba.mjs';
 import { filasDePartida } from '../src/room.js';
-import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta } from '../src/game.js';
+import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta, scoreGuess } from '../src/game.js';
+import { NIVELES, anotarResultado, nuevoCuaderno, proponerIntento } from '../src/bot.js';
 import { TOPE_INTENTOS, fechaDeHoy, finDelDia, numeroDelDia } from '../src/reto.js';
 // La racha es del cliente y no del servidor, pero su cuenta es pura y se prueba
 // sin navegador. Por eso vive en un archivo aparte de `public/app.js`, que no se
@@ -350,6 +351,30 @@ async function partidaSimultanea() {
     'Beto->Ana 1235 3F0P',
   ]);
   igual('pasa a la ronda 2', resuelta.round, 2);
+
+  // --- Nadie repite un número --------------------------------------------
+  //
+  // Repetir no aporta nada: la respuesta ya está en el tablero. Se prueba acá
+  // porque hace falta una ronda ya resuelta, y esta sala la tiene; una sala
+  // nueva costaría una del cupo de diez por minuto.
+
+  decir(ana, { t: 'guess', guess: '5671' });
+  const aviso = await esperarError(ana, 1);
+  chequear('un número ya tirado se rechaza', aviso.includes('ya lo tiraste'), aviso);
+  chequear('y el aviso dice qué había dado', aviso.includes('3 fijos y 0 picas'), aviso);
+  igual('no queda como intento pendiente', estado(ana).you.pending, null);
+  igual('y el historial no se movió', estado(ana).log.length, 2);
+
+  // Pero el mismo número en dos manos no es una repetición: cada uno le
+  // adivina a otro, así que lo que Ana ya sabe no lo sabe Beto.
+  decir(beto, { t: 'guess', guess: '5671' });
+  await esperar(beto, (s) => s.you.pending === '5671', 'que Beto pueda tirar el número de Ana');
+  decir(ana, { t: 'guess', guess: '5672' });
+  const ronda2 = await esperar(ana, (s) => s.log.length === 4, 'la segunda ronda');
+  igual('el número que tiró Ana lo puede tirar Beto', resumenLog(ronda2).slice(2), [
+    'Ana->Beto 5672 3F0P',
+    'Beto->Ana 5671 0F1P',
+  ]);
 
   [ana, beto].forEach((w) => w.close());
 }
@@ -1038,8 +1063,25 @@ async function desafioDelDia() {
   estado = await (await fetch(url)).json();
   igual('y no gasta un intento', estado.intentos.length, 0);
 
+  // Un número ya jugado tampoco entra, y tampoco gasta. El mensaje nombra lo
+  // que había dado: rechazar sin decir por qué se lee como que se rompió algo.
+  const primero = await tirar('1234');
+  estado = primero.cuerpo;
+  const gano = estado.terminado;
+  if (!gano) {
+    const otraVez = await tirar('1234');
+    igual('el mismo número dos veces se rechaza', otraVez.status, 400);
+    chequear('y el mensaje dice qué había dado',
+      /ya lo tiraste y dio \d+ fijos? y \d+ picas?/.test(otraVez.cuerpo.error ?? ''),
+      otraVez.cuerpo.error);
+    estado = await (await fetch(url)).json();
+    igual('y no gasta un intento', estado.intentos.length, 1);
+  }
+
+  // Once y no doce: el primero ya se tiró arriba, para poder probar el rechazo
+  // del repetido. Entre los dos suman los doce del tope.
   const candidatos = [
-    '1234', '5678', '1357', '2468', '1235', '1236',
+    '5678', '1357', '2468', '1235', '1236',
     '1237', '1238', '1239', '1245', '1246', '1247',
   ];
   let filtrado = true;
@@ -1196,6 +1238,44 @@ async function laMarcaDePrueba() {
   igual('con la clave, queda marcada', bien.prueba, true);
 }
 
+// --------------------------------------------- la máquina no repite
+
+/**
+ * La máquina cumple la misma regla que la persona: no tira dos veces el mismo
+ * número. Se prueba acá y no en `npm run bot` porque es un invariante y no una
+ * medición: la medición dice cuánto tarda, esto dice que no hace trampa.
+ *
+ * Es pura —el cuaderno del bot no toca la red— así que juega partidas enteras
+ * sin servidor. Antes de arreglarlo, `facil` repetía en dos de cada tres
+ * partidas: con 200 acá, que se escape es imposible de no ver.
+ */
+function laMaquinaNoRepite() {
+  console.log('\n— la máquina no repite');
+
+  for (const nivel of Object.keys(NIVELES)) {
+    let repeticiones = 0;
+    let invalidos = 0;
+    for (let p = 0; p < 200; p++) {
+      const secreto = permutacionSecreta(Math.floor(Math.random() * TOTAL_SECRETOS));
+      const c = nuevoCuaderno(nivel);
+      const tirados = new Set();
+      // Cuarenta y no doce: acá no hay tope de juego, y lo que se prueba es
+      // justamente que aguante las partidas largas, que son donde repetía.
+      for (let n = 0; n < 40; n++) {
+        const intento = proponerIntento(c);
+        if (!isValidSecret(intento)) invalidos++;
+        if (tirados.has(intento)) repeticiones++;
+        tirados.add(intento);
+        const { fijos, picas } = scoreGuess(intento, secreto);
+        if (fijos === 4) break;
+        anotarResultado(c, intento, fijos, picas);
+      }
+    }
+    igual(`${nivel} no repite ningún intento en 200 partidas`, repeticiones, 0);
+    igual(`y todos los suyos son números válidos (${nivel})`, invalidos, 0);
+  }
+}
+
 // ------------------------------------------ las filas que no cuentan
 
 /**
@@ -1302,6 +1382,7 @@ try {
   laPuertaDelDesafio();
   await numeroDelDiaAndaBien();
   laRacha();
+  laMaquinaNoRepite();
   await desafioDelDia();
   await seguirDespuesDelTope();
   await laMarcaDePrueba();
