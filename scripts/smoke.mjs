@@ -31,15 +31,30 @@ const BASE = process.env.BASE ?? 'http://127.0.0.1:8787';
  */
 const PRODUCCION = 'https://numerordle.lucasm3721.workers.dev';
 
+const ES_LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/.test(BASE);
+
+/**
+ * La clave de juguete con la que `npm run dev` y `npm run dev:test` levantan el
+ * Worker. Está escrita en `package.json` y acá, como `CODE_LEN` y `CODIGO_RE`:
+ * la suite no lee la configuración de wrangler.
+ */
+const CLAVE_LOCAL = 'marca-local';
+
 /**
  * Corriendo contra producción, la suite juega partidas enteras y **cada una
  * queda registrada**: doce salas de Ana, Beto y Cami metidas en los datos con
  * los que se calibra al bot. Con `PRUEBA_CLAVE` puesta se marcan y quedan
  * afuera del análisis.
  *
- * Contra el servidor local da lo mismo: ahí no hay dataset.
+ * **Contra el local no se usa la del entorno, sino la de juguete.** Ahí no hay
+ * dataset y da lo mismo qué se marque, pero el caso positivo —que la partida
+ * quede marcada— se prueba igual, y con la del entorno fallaba: la guía pide
+ * dejar puesta la clave **de producción** con `setx`, y contra un Worker
+ * levantado con `marca-local` esa clave no marca nada. Fallaba la verificación
+ * sin que hubiera nada roto, que es la peor clase de rojo. En CI no se veía
+ * porque ahí la variable no está y el caso se saltea.
  */
-const PRUEBA = process.env.PRUEBA_CLAVE ?? '';
+const PRUEBA = ES_LOCAL ? CLAVE_LOCAL : (process.env.PRUEBA_CLAVE ?? '');
 const marca = (qs) => (PRUEBA ? `${qs}${qs.includes('?') ? '&' : '?'}prueba=${encodeURIComponent(PRUEBA)}` : qs);
 const WS_BASE = BASE.replace(/^http/, 'ws');
 const TIMEOUT_MS = 10000;
@@ -55,7 +70,6 @@ const TIMEOUT_MS = 10000;
  * Corta antes de la primera sala, así no deja media docena de partidas sueltas
  * en el dataset y después el error.
  */
-const ES_LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/.test(BASE);
 if (!ES_LOCAL && !PRUEBA) {
   console.error(`\nEsta suite juega doce partidas de verdad, y contra ${BASE} cada una queda`);
   console.error('registrada en los datos con los que se calibra al bot.\n');
@@ -1175,10 +1189,9 @@ async function laMarcaDePrueba() {
   const mala = await (await fetch(`${BASE}/api/reto?pid=${pid()}&prueba=no-es-la-clave`)).json();
   igual('con la clave equivocada tampoco se marca', mala.prueba, false);
 
-  if (!PRUEBA) {
-    console.log('  ...  sin PRUEBA_CLAVE en el entorno, el caso positivo no se puede probar');
-    return;
-  }
+  // Acá siempre hay clave: contra el local es la de juguete, y contra cualquier
+  // otra cosa la suite ni arranca sin una. Antes esto se salteaba solo, y un
+  // caso que se saltea solo es un caso que no se corre nunca.
   const bien = await (await fetch(marca(`${BASE}/api/reto?pid=${pid()}`))).json();
   igual('con la clave, queda marcada', bien.prueba, true);
 }
