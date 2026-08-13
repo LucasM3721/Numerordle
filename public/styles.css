@@ -513,7 +513,8 @@ details.card[open] > summary { margin-bottom: 14px; }
    acompañe al tamaño de fuente; si la fuente no cargara y el fallback fuera más
    ancho, el mínimo simplemente no ata y cada píldora vuelve a lo suyo.
    Va acotado a `.try` a propósito: en el historial las marcas son "3F" y "1P",
-   y ahí un ancho pensado para "4 picas" sería un agujero. */
+   y ahí un ancho pensado para "4 picas" sería un agujero. El historial tiene el
+   suyo, más abajo, con el mismo criterio y otra medida. */
 .try .mark { min-width: 4.8em; text-align: center; }
 .try.hit { border-color: var(--fijo); background: rgba(74, 222, 128, .09); }
 .try.skip .digits { color: var(--muted); letter-spacing: normal; font-size: .95rem; font-weight: 400; }
@@ -641,6 +642,12 @@ details.card[open] > summary { margin-bottom: 14px; }
   font-weight: 700;
 }
 .feed .line .marks { margin-left: auto; display: flex; gap: 5px; }
+/* Las dos píldoras del historial también miden lo mismo, por el mismo motivo que
+   las del tablero aunque el defecto sea más chico: acá dicen "3F" y "1P", y lo
+   tabular son los dígitos y no las letras —la "P" es 0,8 px más ancha que la
+   "F"—, así que las dos píldoras de una misma fila salían distintas. El ancho es
+   el de la más ancha, en em como el otro. */
+.feed .line .mark { min-width: 2.8em; text-align: center; }
 .feed .line.hit { color: var(--fijo); }
 .feed .line.mine .digits { color: var(--accent); }
 
