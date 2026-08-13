@@ -931,6 +931,60 @@ se puede pasar. Por eso lo primero que se hizo con ese criterio fue **compartir
 el resultado**: es el mecanismo que hizo crecer a los juegos de este tipo, y acá
 no costaba backend ni estado nuevo.
 
+### Los cuadrados que se comparten
+
+Cada fila del texto son los cuatro casilleros de un intento, **cada uno en su
+lugar**: 🟩 el dígito que estaba donde lo pusiste, 🟨 el que estaba en el número
+pero en otra posición, ⬜ el que no estaba. Hasta el 12 de agosto de 2026 iban
+agrupados —primero todos los fijos, después todas las picas— y el comentario del
+código decía que no se podía de otra manera, porque el servidor nunca manda las
+posiciones.
+
+**Eso era falso justo donde importaba.** Es cierto durante la partida, pero
+Compartir solo existe en la pantalla final, y ahí el cliente tiene los intentos
+que se tiraron —`{ guess, fijos, picas }`— y tiene el número, que sale recién al
+terminar. Con las dos cosas, ubicar cada casillero es un `for` de cuatro vueltas.
+Vale como advertencia sobre los comentarios que congelan una imposibilidad: el
+que lo escribió tenía razón sobre el estado de la partida y no se preguntó por el
+estado de la pantalla.
+
+Se dibujaron las cuatro formas sobre una partida de verdad antes de elegir:
+
+```
+  AGRUPADA (era)    POSICIONAL (es)   SIN RELLENO      FICHAS
+  🟨🟨⬜⬜           ⬜🟨🟨⬜           🟡🟡             🟡🟡⚪⚪
+  🟨⬜⬜⬜           ⬜⬜⬜🟨           🟡               🟡⚪⚪⚪
+  ⬜⬜⬜⬜           ⬜⬜⬜⬜           ⬛               ⚪⚪⚪⚪
+  🟩🟨🟨🟨           🟢🟡🟡🟡           🟩🟨🟨🟨         🟢🟡🟡🟡
+  🟩🟩🟩🟩           🟩🟩🟩🟩           🟩🟩🟩🟩         🟢🟢🟢🟢
+```
+
+**Sin relleno** —sacar los ⬜— resolvía el problema de fondo, pero el borde
+derecho dentado queda desprolijo en un mensaje. **Números** (`0🟩 2🟨`) es la
+forma más inequívoca de todas y deja de ser una imagen para pasar a ser una
+tabla: el trabajo de esto es que alguien lo vea pasar y quiera probar. **Fichas**
+(🟢🟡⚪) venía del Mastermind de tablero, donde la devolución son fichitas en una
+bandeja cuyo orden no significa nada por diseño, y era la única que podía decir
+"esto es una cuenta y no un mapa" sin perder la densidad.
+
+Ganó la posicional por el argumento que se dio vuelta dos veces. Primero se dijo
+que mostraba una devolución que nunca tuviste y que confundiría al que no conoce
+el juego; después se vio que **un recién llegado lee posiciones en las dos**,
+porque lo que induce esa lectura es la grilla de cuatro casilleros y no lo que
+tiene adentro. O sea que el argumento condenaba a la agrupada: con ella esa
+lectura es falsa, con la posicional es verdadera. Entre dos formas que se leen
+igual, la que dice la verdad.
+
+Y no filtra nada, que es la condición para que se pueda: el que lo recibe ve las
+posiciones pero **no ve los intentos**, así que "en el quinto el segundo estaba
+en su lugar" no le nombra ningún dígito. Es lo mismo que hace Wordle.
+
+Lo que se pierde está medido y se aceptó: la agrupada se leía como una barra de
+progreso —los verdes se acumulan a la izquierda y se ve el cerco cerrándose— y la
+posicional dispersa lo mismo y se lee más ruidosa. Queda anotado porque **esta
+discusión se vuelve a abrir sola**: en una sola sesión se llegó a conclusiones
+opuestas tres veces.
+
 ### La otra mitad: que vuelvan
 
 Compartir trae gente nueva; no hace que nadie vuelva al día siguiente. Para eso

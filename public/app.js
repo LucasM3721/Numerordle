@@ -1532,12 +1532,42 @@ const MESES = [
 ];
 
 /**
+ * Los cuatro casilleros de un intento, cada uno en su lugar: 🟩 el dígito que
+ * estaba donde lo pusiste, 🟨 el que estaba en el número pero en otra posición,
+ * ⬜ el que no estaba.
+ *
+ * Se puede mirar dígito por dígito porque en este juego no hay repetidos. Con
+ * repetidos habría que emparejar como lo hace `scoreGuess`, o el mismo dígito
+ * del número se contaría dos veces.
+ */
+function filaCompartida(guess, numero) {
+  let fila = '';
+  for (let i = 0; i < 4; i++) {
+    if (guess[i] === numero[i]) fila += '🟩';
+    else if (numero.includes(guess[i])) fila += '🟨';
+    else fila += '⬜';
+  }
+  return fila;
+}
+
+/**
  * El resumen que se comparte.
  *
- * Va la **forma** de la partida y nada más: ni el número, ni los intentos. Cada
- * fila son los fijos y las picas, y no puede filtrar dónde estaban aunque
- * quisiera — el servidor nunca manda las posiciones, así que el cliente
- * tampoco las tiene.
+ * Va la **forma** de la partida y nada más: ni el número, ni los intentos.
+ *
+ * **Las posiciones se pueden calcular, y por eso van.** Durante la partida el
+ * cliente no las tiene —el servidor manda fijos y picas y nada más—, pero acá
+ * el desafío ya terminó: quedan guardados los intentos que se tiraron, y el
+ * número sale al terminar (`vista()`, en `src/reto.js`). Con las dos cosas,
+ * ubicar cada casillero es un `for` de cuatro vueltas. Hasta el 12 de agosto de
+ * 2026 los cuadrados iban agrupados —primero los fijos, después las picas— y
+ * este comentario decía que no se podía de otra manera; no era cierto.
+ *
+ * Y no filtra nada: el que lo recibe ve las posiciones pero no ve los intentos,
+ * así que "en el quinto intento el segundo dígito estaba en su lugar" no le
+ * nombra ningún dígito. Es lo mismo que hace Wordle con sus cuadraditos. El
+ * porqué de esta forma y no de las otras tres que se dibujaron está en "Los
+ * cuadrados que se comparten" (docs/DECISIONES.md).
  *
  * La fecha se arma a mano con el array de meses en vez de con `Intl`: el
  * `fecha` viene como `2026-08-07` y pasarlo por `new Date` lo interpreta en UTC,
@@ -1553,10 +1583,12 @@ function textoParaCompartir() {
   else if (reto.encontro) titulo = `Lo saqué en ${veces}, fuera de los ${reto.tope}`;
   else titulo = `No lo saqué en ${reto.tope}`;
 
-  const filas = reto.intentos.map((e) => {
-    const vacios = 4 - e.fijos - e.picas;
-    return '🟩'.repeat(e.fijos) + '🟨'.repeat(e.picas) + '⬜'.repeat(vacios);
-  });
+  // Sin el número no hay dónde ubicar nada, y no debería pasar: Compartir vive
+  // adentro de la pantalla final, y ahí el desafío terminó y el número llegó. Si
+  // igual faltara, van agrupados: dice menos, pero no dice nada falso.
+  const filas = reto.intentos.map((e) => (reto.numero
+    ? filaCompartida(e.guess, reto.numero)
+    : '🟩'.repeat(e.fijos) + '🟨'.repeat(e.picas) + '⬜'.repeat(4 - e.fijos - e.picas)));
 
   // El link va al desafío y no a la portada. Es el momento de más intención que
   // hay —el que lo recibe acaba de ver un resultado— y desde la portada el
