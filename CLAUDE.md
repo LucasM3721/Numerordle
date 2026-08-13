@@ -257,6 +257,12 @@ setx PRUEBA_CLAVE "el-valor-del-secreto-del-worker"
 Aplica recién en la próxima terminal. El valor es el secreto `PRUEBA_CLAVE` del
 Worker; no está en el repo.
 
+**Contra un servidor local esa variable no se usa.** La suite manda la clave de
+juguete (`marca-local`), que es la que le ponen `npm run dev`, `npm run dev:test`
+y el CI. Si usara la del entorno —que es la de producción, porque así lo pide el
+párrafo de arriba— no marcaría nada contra un Worker levantado con la de juguete,
+y `npm test` local fallaba una verificación sin que hubiera nada roto.
+
 Con eso, probar contra producción es
 `BASE=https://numerordle.lucasm3721.workers.dev npm test`. Tarda un minuto de
 más: la suite pide doce salas y el límite es de diez por minuto, así que las que
