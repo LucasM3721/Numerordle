@@ -101,6 +101,15 @@ export function scoreGuess(guess, secret) {
 }
 
 /**
+ * "1 fijo y 2 picas". Lo usa el mensaje que rechaza un número repetido, que es
+ * el único lugar donde el servidor tiene que nombrar un resultado en palabras.
+ * Va acá porque lo necesitan la sala y el desafío, que no se importan entre sí.
+ */
+export function textoMarcador(fijos, picas) {
+  return `${fijos} ${fijos === 1 ? 'fijo' : 'fijos'} y ${picas} ${picas === 1 ? 'pica' : 'picas'}`;
+}
+
+/**
  * Las marcas de dirección son invisibles y dan vuelta el texto que las rodea:
  * un nombre con una adentro desordena la línea entera de la interfaz. Los
  * caracteres de control se cambian por espacio (y no se borran) para que

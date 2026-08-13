@@ -23,6 +23,11 @@
 >   convierte un "necesitaba más de doce" en un dato usable. Se puede revelar en
 >   cualquier momento después del tope, y el que quedó jugando cuando cambia el
 >   día tiene tres horas de gracia para terminar.
+> - **No se puede repetir un número**, ni la persona ni la máquina: la respuesta
+>   ya está en el tablero. Se rechaza sin gastar el turno y el aviso dice qué
+>   había dado ese número. Salió de medir al bot, que repetía en el 43 % de las
+>   partidas de `normal`; arreglarlo bajó las tres medias sin tocar los niveles.
+>   El porqué está en "Nadie repite un número", en DECISIONES.
 > - **Compartir el resultado**: emoji por intento, sin el número ni lo que se
 >   tiró. Es lo único del juego que se pasa sin coordinar con nadie, y por eso es
 >   la mejor herramienta que hay para el cuello de botella real (ver abajo).
@@ -105,7 +110,9 @@
 >    partidas reales. **No queda nada que programar: falta que juegue gente.**
 >
 >    El lado del bot ya está medido y no depende de producción: `npm run bot` da
->    15,9 / 12,0 / 8,0 de media.
+>    15,3 / 11,7 / 8,0 de media. (Eran 15,9 / 12,0 / 8,0 hasta el 12 de agosto:
+>    bajaron solas al dejar de poder repetir intentos, sin que se tocara ningún
+>    nivel.)
 >
 >    **Del lado humano, medido el 8 de agosto con el filtro ya arreglado** (46
 >    filas crudas, 5 afuera: 2 marcadas y 3 a mano):

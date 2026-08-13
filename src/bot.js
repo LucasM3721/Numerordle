@@ -22,7 +22,7 @@
  * Encima se olvida: `olvido` es la probabilidad de no usar algo que sabía.
  */
 
-import { SECRET_LEN, scoreGuess } from './game.js';
+import { SECRET_LEN, TOTAL_SECRETOS, permutacionSecreta, scoreGuess } from './game.js';
 
 const DIGITOS = '123456789'.split('');
 
@@ -41,9 +41,12 @@ const DIGITOS = '123456789'.split('');
  *   imaginar libre sin insistir termina jugando cualquier cosa, y retocar el
  *   anterior nunca se aleja lo suficiente para encontrar el que cierra.
  *
- * Medidos sobre 20.000 partidas cada uno (`npm run bot`): media de 15,9 / 12,1
- * / 8,1 y mediana de 15 / 12 / 8. Si tocás cualquiera de estos números, corré
+ * Medidos sobre 20.000 partidas cada uno (`npm run bot`): media de 15,3 / 11,7
+ * / 8,0 y mediana de 15 / 11 / 8. Si tocás cualquiera de estos números, corré
  * la medición: son knobs acoplados y la intuición falla feo.
+ *
+ * Las tres medias bajaron el 12 de agosto de 2026 —eran 15,9 / 12,1 / 8,1— sin
+ * que se tocara ningún nivel: es lo que se dejó de gastar en repetir intentos.
  */
 export const NIVELES = {
   // El distraído. Retoca el anterior de a un dígito, se olvida de casi la mitad
@@ -319,14 +322,38 @@ function cierraConLasNotas(candidato, c, azar) {
 }
 
 /**
+ * Uno cualquiera de los 3024 que todavía no haya tirado. Es la salida de
+ * emergencia de `proponerIntento`: no repetir es una regla del juego y no una
+ * preferencia, así que tiene que haber una respuesta siempre. Con 3024 números
+ * y partidas de decenas de intentos, nunca se queda sin.
+ */
+function otroCualquiera(yaTirados, azar) {
+  const inicio = Math.floor(azar() * TOTAL_SECRETOS);
+  for (let i = 0; i < TOTAL_SECRETOS; i++) {
+    const n = permutacionSecreta((inicio + i) % TOTAL_SECRETOS);
+    if (!yaTirados.has(n)) return n;
+  }
+  return permutacionSecreta(inicio);
+}
+
+/**
  * El próximo intento. Piensa un número, se fija si cierra con lo anotado, y si
  * no, piensa otro. **No enumera las 3024**: las imagina de a una y las
  * descarta, que es lo que se puede hacer en la mesa. `verifica` es cuántas
  * llega a probar antes de encogerse de hombros y jugar la última que pensó —
  * o sea, cuánta paciencia tiene.
+ *
+ * **Nunca repite uno que ya tiró.** No es un nivel de habilidad: es la regla
+ * que ahora vale para todos, y además repetir no aporta nada —la respuesta ya
+ * la tiene anotada—. Antes repetía, y bastante: 43 % de las partidas de
+ * `normal` y 67 % de las de `facil` tenían al menos un intento repetido. La
+ * causa era que `cierraConLasNotas` no lo podía filtrar: un intento repetido da
+ * los mismos fijos y picas que la vez anterior, así que **siempre** cierra con
+ * lo anotado. El filtro no fallaba; la pregunta no se hacía.
  */
 export function proponerIntento(c, azar = azarPorDefecto) {
   const nivel = NIVELES[c.nivel];
+  const yaTirados = new Set(c.historia.map((h) => h.intento));
   const pensar = () => {
     if (c.dentro.size >= SECRET_LEN) return intentoDeOrden(c, azar);
     // Cambiar de a un dígito hace que el resultado signifique algo, pero solo
@@ -339,8 +366,14 @@ export function proponerIntento(c, azar = azarPorDefecto) {
 
   let candidato = pensar();
   for (let i = 0; i < nivel.verifica; i++) {
-    if (cierraConLasNotas(candidato, c, azar)) return candidato;
+    if (!yaTirados.has(candidato) && cierraConLasNotas(candidato, c, azar)) return candidato;
     candidato = pensar();
   }
-  return candidato;
+
+  // Se le acabó la paciencia para verificar, pero eso solo lo autoriza a jugar
+  // algo que no cierre: repetir no. `facil` verifica dos veces, así que sin
+  // estas vueltas de más sería el que más repetiría justamente por ser el que
+  // menos piensa.
+  for (let i = 0; i < 30 && yaTirados.has(candidato); i++) candidato = pensar();
+  return yaTirados.has(candidato) ? otroCualquiera(yaTirados, azar) : candidato;
 }

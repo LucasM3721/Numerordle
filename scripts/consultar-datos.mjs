@@ -19,7 +19,7 @@ const CUENTA = process.env.CF_ACCOUNT_ID;
 const DATASET = 'numerordle_partidas';
 
 // Lo que mide `npm run bot`, para comparar contra la gente sin volver a correrlo.
-const BOT = { facil: 15.9, normal: 12.0, dificil: 8.0 };
+const BOT = { facil: 15.3, normal: 11.7, dificil: 8.0 };
 
 if (!TOKEN || !CUENTA) {
   console.error('Faltan CF_ANALYTICS_TOKEN y/o CF_ACCOUNT_ID en el entorno.');

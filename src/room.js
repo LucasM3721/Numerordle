@@ -13,6 +13,7 @@ import {
   randomPublicId,
   randomSecret,
   scoreGuess,
+  textoMarcador,
   shuffled,
 } from './game.js';
 import {
@@ -1027,6 +1028,22 @@ export class GameRoom {
           throw new Error('El intento debe tener 4 dígitos del 1 al 9, sin repetir.');
         }
         if (!s.roundQueue.includes(player.id)) throw new Error('No entrás en esta ronda.');
+
+        // **Un número no se puede tirar dos veces.** Ver "Nadie repite un
+        // número" en docs/DECISIONES.md. Se busca solo entre los propios: dos
+        // jugadores distintos le adivinan a personas distintas, así que el
+        // mismo número en dos manos no es una repetición.
+        //
+        // El historial se recorta en MAX_LOG, así que en una partida larguísima
+        // podría no encontrar uno viejo. No se guarda una lista aparte por eso:
+        // son 600 entradas, unas 50 rondas con la sala llena, y el costo de que
+        // se escape uno cada tanto es cero.
+        const repetido = s.log.find(
+          (e) => e.playerId === player.pub && !e.skipped && e.guess === msg.guess,
+        );
+        if (repetido) {
+          throw new Error(`Ese número ya lo tiraste y dio ${textoMarcador(repetido.fijos, repetido.picas)}.`);
+        }
 
         if (s.mode === 'strict') {
           if (s.roundQueue[s.turnPtr] !== player.id) throw new Error('No es tu turno.');
