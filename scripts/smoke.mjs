@@ -938,11 +938,30 @@ function laRacha() {
   }, '2026-08-07');
   igual('cuenta los desafíos jugados', mixto.jugados, 2);
   igual('y los sacados dentro de los doce', mixto.ganados, 1);
-  igual('la tira mide lo que se ve', mixto.dias.length, DIAS_A_LA_VISTA);
   igual('termina en hoy', mixto.dias.at(-1).fecha, '2026-08-07');
   chequear('con hoy marcado', mixto.dias.at(-1).esHoy);
-  igual('y arranca nueve días antes', mixto.dias[0].fecha, '2026-07-29');
-  igual('los días sin jugar quedan vacíos', mixto.dias.filter((d) => d.entrada).length, 2);
+
+  // La tira crece hacia la derecha, que es para donde se lee: arranca en el
+  // primer día que jugaste y no en el borde de la ventana. Si arrancara siempre
+  // diez días atrás, al que lleva dos le crecería hacia la izquierda.
+  igual('la tira arranca en el primer día jugado', mixto.dias[0].fecha, '2026-08-06');
+  igual('y mide lo que llevás jugado', mixto.dias.length, 2);
+
+  // Pero los huecos de adentro siguen estando: son lo que la racha viene a
+  // contar. Solo se recorta lo que va antes del primero.
+  const conHueco = resumen(jugados('2026-08-04', '2026-08-07'), '2026-08-07');
+  igual('un hueco adentro no se recorta', conHueco.dias.length, 4);
+  igual('los días sin jugar quedan vacíos', conHueco.dias.filter((d) => d.entrada).length, 2);
+
+  const lleno = [];
+  for (let f = '2026-08-07', i = 0; i < DIAS_A_LA_VISTA + 5; i++, f = diaAnterior(f)) lleno.push(f);
+  igual('y no pasa de lo que entra', resumen(jugados(...lleno), '2026-08-07').dias.length, DIAS_A_LA_VISTA);
+
+  // El caso raro: nada en la ventana. Queda el casillero de hoy y no una tira
+  // vacía, que se leería como que se rompió.
+  const viejo = resumen(jugados('2026-06-01'), '2026-08-07');
+  igual('sin nada reciente queda hoy solo', viejo.dias.length, 1);
+  igual('y es hoy', viejo.dias[0].fecha, '2026-08-07');
 
   const antes = jugados('2026-08-06');
   const despues = anotarDia(antes, '2026-08-07', { n: 5, gano: true, encontro: true });

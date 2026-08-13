@@ -967,6 +967,14 @@ salteados dibujarían lo mismo, que es justo lo que la racha viene a contar. Cad
 estado tiene forma propia además de color —✓, +, ✕, o nada— y la fecha y el
 resultado van en el `aria-label`, igual que las marcas por dígito.
 
+**La tira arranca en tu primer día, no en el borde de la ventana.** Con los diez
+casilleros siempre puestos, al que lleva dos días los suyos le quedan pegados al
+borde derecho y los ocho vacíos adelante: la tira le crece hacia la izquierda,
+que es al revés de como se lee todo lo demás. Recortado lo que va antes del
+primer día jugado, crece hacia la derecha, y a partir de los diez ya está llena y
+esto no cambia nada. Se recorta solo lo de adelante: los huecos de adentro son el
+dato.
+
 La cuenta vive en `public/racha.js` y no en `app.js`. Es el segundo archivo del
 cliente y está aparte por una sola razón: ahí no se toca el DOM ni
 `localStorage`, así que la suite lo importa y lo prueba sin navegador. Es
