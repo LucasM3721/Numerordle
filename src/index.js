@@ -104,11 +104,46 @@ export default {
         hoy: fecha === hoy ? '1' : '0',
         prueba: esPrueba(env, url) ? '1' : '',
       });
-      return stub.fetch(new Request(`https://reto/${accion}?${qs}`, {
+      const pedir = () => stub.fetch(new Request(`https://reto/${accion}?${qs}`, {
         method: request.method,
         headers: { 'content-type': 'application/json' },
         body: cuerpo,
       }));
+
+      /**
+       * **El primer pedido de cada (jugador, día) falla de a ratos**, y es el
+       * que abre el desafío. Medido contra producción el 13 de agosto de 2026:
+       * 3 de cada 20 pedidos a un objeto que todavía no existía contestaron
+       * 500. Contra uno ya creado, 0 de 14. La excepción que llega es
+       * `internal error; reference = …`, o sea de la plataforma y no nuestra:
+       * no trae stack ni pasa por ningún `catch` de adentro del objeto.
+       *
+       * No es de la regla de no repetir: se midió igual sobre la versión
+       * anterior, con `wrangler rollback`, y dio 3 de cada 16.
+       *
+       * Reintentar lo tapa porque el segundo pedido ya encuentra el objeto
+       * creado. Es lo mismo que hace la creación de salas, que reintenta cinco
+       * veces desde siempre.
+       *
+       * **Solo el GET.** Un POST no se puede repetir a ciegas: si el primero
+       * llegó a aplicar el intento, el segundo lo aplicaría de nuevo. Y no hace
+       * falta, porque para llegar a un POST el objeto ya tuvo que existir: el
+       * cliente abre el desafío con un GET antes de dejar arriesgar.
+       */
+      if (request.method === 'POST') return pedir();
+      let ultimo;
+      for (let intento = 0; intento < 3; intento++) {
+        try {
+          return await pedir();
+        } catch (err) {
+          ultimo = err;
+          console.log(`el desafío no abrió (intento ${intento + 1}): ${err?.message ?? err}`);
+        }
+      }
+      // Tres seguidos ya no es la falla de a ratos: que lo diga en castellano y
+      // no como una página de error de Cloudflare.
+      console.log(`el desafío no abrió después de tres intentos: ${ultimo?.message ?? ultimo}`);
+      return json({ error: 'No se pudo abrir el desafío. Probá de nuevo en un momento.' }, 503);
     }
 
     // Hubo un /exists que decía si una sala existía y cuántos había adentro.
