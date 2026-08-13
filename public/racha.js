@@ -38,7 +38,7 @@ const DESFASE_MS = 3 * 60 * 60 * 1000;
  */
 export const TOPE_DIAS = 90;
 
-/** Cuántos días entran en la tira que se dibuja. Diez entran en un teléfono. */
+/** Hasta cuántos días entran en la tira que se dibuja. Diez entran en un teléfono. */
 export const DIAS_A_LA_VISTA = 10;
 
 /** La fecha de hoy en UTC−3, con la forma `2026-08-07`. */
@@ -113,10 +113,19 @@ export function resumen(historial, hoy = fechaDeHoy()) {
   // De más viejo a más nuevo, terminando en hoy, con los días que no jugaste
   // adentro. Sin los huecos la tira se lee corrida: diez días seguidos y tres
   // salteados dibujarían lo mismo, que es justo lo que la racha viene a contar.
+  //
+  // **Arranca en tu primer día y no en el borde de la ventana.** Con los diez
+  // casilleros siempre puestos, el que lleva dos días ve ocho vacíos y los suyos
+  // pegados al borde derecho: la tira le crece hacia la izquierda, que es al
+  // revés de como se lee todo lo demás. Recortando lo que va antes del primero
+  // que jugaste, crece hacia la derecha. A partir de los diez días ya está
+  // llena y esto no cambia nada. Nunca queda vacía: si no jugaste ninguno de
+  // los diez, queda el casillero de hoy.
   const dias = [];
   for (let f = hoy, i = 0; i < DIAS_A_LA_VISTA; i++, f = diaAnterior(f)) {
     dias.unshift({ fecha: f, entrada: historial[f] ?? null, esHoy: f === hoy });
   }
+  while (dias.length > 1 && !dias[0].entrada) dias.shift();
 
   return { racha, mejor: mejorRacha(historial), jugoHoy, jugados, ganados, dias };
 }
