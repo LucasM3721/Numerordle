@@ -52,17 +52,50 @@ export default {
       } catch {
         /* body opcional */
       }
-      // 32^5 combinaciones: la colisión es remotísima, pero se chequea igual.
+      /**
+       * Cinco vueltas, por dos motivos que conviene no confundir.
+       *
+       * El de siempre: 32^5 combinaciones, la colisión es remotísima pero se
+       * chequea igual. Eso es lo que cubre el `if (res.ok)` — la sala
+       * **contestó**, diciendo que estaba ocupada.
+       *
+       * El otro es el 500 al despertar un Durable Object, que está en "El 500
+       * al crear el objeto" (docs\DECISIONES.md). Ese no contesta: **tira una
+       * excepción**, y hasta acá la atravesaba entera sin que ninguna vuelta la
+       * agarrara, porque `roomFetch` no atrapa nada y afuera no hay ningún
+       * `catch`. Salía como 500 igual que el desafío antes de su arreglo. Este
+       * mismo comentario decía que reintentar cinco veces ya lo cubría, y era
+       * al revés: la sala era el camino que quedaba desprotegido.
+       *
+       * **Acá sí se puede reintentar a ciegas**, y es la diferencia con el
+       * desafío: cada vuelta pide un código nuevo, así que no se repite nada de
+       * lo que la anterior haya alcanzado a hacer. Si la excepción llegó con la
+       * sala ya creada —que es lo que pasa en esta falla—, esa queda huérfana y
+       * vacía; `save()` le dejó alarma y el TTL de la que nunca recibió a nadie
+       * es corto, así que se demuele sola.
+       */
+      let ultimo;
       for (let intento = 0; intento < 5; intento++) {
         const code = randomCode();
-        const res = await roomFetch(
-          env,
-          code,
-          `create?code=${code}&mode=${mode}&max=${max}&bot=${bot}&prueba=${esPrueba(env, url) ? '1' : ''}`,
-          'POST',
-        );
-        if (res.ok) return json({ code });
+        try {
+          const res = await roomFetch(
+            env,
+            code,
+            `create?code=${code}&mode=${mode}&max=${max}&bot=${bot}&prueba=${esPrueba(env, url) ? '1' : ''}`,
+            'POST',
+          );
+          if (res.ok) return json({ code });
+        } catch (err) {
+          ultimo = err;
+          console.log(`la sala no se creó (intento ${intento + 1}): ${err?.message ?? err}`);
+        }
       }
+      // Las dos salidas se anotan distinto a propósito: "cinco códigos
+      // ocupados" y "cinco excepciones" son problemas que no se parecen en
+      // nada, y confundirlos es justo lo que hizo falta desenredar acá.
+      console.log(ultimo
+        ? `la sala no se creó después de cinco intentos: ${ultimo?.message ?? ultimo}`
+        : 'la sala no se creó: cinco códigos seguidos dieron ocupado');
       return json({ error: 'No se pudo crear la sala, probá de nuevo.' }, 503);
     }
 
@@ -122,8 +155,10 @@ export default {
        * anterior, con `wrangler rollback`, y dio 3 de cada 16.
        *
        * Reintentar lo tapa porque el segundo pedido ya encuentra el objeto
-       * creado. Es lo mismo que hace la creación de salas, que reintenta cinco
-       * veces desde siempre.
+       * creado. La creación de salas reintenta parecido pero no igual: allá
+       * cada vuelta pide un código nuevo, así que da lo mismo qué alcanzó a
+       * dejar hecho la anterior. Acá se vuelve a pedir el mismo objeto, y de
+       * esa diferencia sale lo que viene abajo.
        *
        * **Solo el GET.** Un POST no se puede repetir a ciegas: si el primero
        * llegó a aplicar el intento, el segundo lo aplicaría de nuevo. Y no hace
