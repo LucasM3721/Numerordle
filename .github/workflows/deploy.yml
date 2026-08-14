@@ -3,6 +3,17 @@ name: Verificar y desplegar
 on:
   push:
     branches: [main]
+    # Escribir una nota no cambia nada de lo que se sube, y hasta acá
+    # redesplegaba el Worker igual. Este repo documenta mucho, así que era un
+    # deploy de más bastante seguido.
+    #
+    # Va solo en `push`. En `pull_request` no: ahí el chequeo **es** la
+    # verificación, y un PR sin ninguna corrida en verde no se distingue de uno
+    # que todavía no corrió.
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'CLAUDE.md'
   pull_request:
   workflow_dispatch: # permite desplegar a mano desde la pestaña Actions
 
