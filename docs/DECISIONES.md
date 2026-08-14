@@ -956,9 +956,16 @@ POST que falle así ya aplicó el intento, y repetirlo a ciegas lo aplicaría do
 veces. No hace falta igual, porque para llegar a un POST el objeto ya tuvo que
 existir; el cliente abre el desafío con un GET antes de dejar arriesgar.
 
-Se reintenta hasta tres veces, que es lo que hace la creación de salas desde
-siempre: el desafío era el único camino que despertaba un Durable Object sin esa
-red debajo. Si los tres fallan contesta 503 con un mensaje en castellano en vez
+Se reintenta hasta tres veces. Al escribir esto se creía que era **lo mismo que
+hacía la creación de salas desde siempre**, y no era cierto: aquel bucle pide un
+código nuevo por vuelta y solo gira cuando la sala **contesta** que está ocupada
+—es un chequeo de colisión—, así que una excepción lo atravesaba entero. La sala
+era el camino desprotegido y no el cubierto, y se arregló aparte. Los dos
+reintentos además no son el mismo: allá cada vuelta pide un código nuevo, y por
+eso se puede reintentar a ciegas; acá se vuelve a pedir el mismo objeto, y de ahí
+sale que solo se reintente el GET.
+
+Si los tres fallan contesta 503 con un mensaje en castellano en vez
 de la página de error de Cloudflare, y el motivo queda escrito en los logs con
 nuestras palabras. **Esa segunda mitad importa tanto como el reintento**, porque
 es lo que hace que la próxima vez se vea sola en vez de haber que salir a
@@ -986,9 +993,12 @@ primera ráfaga falló 3 de 20 **cuando había veinte objetos, no cien**.
 
 Lo que queda en pie es que **fue del momento**: diez fallos concentrados en una
 ventana de tres horas, y en rachas —cuatro seguidos después de cuatro que
-anduvieron— más que dado a dado. Falta medirlo desde otra red, y falta saber si
-la sala falla igual salteando sus cinco reintentos, que hoy taparían un fallo
-transitorio sin que nadie lo viera. Los `reference` de Cloudflare de los cuatro
+anduvieron— más que dado a dado. Falta medirlo desde otra red.
+
+Lo de la sala, en cambio, ya está contestado, y la pregunta estaba mal hecha: se
+creía que sus cinco vueltas taparían un fallo transitorio y que habría que
+medirlo salteándolas, cuando no tapaban nada. El `0 de 8` de la tabla de arriba
+era una medición limpia desde el principio. Los `reference` de Cloudflare de los cuatro
 fallos quedaron guardados en el issue #46: son lo único que ellos pueden cruzar
 contra sus logs.
 
