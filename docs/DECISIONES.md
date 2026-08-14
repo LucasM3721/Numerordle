@@ -325,6 +325,14 @@ se leyó como que la clave estaba mal. La causa era otra —la marca se fija al
 dos situaciones son iguales, el aviso nombra las dos en vez de adivinar: mandar
 a revisar la clave cuando el problema es otro hace perder el tiempo dos veces.
 
+**Abrir un desafío no escribe ninguna fila**, así que una medición de puros GET
+no necesita la clave. `registrar()` corre únicamente cuando el desafío terminó
+—desde `arriesgar()` y desde `decidir()`—, y un `pid` nuevo que abre y se va no
+deja nada en Analytics Engine. Vale anotarlo porque todo lo de arriba se lee como
+que cualquier pedido contra producción ensucia, y no es así: **lo que ensucia es
+jugar**. Sirvió para medir el 500 al crear el objeto sin tener la clave a mano.
+En cuanto la medición mande un intento, la marca vuelve a hacer falta.
+
 ## La trampa al leer los intentos
 
 En una partida por turnos los dos juegan todas las rondas, y la partida corta en
@@ -917,6 +925,82 @@ que el que arrancó 23:50 pueda terminar, no para estirar el juego.
 
 Pasado eso el servidor contesta que venció, y el cliente trae el de hoy
 **diciéndolo**: cambiarle el tablero en silencio se lee como que perdió todo.
+
+### El 500 al crear el objeto, y por qué se reintenta
+
+Apareció el 13 de agosto de 2026 verificando otro deploy: **el primer pedido de
+cada (jugador, día) devolvía 500 una de cada diez veces**. Le pega justo al que
+llega por el link compartido, que es el único camino que este juego tiene para
+crecer. Lo medido esa madrugada, contra producción:
+
+| | fallos |
+| --- | --- |
+| primer pedido de un (jugador, día) nuevo, en ráfaga | 3 de 20, 2 de 12 |
+| primer pedido, a ritmo de persona (4 s) | 1 de 10 |
+| primer pedido, después de 5 min sin tocar nada (12 s) | 4 de 8 |
+| pedidos a un objeto **ya creado** | 0 de 14 |
+| crear una sala, que es el otro Durable Object | 0 de 8 |
+
+**No es código nuestro.** Con `npm run tail` corriendo se ve que el Durable
+Object corrió y contestó 200 en los ocho casos, incluidos los cuatro que
+fallaron: la excepción está del lado del Worker al recibir esa respuesta, es un
+`internal error; reference = …` sin stack y sin pasar por ningún `catch`, y las
+que fallan tardan lo mismo que las que andan (~900 ms), así que tampoco es un
+timeout. Tampoco venía de "Nadie repite un número": se volvió atrás con
+`wrangler rollback` y dio 3 de cada 16, el mismo ritmo.
+
+De ahí sale lo que importa para el diseño: **el objeto queda creado y con su
+estado escrito aunque el jugador vea un error.** Por eso reintentar alcanza —el
+segundo pedido lo encuentra hecho— y por eso **solo se reintenta el GET**: un
+POST que falle así ya aplicó el intento, y repetirlo a ciegas lo aplicaría dos
+veces. No hace falta igual, porque para llegar a un POST el objeto ya tuvo que
+existir; el cliente abre el desafío con un GET antes de dejar arriesgar.
+
+Se reintenta hasta tres veces. Al escribir esto se creía que era **lo mismo que
+hacía la creación de salas desde siempre**, y no era cierto: aquel bucle pide un
+código nuevo por vuelta y solo gira cuando la sala **contesta** que está ocupada
+—es un chequeo de colisión—, así que una excepción lo atravesaba entero. La sala
+era el camino desprotegido y no el cubierto, y se arregló aparte. Los dos
+reintentos además no son el mismo: allá cada vuelta pide un código nuevo, y por
+eso se puede reintentar a ciegas; acá se vuelve a pedir el mismo objeto, y de ahí
+sale que solo se reintente el GET.
+
+Si los tres fallan contesta 503 con un mensaje en castellano en vez
+de la página de error de Cloudflare, y el motivo queda escrito en los logs con
+nuestras palabras. **Esa segunda mitad importa tanto como el reintento**, porque
+es lo que hace que la próxima vez se vea sola en vez de haber que salir a
+medirla como se hizo acá.
+
+**La causa sigue sin conocerse, y esto tapa el síntoma.** Se volvió a medir 22
+horas después, misma cuenta y misma red: **0 de 136**, contra 10 de 50 de la
+madrugada.
+
+| | 13 ago, madrugada | 13 ago, noche |
+| --- | --- | --- |
+| ráfaga | 3 de 20, 2 de 12 | 0 de 20 |
+| ritmo de persona (4 s) | 1 de 10 | 0 de 10 |
+| tras 5 min quieto (12 s) | 4 de 8 | 0 de 8, y 0 de 8 otra vez |
+| subir la cuenta de objetos | — | 0 de 70 |
+| día nuevo, cero objetos | — | 0 de 20 |
+| | **10 de 50** | **0 de 136** |
+
+Eso descarta **la cantidad de objetos vivos**, que era la sospecha razonable:
+primero se midió encima de los ~100 que habían quedado de la madrugada —para el
+juego seguía siendo el mismo día, `fechaDeHoy` corre en UTC−3—, llevando el día a
+unos 216 objetos, y después se esperó el cambio de día y se repitió con cero. Las
+dos puntas dan lo mismo. Mirada así, la tabla de la madrugada ya lo decía: la
+primera ráfaga falló 3 de 20 **cuando había veinte objetos, no cien**.
+
+Lo que queda en pie es que **fue del momento**: diez fallos concentrados en una
+ventana de tres horas, y en rachas —cuatro seguidos después de cuatro que
+anduvieron— más que dado a dado. Falta medirlo desde otra red.
+
+Lo de la sala, en cambio, ya está contestado, y la pregunta estaba mal hecha: se
+creía que sus cinco vueltas taparían un fallo transitorio y que habría que
+medirlo salteándolas, cuando no tapaban nada. El `0 de 8` de la tabla de arriba
+era una medición limpia desde el principio. Los `reference` de Cloudflare de los cuatro
+fallos quedaron guardados en el issue #46: son lo único que ellos pueden cruzar
+contra sus logs.
 
 ### Los reintentos no se pueden evitar, y no se intenta
 
