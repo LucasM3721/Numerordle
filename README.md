@@ -179,7 +179,10 @@ aparte: comparás con el intento inmediato de arriba y ya estás viendo dónde v
 caer el resultado.
 
 En **tus intentos**, elegís una marca en la paleta y tocás los dígitos que la
-llevan; tocar uno que ya la tiene se la saca. Se guarda solo. Las marcas:
+llevan; tocar uno que ya la tiene se la saca. Si preferís, "en orden" hace que
+cada toque pase a la marca siguiente. La paleta queda pegada abajo de la
+pantalla mientras el tablero esté a la vista, por largo que sea. Se guarda
+solo. Las marcas:
 
 | Estado | Se ve | Quiere decir |
 | --- | --- | --- |

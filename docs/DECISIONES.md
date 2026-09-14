@@ -128,9 +128,19 @@ largo. Otro de precisión: pasarse de largo —querer pica y caer en fijo— obl
 a dar la vuelta entera. Con la paleta se elige la marca una vez y cada dígito es
 un toque; tocar uno que ya tiene esa marca la borra, así equivocarse cuesta lo
 mismo que acertar. Hay una goma explícita igual ("borrar"), porque un gesto
-implícito no se descubre solo. La marca elegida se recuerda en `localStorage`
-(`fp:pincel`): es una preferencia de la persona, no un dato de la partida, y
-arranca en "no está", que es la más usada. Salió del issue #52.
+implícito no se descubre solo. **Y el ciclo de antes sigue estando**, como una
+opción más de la paleta ("en orden"): al que ya le había tomado la mano no se
+le saca, y elegirlo cuesta lo mismo que elegir cualquier marca. La elegida se
+recuerda en `localStorage` (`fp:pincel`): es una preferencia de la persona, no
+un dato de la partida, y arranca en "no está", que es la más usada.
+
+La paleta va **pegada al borde de abajo de la pantalla** mientras el tablero
+esté a la vista. Está al final de la tarjeta, y con veinte intentos eso queda a
+una pantalla entera del dígito que se quiere marcar: cambiar de marca sería
+bajar, tocar y volver a subir, cada vez. Con `position: sticky` se queda quieta
+abajo hasta que el scroll llega a su lugar natural. Lo que se pidió fue eso,
+literalmente: que sea cómoda con cualquier cantidad de intentos. Salió del
+issue #52.
 
 El casillero donde escribís es **la fila siguiente del tablero**, no un cuadro
 aparte: comparás con el intento de arriba y ya ves dónde va a caer el resultado.

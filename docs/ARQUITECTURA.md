@@ -619,7 +619,7 @@ Y lo que persiste entre cargas, en `localStorage`:
 | `fp:marks:<sala>:<partida>` y `fp:marks:reto:<fecha>` | tus anotaciones por dígito (0 nada, 1 no está, 2 pica, 3 fijo). Nunca viajan |
 | `fp:racha` | el historial del desafío por fecha: `{n, gano, encontro}`. De acá sale la racha; nunca viaja |
 | `fp:ayuda-anfitrion` | si ya viste el plegable de ayuda |
-| `fp:pincel` | qué marca está elegida en la paleta para pintar dígitos |
+| `fp:pincel` | qué marca está elegida en la paleta para pintar dígitos, o `ciclo` para pasar de a una |
 
 `localStorage` es un clave-valor de strings por origen, síncrono, de unos 5 MB.
 Todas las lecturas y escrituras van en `try/catch` porque puede no estar (modo
