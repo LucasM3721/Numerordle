@@ -178,8 +178,8 @@ El casillero donde escribís es **la fila siguiente del tablero**, no un cuadro
 aparte: comparás con el intento inmediato de arriba y ya estás viendo dónde va a
 caer el resultado.
 
-En **tus intentos**, cada dígito se toca para ir marcándolo. Cicla entre cuatro
-estados y se guarda solo:
+En **tus intentos**, elegís una marca en la paleta y tocás los dígitos que la
+llevan; tocar uno que ya la tiene se la saca. Se guarda solo. Las marcas:
 
 | Estado | Se ve | Quiere decir |
 | --- | --- | --- |
