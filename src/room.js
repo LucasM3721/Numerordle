@@ -74,6 +74,7 @@ function newState(code, mode, maxPlayers) {
     round: 0,
     roundQueue: [],
     turnPtr: 0,
+    turnoDesde: now, // desde cuándo se espera al que tiene que jugar (ver `proximoDestrabe`)
     pending: {}, // modo simultáneo: playerId -> intento
     log: [],
     logSeq: 0, // numerador del historial: no se reinicia aunque el log se recorte
@@ -238,9 +239,54 @@ function sweepable(state, p) {
  */
 let destrabeMs = GRACE_MS;
 
-const ausenteHace = (p, ahora) =>
-  Boolean(p) && !esBot(p) && !p.connected && p.disconnectedAt
-  && ahora - p.disconnectedAt >= destrabeMs;
+const ausente = (p) => Boolean(p) && !esBot(p) && !p.connected && Boolean(p.disconnectedAt);
+
+/**
+ * Desde cuándo se le cuenta la espera a un ausente: desde que se fue, o desde
+ * que le tocó jugar, lo que sea más tarde. Contar solo desde que se fue hacía
+ * que, una vez pasado el margen, **todos** sus turnos siguientes vencieran en
+ * el acto, y de ahí salía el bucle que cuenta `proximoDestrabe`.
+ */
+const esperaDesde = (state, p) => Math.max(p.disconnectedAt, state.turnoDesde ?? 0);
+
+const ausenteHace = (state, p, ahora) =>
+  ausente(p) && ahora - esperaDesde(state, p) >= destrabeMs;
+
+/**
+ * Cuándo va a haber un turno que pasar solo, o `null` si no hay ninguno.
+ *
+ * Es la única fuente de la alarma de destrabe, y existe porque la versión
+ * anterior programaba la alarma en `disconnectedAt + margen` para cualquier
+ * ausente en partida, le tocara o no. Pasado el margen, ese instante queda en
+ * el pasado para siempre: cada vez que la alarma corría volvía a programarse
+ * para "ya", y el objeto giraba sin parar mientras el ausente siguiera en la
+ * partida. Con gente sola era un bucle de requests facturables que no hacía
+ * nada; con máquinas en la sala, cada vuelta jugaba una ronda entera, y el
+ * estado crecía hasta que `storage.put` reventó con `SQLITE_TOOBIG` en el
+ * Worker local. Se vio en el log de `wrangler dev` durante la suite, no en una
+ * prueba: la alarma corre en el fondo y ninguna verificación la mira.
+ *
+ * Ahora la alarma se programa solo cuando destrabar va a hacer algo —en modo
+ * por turnos, si le toca al ausente; en simultáneo, si todos los que faltan
+ * están ausentes— y se cuenta desde que le tocó. Así, después de pasar un
+ * turno, el siguiente espera el margen entero de nuevo, y cuando no hay nada
+ * que pasar no hay alarma. Es la misma condición que usa `destrabar`, escrita
+ * una sola vez: si difirieran, la alarma podría dispararse sin tener nada que
+ * hacer, que es justo lo que gira.
+ */
+export function proximoDestrabe(state, margen = destrabeMs) {
+  if (state.phase !== 'playing') return null;
+  const vence = (p) => esperaDesde(state, p) + margen;
+  if (state.mode === 'strict') {
+    const p = findPlayer(state, state.roundQueue[state.turnPtr]);
+    return ausente(p) ? vence(p) : null;
+  }
+  const faltan = state.roundQueue
+    .filter((id) => !state.pending[id])
+    .map((id) => findPlayer(state, id));
+  if (!faltan.length || !faltan.every(ausente)) return null;
+  return Math.max(...faltan.map(vence));
+}
 
 /**
  * Destraba la ronda cuando el que tiene que jugar ya no está.
@@ -261,7 +307,7 @@ function destrabar(state, ahora = Date.now()) {
     if (state.mode === 'strict') {
       const id = state.roundQueue[state.turnPtr];
       const p = id ? findPlayer(state, id) : null;
-      if (!p || !ausenteHace(p, ahora)) break;
+      if (!p || !ausenteHace(state, p, ahora)) break;
       pushSkip(state, id);
       advanceStrict(state);
     } else {
@@ -269,7 +315,7 @@ function destrabar(state, ahora = Date.now()) {
       // con uno solo presente, la ronda todavía tiene a quién esperar.
       const faltan = state.roundQueue.filter((id) => !state.pending[id]);
       if (!faltan.length) break;
-      if (!faltan.every((id) => ausenteHace(findPlayer(state, id), ahora))) break;
+      if (!faltan.every((id) => ausenteHace(state, findPlayer(state, id), ahora))) break;
       resolveSimultaneous(state, true);
     }
     hubo = true;
@@ -340,6 +386,7 @@ function detach(state, player) {
 function startRound(state) {
   state.roundQueue = activeIds(state);
   state.turnPtr = 0;
+  state.turnoDesde = Date.now();
   state.pending = {};
   if (state.roundQueue.length === 0) finishGame(state);
 }
@@ -565,6 +612,7 @@ function endRound(state) {
 
 function advanceStrict(state) {
   state.turnPtr++;
+  state.turnoDesde = Date.now();
   if (state.turnPtr >= state.roundQueue.length) endRound(state);
 }
 
@@ -670,6 +718,9 @@ export class GameRoom {
       if (this.state && this.state.logSeq == null) {
         this.state.logSeq = this.state.log.reduce((max, e) => Math.max(max, e.n + 1), 0);
       }
+      // Salas de antes de que la espera se contara desde el turno. Arrancar
+      // desde ahora es lo que corta el bucle en una que ya venía girando.
+      if (this.state && this.state.turnoDesde == null) this.state.turnoDesde = Date.now();
     });
   }
 
@@ -1157,19 +1208,24 @@ export class GameRoom {
     return humanos(this.state).length === 0 ? EMPTY_TTL_MS : IDLE_TTL_MS;
   }
 
-  /** Barrer ausentes, destrabar la ronda y vencer la sala: la más cercana. */
+  /**
+   * Barrer ausentes, destrabar la ronda y vencer la sala: la más cercana.
+   *
+   * Ojo con programar algo que ya pasó: la alarma se dispara en el acto, y si
+   * al correr no cambia nada que mueva la fecha, se vuelve a programar para el
+   * pasado y gira sin parar. Cada una de las tres cosas de acá tiene que dejar
+   * de estar pendiente después de correr, o correr más tarde la próxima vez.
+   */
   nextAlarmAt() {
     const s = this.state;
     let soonest = s.lastActivity + this.ttl();
     for (const p of s.players) {
       if (sweepable(s, p)) soonest = Math.min(soonest, p.disconnectedAt + GRACE_MS);
-      // En partida no se barre a nadie, pero su turno sí se pasa solo. Hace
-      // falta la alarma porque si nadie más juega no hay nada que la dispare.
-      const trabaLaRonda =
-        s.phase === 'playing' && p.status === 'playing' && !esBot(p)
-        && !p.connected && p.disconnectedAt;
-      if (trabaLaRonda) soonest = Math.min(soonest, p.disconnectedAt + destrabeMs);
     }
+    // En partida no se barre a nadie, pero su turno sí se pasa solo. Hace
+    // falta la alarma porque si nadie más juega no hay nada que la dispare.
+    const destrabe = proximoDestrabe(s);
+    if (destrabe != null) soonest = Math.min(soonest, destrabe);
     return soonest;
   }
 

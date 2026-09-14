@@ -269,6 +269,13 @@ y pasa turnos vencidos; y vuelve a programar la próxima alarma. Sin esto, una
 partida por turnos con alguien que cerró el navegador quedaría trabada para
 siempre, porque no hay ningún mensaje que la destrabe.
 
+Una regla que salió cara de aprender: **nada de lo que programa la alarma puede
+seguir pendiente igual después de correr**, o la próxima cae en el pasado, se
+dispara en el acto y el objeto gira sin parar. Por eso `proximoDestrabe()`
+programa la alarma de pasar un turno solo cuando pasarlo va a hacer algo, y
+cuenta la espera desde que le tocó jugar al ausente (`turnoDesde`), no desde
+que se fue. Está contado en "La alarma que giraba sola" en DECISIONES.
+
 ### El desafío del día
 
 No usa websocket: es un jugador solo, no hay nada que empujarle. Cada acción es
