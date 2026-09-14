@@ -502,20 +502,43 @@ details.card[open] > summary { margin-bottom: 14px; }
   /* Una píldora partida en dos renglones no se lee como una píldora. Si el
      espacio no alcanza, que lo resuelva la fila y no el texto. */
   white-space: nowrap;
+  /* Ver abajo: el texto y dos copias invisibles se apilan en la misma celda. */
+  display: inline-grid;
+  justify-items: center;
+  align-items: center;
 }
 .mark.f { color: var(--fijo); border-color: rgba(74, 222, 128, .45); background: rgba(74, 222, 128, .1); }
 .mark.p { color: var(--pica); border-color: rgba(96, 165, 250, .45); background: rgba(96, 165, 250, .1); }
 
-/* Todas las píldoras del tablero miden lo mismo, con el texto centrado.
-   Si no, "1 fijo" mide 48 px y "4 picas" 60, y de un intento al siguiente los
-   bordes bailan doce píxeles: el tablero se lee desprolijo aunque cada fila
-   esté bien. El ancho es el del texto más largo ("N picas"), en em para que
-   acompañe al tamaño de fuente; si la fuente no cargara y el fallback fuera más
-   ancho, el mínimo simplemente no ata y cada píldora vuelve a lo suyo.
-   Va acotado a `.try` a propósito: en el historial las marcas son "3F" y "1P",
-   y ahí un ancho pensado para "4 picas" sería un agujero. El historial tiene el
-   suyo, más abajo, con el mismo criterio y otra medida. */
-.try .mark { min-width: 4.8em; text-align: center; }
+/**
+ * Todas las píldoras de un tablero miden lo mismo, con el texto centrado. Si
+ * no, "1 fijo" mide 48 px y "4 picas" 60, y de un intento al siguiente los
+ * bordes bailan doce píxeles: el tablero se lee desprolijo aunque cada fila
+ * esté bien.
+ *
+ * Antes era un `min-width` en em medido contra la fuente de escritorio, y en el
+ * teléfono no ataba: `--fuente-num` es otra en cada sistema —Bahnschrift, DIN
+ * Alternate, Roboto Condensed, o la monoespaciada si no hay ninguna—, y con una
+ * más ancha el texto largo pasaba el mínimo y las píldoras volvían a medir cada
+ * una lo suyo. Un número en em es una apuesta sobre una fuente que no se eligió.
+ *
+ * Ahora el ancho lo reserva el contenido: cada píldora lleva, además de su
+ * texto, **las dos variantes más largas como texto invisible** en la misma
+ * celda de la grilla. La píldora mide lo que mida la más ancha de las tres en
+ * la fuente que haya, así que todas salen iguales en cualquier sistema sin que
+ * haya que medir nada. Los dígitos son tabulares en las cuatro fuentes, así que
+ * cualquier dígito sirve de muestra; va el "0" porque en las fuentes que no lo
+ * son —con cifras a la antigua, como Georgia— es el más ancho, y así la reserva
+ * sigue alcanzando. `visibility: hidden` las saca también del árbol de
+ * accesibilidad: un lector de pantalla no las anuncia.
+ *
+ * El texto va en un `<span>` hijo y no suelto: un nodo de texto no se puede
+ * poner en una celda a propósito, y acá tiene que compartir la de las copias.
+ */
+.mark > span, .mark::before, .mark::after { grid-area: 1 / 1; }
+.mark::before, .mark::after { visibility: hidden; }
+.try .mark::before { content: '0 fijos'; }
+.try .mark::after { content: '0 picas'; }
 .try.hit { border-color: var(--fijo); background: rgba(74, 222, 128, .09); }
 .try.skip .digits { color: var(--muted); letter-spacing: normal; font-size: .95rem; font-weight: 400; }
 
@@ -598,9 +621,36 @@ details.card[open] > summary { margin-bottom: 14px; }
   box-shadow: inset 0 0 0 2px rgba(74, 222, 128, .75);
 }
 
-.hint b.k-no { color: #fca5a5; }
-.hint b.k-pica { color: #fde047; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
-.hint b.k-fijo { color: #86efac; }
+/**
+ * La paleta: con qué se marca un dígito. Es una fila de botones que se lee como
+ * el pincel de un editor: elegís uno y cada dígito que tocás lo toma. Cada
+ * botón muestra la marca con su forma además de su color —tachado, subrayado,
+ * círculo—, igual que el dígito que va a producir. El elegido va con el borde
+ * de la casa y no con su propio color: el color ya dice qué marca es, y hace
+ * falta otro canal para decir cuál está activa.
+ */
+.pincel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.pincel .hint { margin: 0 4px 0 0; flex-basis: 100%; }
+.pincel button {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--pill);
+  border: 1px solid var(--line-strong);
+  background: var(--bg-soft);
+  color: var(--text);
+  cursor: pointer;
+}
+.pincel button.no { color: #fca5a5; }
+.pincel button.no .muestra { text-decoration: line-through; text-decoration-thickness: 2px; }
+.pincel button.pica { color: #fde047; }
+.pincel button.pica .muestra { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+.pincel button.fijo { color: #86efac; }
+.pincel button.fijo .muestra { box-shadow: inset 0 0 0 1.5px rgba(74, 222, 128, .75); border-radius: 50%; padding: 0 4px; }
+.pincel button.borrar { color: var(--muted); }
+.pincel button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; background: rgba(255, 200, 87, .1); }
+.pincel button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* --------------------------------------------------------- tu propio número */
 
@@ -645,9 +695,10 @@ details.card[open] > summary { margin-bottom: 14px; }
 /* Las dos píldoras del historial también miden lo mismo, por el mismo motivo que
    las del tablero aunque el defecto sea más chico: acá dicen "3F" y "1P", y lo
    tabular son los dígitos y no las letras —la "P" es 0,8 px más ancha que la
-   "F"—, así que las dos píldoras de una misma fila salían distintas. El ancho es
-   el de la más ancha, en em como el otro. */
-.feed .line .mark { min-width: 2.8em; text-align: center; }
+   "F"—, así que las dos píldoras de una misma fila salían distintas. Se reserva
+   igual que en el tablero, con las dos variantes en invisible. */
+.feed .line .mark::before { content: '0F'; }
+.feed .line .mark::after { content: '0P'; }
 .feed .line.hit { color: var(--fijo); }
 .feed .line.mine .digits { color: var(--accent); }
 

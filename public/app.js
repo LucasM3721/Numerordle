@@ -128,6 +128,67 @@ const NIVEL_TEXTO = { facil: 'distraída', normal: 'atenta', dificil: 'metódica
 const MARK_CLASS = ['', 'no', 'pica', 'fijo'];
 const MARK_LABEL = ['sin marcar', 'no está', 'pica: está, pero en otro lugar', 'fijo: está justo acá'];
 
+/**
+ * La paleta: con qué marca se pinta un dígito al tocarlo.
+ *
+ * Antes cada toque ciclaba nada → no está → pica → fijo, y marcar un fijo
+ * costaba tres toques por dígito; con la máquina en nivel metódico, que da
+ * varios fijos seguidos, se hacía largo y se pasaba de largo seguido. Con la
+ * paleta elegís la marca una vez y cada dígito es un toque. Tocar un dígito que
+ * ya tiene la marca elegida la borra, así el que se equivocó no tiene que ir
+ * hasta "borrar". El porqué está en "El cuaderno del jugador" en DECISIONES.
+ *
+ * Se guarda en `localStorage` para que no haya que volver a elegirla en cada
+ * partida: es una preferencia de la persona, no un dato de la sala. Arranca en
+ * "no está", que es la marca que más se usa —un 0 fijos 0 picas tacha cuatro
+ * dígitos de golpe— y la que ciclando era la primera.
+ */
+const PINCEL_TEXTO = ['borrar', 'no está', 'pica', 'fijo'];
+const PINCEL_ORDEN = [1, 2, 3, 0];
+const PINCEL_CLAVE = 'fp:pincel';
+
+let pincel = (() => {
+  // `Number(null)` es 0, que es "borrar": sin el chequeo, la primera vez
+  // arrancaba con la goma elegida en vez de con "no está".
+  const guardado = localStorage.getItem(PINCEL_CLAVE);
+  const v = guardado === null ? NaN : Number(guardado);
+  return Number.isInteger(v) && v >= 0 && v < MARK_CLASS.length ? v : 1;
+})();
+
+function elegirPincel(valor) {
+  pincel = valor;
+  try {
+    localStorage.setItem(PINCEL_CLAVE, String(valor));
+  } catch {
+    /* sin espacio: dura lo que dura la pestaña */
+  }
+  for (const b of document.querySelectorAll('.pincel button')) {
+    b.setAttribute('aria-pressed', String(Number(b.dataset.marca) === pincel));
+  }
+}
+
+/**
+ * Arma los botones de cada paleta una sola vez: los contenedores están en el
+ * HTML y no se redibujan, así que no hay que reconstruirlos en cada render.
+ */
+function armarPinceles() {
+  for (const cont of document.querySelectorAll('.pincel')) {
+    for (const valor of PINCEL_ORDEN) {
+      const b = el('button', MARK_CLASS[valor] || 'borrar');
+      b.type = 'button';
+      b.dataset.marca = String(valor);
+      // La muestra es la marca puesta sobre un dígito de mentira, para que se
+      // vea qué va a producir y no solo cómo se llama.
+      if (valor) b.appendChild(el('span', 'muestra', '4'));
+      b.append(valor ? ` ${PINCEL_TEXTO[valor]}` : PINCEL_TEXTO[valor]);
+      b.setAttribute('aria-label', MARK_LABEL[valor]);
+      b.onclick = () => elegirPincel(valor);
+      cont.appendChild(b);
+    }
+  }
+  elegirPincel(pincel);
+}
+
 // ----------------------------------------------------------------- estado
 
 let ws = null;
@@ -226,6 +287,18 @@ function el(tag, cls, text) {
 
 function show(id, visible) {
   $(id).classList.toggle('hidden', !visible);
+}
+
+/**
+ * Una píldora de resultado ("2 fijos", "1P"). El texto va en un hijo y no
+ * suelto adentro porque el ancho lo reserva el CSS apilando el texto con dos
+ * copias invisibles en la misma celda, y un nodo de texto suelto no se puede
+ * mandar a una celda (ver `.mark` en styles.css).
+ */
+function pildora(cls, texto) {
+  const p = el('span', `mark ${cls}`);
+  p.appendChild(el('span', null, texto));
+  return p;
 }
 
 /**
@@ -535,10 +608,29 @@ function goHome(message) {
   lastRound = -1;
   lastGame = -1;
   document.title = 'Fijos y Picas';
-  history.pushState({}, '', '/');
+  // Si se llegó acá por "atrás", la URL ya es la portada: apilar otra entrada
+  // igual dejaría dos "atrás" para salir del sitio.
+  if (location.pathname !== '/') history.pushState({}, '', '/');
   show('screen-room', false);
   show('screen-home', true);
   if (message) flash('home-error', message);
+}
+
+/**
+ * Salir de la sala, por el botón o por "atrás" del navegador: las dos puertas
+ * hacen lo mismo. Con la partida empezada se pregunta, porque irse es quedar
+ * retirado sin vuelta.
+ */
+function salirDeLaSala(porHistorial = false) {
+  const enJuego = state && (state.phase === 'playing' || state.phase === 'intermission');
+  if (enJuego && !confirm('La partida ya empezó: si te vas quedás retirado y no podés volver a entrar. ¿Seguro?')) {
+    // Vino por "atrás" y se arrepintió: el navegador ya cambió la URL solo,
+    // así que hay que devolverla a la sala para que siga diciendo dónde está.
+    if (porHistorial) history.pushState({}, '', `/r/${roomCode}`);
+    return;
+  }
+  send({ t: 'leave' });
+  goHome();
 }
 
 // -------------------------------------------------------------- acciones
@@ -805,13 +897,13 @@ function applyMark(btn, digit, value) {
   btn.setAttribute('aria-label', `${digit}: ${MARK_LABEL[value]}`);
 }
 
-/** Cada dígito cicla nada → no está → pica → fijo → nada. */
+/** Cada dígito toma la marca de la paleta; si ya la tenía, se borra. */
 function digitEl(entry, pos) {
   const digit = entry.guess[pos];
   const btn = el('button', 'dg', digit);
   applyMark(btn, digit, marks.get(entry.n)[pos]);
   btn.onclick = () => {
-    const next = (marks.get(entry.n)[pos] + 1) % 4;
+    const next = marks.get(entry.n)[pos] === pincel ? 0 : pincel;
     marks.set(entry.n, pos, next);
     applyMark(btn, digit, next);
   };
@@ -838,8 +930,8 @@ function tryEl(entry, index, annotate) {
   }
 
   const badges = el('span', 'marks');
-  badges.appendChild(el('span', 'mark f', `${entry.fijos} ${entry.fijos === 1 ? 'fijo' : 'fijos'}`));
-  badges.appendChild(el('span', 'mark p', `${entry.picas} ${entry.picas === 1 ? 'pica' : 'picas'}`));
+  badges.appendChild(pildora('f', `${entry.fijos} ${entry.fijos === 1 ? 'fijo' : 'fijos'}`));
+  badges.appendChild(pildora('p', `${entry.picas} ${entry.picas === 1 ? 'pica' : 'picas'}`));
   row.appendChild(badges);
   return row;
 }
@@ -877,8 +969,8 @@ function renderFeed(container) {
       } else {
         line.appendChild(el('span', 'digits', e.guess));
         const marks = el('span', 'marks');
-        marks.appendChild(el('span', 'mark f', `${e.fijos}F`));
-        marks.appendChild(el('span', 'mark p', `${e.picas}P`));
+        marks.appendChild(pildora('f', `${e.fijos}F`));
+        marks.appendChild(pildora('p', `${e.picas}P`));
         line.appendChild(marks);
       }
       container.appendChild(line);
@@ -1209,14 +1301,7 @@ $('btn-copy').onclick = async () => {
   }
 };
 
-$('btn-leave').onclick = () => {
-  const enJuego = state && (state.phase === 'playing' || state.phase === 'intermission');
-  if (enJuego && !confirm('La partida ya empezó: si te vas quedás retirado y no podés volver a entrar. ¿Seguro?')) {
-    return;
-  }
-  send({ t: 'leave' });
-  goHome();
-};
+$('btn-leave').onclick = () => salirDeLaSala();
 
 $('lobby-max').onchange = (e) => send({ t: 'setMax', max: Number(e.target.value) });
 $('btn-shuffle').onclick = () => send({ t: 'shuffle' });
@@ -1676,47 +1761,82 @@ $('btn-reto').onclick = () => abrirReto();
 $('btn-reto-guess').onclick = arriesgarReto;
 $('btn-reto-seguir').onclick = () => decidirReto(true);
 $('btn-reto-ver').onclick = () => decidirReto(false);
-$('btn-reto-salir').onclick = () => {
-  // Igual que al salir de una sala: la URL tiene que decir dónde estás, o
-  // recargar te devuelve al desafío que acabás de dejar.
-  history.pushState({}, '', '/');
+/**
+ * Igual que al salir de una sala: la URL tiene que decir dónde estás, o
+ * recargar te devuelve al desafío que acabás de dejar. Y si se salió por
+ * "atrás", la URL ya cambió sola y no hay que tocarla.
+ */
+function salirDelReto(porHistorial = false) {
+  if (!porHistorial) history.pushState({}, '', '/');
   show('screen-reto', false);
   show('screen-home', true);
-};
+}
+
+$('btn-reto-salir').onclick = () => salirDelReto();
 
 // -------------------------------------------------------------------- arranque
 
 $('home-name').value = store.name;
 fillRange($('home-max'), MIN_JUGADORES, CAP_JUGADORES, CAP_JUGADORES);
+armarPinceles();
 renderRacha();
 
-// El patrón de la ruta es más ancho que el de un código válido a propósito: un
-// link mal copiado tiene que caer acá adentro para poder explicarlo, y no
-// pasar de largo hacia una pantalla de inicio que no dice nada.
-const match = location.pathname.match(/^\/r\/([A-Za-z0-9]{1,12})\/?$/);
+/**
+ * Lleva la pantalla a donde dice la URL. Corre al cargar la página y en cada
+ * `popstate`, que es lo que dispara el navegador con "atrás" y "adelante".
+ *
+ * Es lo que hace que "atrás" en el teléfono no te saque del sitio: entrar a
+ * una sala o al desafío apila una entrada en el historial, y volver de ella
+ * tiene que hacer lo mismo que el botón "Salir". Sin esto las entradas estaban
+ * —el `pushState` ya se hacía— pero nadie las leía al volver, así que la URL
+ * cambiaba y la pantalla no, y el segundo "atrás" ya era el de salir del sitio.
+ *
+ * `porHistorial` dice si la URL ya la cambió el navegador: en ese caso no hay
+ * que volver a empujarla, y si la persona se arrepiente hay que devolverla.
+ */
+function irSegunLaUrl(porHistorial = false) {
+  const ruta = location.pathname;
 
-// `/reto` entra derecho al desafío. Es el link que sale de Compartir, así que
-// es por donde llega el que nunca jugó: la portada, de por medio, le pide un
-// nombre y le ofrece crear una sala antes de dejarlo hacer lo que vino a hacer.
-//
-// No hace falta nada del lado del Worker: `not_found_handling` es
-// `single-page-application`, así que cualquier ruta que no sea `/api/*` ya
-// sirve este mismo HTML. Lo mismo que hace andar a `/r/ABC12`.
-if (EN_RETO.test(location.pathname)) {
-  abrirReto(true);
-} else if (match) {
-  const code = match[1].toUpperCase();
-  if (!CODIGO_RE.test(code)) {
-    history.replaceState({}, '', '/');
-    $('home-code').value = code.slice(0, 5);
-    flash('join-error', CODIGO_MAL, true);
-  } else if (store.name) {
-    connect(code);
-  } else {
-    $('home-code').value = code;
-    // Acá no apretó ningún botón: llegó por el link. El aviso va pegado al
-    // campo que le falta llenar.
-    flash('name-error', `Poné tu nombre para entrar a la sala ${code}.`, true);
-    $('home-name').focus();
+  // `/reto` entra derecho al desafío. Es el link que sale de Compartir, así
+  // que es por donde llega el que nunca jugó: la portada, de por medio, le pide
+  // un nombre y le ofrece crear una sala antes de dejarlo hacer lo que vino a
+  // hacer.
+  //
+  // No hace falta nada del lado del Worker: `not_found_handling` es
+  // `single-page-application`, así que cualquier ruta que no sea `/api/*` ya
+  // sirve este mismo HTML. Lo mismo que hace andar a `/r/ABC12`.
+  if (EN_RETO.test(ruta)) {
+    if ($('screen-reto').classList.contains('hidden')) abrirReto(true);
+    return;
   }
+
+  // El patrón de la ruta es más ancho que el de un código válido a propósito:
+  // un link mal copiado tiene que caer acá adentro para poder explicarlo, y no
+  // pasar de largo hacia una pantalla de inicio que no dice nada.
+  const match = ruta.match(/^\/r\/([A-Za-z0-9]{1,12})\/?$/);
+  if (match) {
+    const code = match[1].toUpperCase();
+    if (code === roomCode) return; // ya estamos ahí
+    if (!CODIGO_RE.test(code)) {
+      history.replaceState({}, '', '/');
+      $('home-code').value = code.slice(0, 5);
+      flash('join-error', CODIGO_MAL, true);
+    } else if (store.name) {
+      connect(code);
+    } else {
+      $('home-code').value = code;
+      // Acá no apretó ningún botón: llegó por el link. El aviso va pegado al
+      // campo que le falta llenar.
+      flash('name-error', `Poné tu nombre para entrar a la sala ${code}.`, true);
+      $('home-name').focus();
+    }
+    return;
+  }
+
+  // La portada. Lo que estuviera abierto se cierra como con su botón "Salir".
+  if (roomCode) salirDeLaSala(porHistorial);
+  else if (!$('screen-reto').classList.contains('hidden')) salirDelReto(porHistorial);
 }
+
+window.addEventListener('popstate', () => irSegunLaUrl(true));
+irSegunLaUrl();

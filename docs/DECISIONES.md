@@ -120,6 +120,18 @@ al terminar la partida ves al lado del número real en qué te habías equivocad
 Se guardan con clave `fp:marks:<sala>:<partida>`, así sobreviven a un refresh y se
 limpian solas en la revancha sin arrastrar nada.
 
+**Se marca con una paleta, no ciclando.** Hasta el 13 de septiembre de 2026 cada
+toque sobre un dígito lo hacía pasar por nada → no está → pica → fijo, y eso
+tenía dos costos que se notaban en el teléfono. Uno de taps: un fijo eran tres
+toques por dígito, y contra la máquina metódica, que da fijos seguidos, se hacía
+largo. Otro de precisión: pasarse de largo —querer pica y caer en fijo— obligaba
+a dar la vuelta entera. Con la paleta se elige la marca una vez y cada dígito es
+un toque; tocar uno que ya tiene esa marca la borra, así equivocarse cuesta lo
+mismo que acertar. Hay una goma explícita igual ("borrar"), porque un gesto
+implícito no se descubre solo. La marca elegida se recuerda en `localStorage`
+(`fp:pincel`): es una preferencia de la persona, no un dato de la partida, y
+arranca en "no está", que es la más usada. Salió del issue #52.
+
 El casillero donde escribís es **la fila siguiente del tablero**, no un cuadro
 aparte: comparás con el intento de arriba y ya ves dónde va a caer el resultado.
 

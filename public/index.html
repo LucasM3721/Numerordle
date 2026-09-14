@@ -292,7 +292,12 @@
         <p id="guess-error" class="error hidden"></p>
         <button id="btn-guess" class="btn primary big apilado">Arriesgar</button>
         <p id="guess-note" class="hint"></p>
-        <p class="hint">Tocá cada dígito de tus intentos para marcarlo: <b class="k-no">✕ no está</b> · <b class="k-pica">pica</b> · <b class="k-fijo">fijo</b>. Son anotaciones tuyas, nadie más las ve.</p>
+        <!-- La paleta de marcas. Los botones los arma el cliente, que es quien
+             sabe cuál está elegida; acá va solo el texto. Son anotaciones
+             tuyas, nadie más las ve. -->
+        <div class="pincel" role="group" aria-label="Con qué marcar los dígitos de tus intentos">
+          <span class="hint">Elegí una marca y tocá los dígitos de tus intentos. Son anotaciones tuyas, nadie más las ve.</span>
+        </div>
       </div>
 
       <div class="card">
@@ -323,6 +328,9 @@
         </div>
         <p id="inter-wait" class="hint hidden">Esperando a que el resto decida…</p>
         <div id="inter-board" class="board"></div>
+        <div class="pincel" role="group" aria-label="Con qué marcar los dígitos de tus intentos">
+          <span class="hint">Elegí una marca y tocá los dígitos.</span>
+        </div>
       </div>
     </div>
 
@@ -345,6 +353,9 @@
         <h2>Tu tablero</h2>
         <p id="final-target-line" class="hint"></p>
         <div id="final-board" class="board"></div>
+        <div class="pincel" role="group" aria-label="Con qué marcar los dígitos de tus intentos">
+          <span class="hint">Elegí una marca y tocá los dígitos.</span>
+        </div>
       </div>
 
       <div class="card">
@@ -416,7 +427,9 @@
         <button id="btn-reto-seguir" class="btn primary">Seguir intentando</button>
         <button id="btn-reto-ver" class="btn ghost">Ver el número</button>
       </div>
-      <p class="hint">Tocá cada dígito de tus intentos para marcarlo: <b class="k-no">✕ no está</b> · <b class="k-pica">pica</b> · <b class="k-fijo">fijo</b>. Son anotaciones tuyas.</p>
+      <div class="pincel" role="group" aria-label="Con qué marcar los dígitos de tus intentos">
+        <span class="hint">Elegí una marca y tocá los dígitos de tus intentos. Son anotaciones tuyas.</span>
+      </div>
     </div>
 
     <div id="reto-final" class="card hidden">

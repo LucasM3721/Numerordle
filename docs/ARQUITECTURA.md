@@ -612,6 +612,7 @@ Y lo que persiste entre cargas, en `localStorage`:
 | `fp:marks:<sala>:<partida>` y `fp:marks:reto:<fecha>` | tus anotaciones por dígito (0 nada, 1 no está, 2 pica, 3 fijo). Nunca viajan |
 | `fp:racha` | el historial del desafío por fecha: `{n, gano, encontro}`. De acá sale la racha; nunca viaja |
 | `fp:ayuda-anfitrion` | si ya viste el plegable de ayuda |
+| `fp:pincel` | qué marca está elegida en la paleta para pintar dígitos |
 
 `localStorage` es un clave-valor de strings por origen, síncrono, de unos 5 MB.
 Todas las lecturas y escrituras van en `try/catch` porque puede no estar (modo
@@ -656,12 +657,13 @@ convención del cliente: `/`, `/r/K7Q4Z` y `/reto`.
 - Al entrar a una sala, `history.pushState({}, '', '/r/K7Q4Z')` cambia la URL
   **sin recargar**. Es lo que hace que el link se pueda copiar y que recargar te
   deje en la sala.
-- Al cargar la página, el bloque final de `app.js` lee `location.pathname`: si
+- `irSegunLaUrl()` lee `location.pathname` y lleva la pantalla a donde dice: si
   es `/reto`, abre el desafío; si es `/r/…`, conecta (o pide el nombre primero);
-  si no, portada.
-- Lo que falta, y es el issue #50: escuchar `popstate` (el botón "atrás") para
-  que haga lo mismo que "Salir". Hoy las entradas del historial existen pero
-  nadie las lee al volver.
+  si es `/`, cierra lo que estuviera abierto como lo haría el botón "Salir".
+  Corre al cargar la página y en cada `popstate`, que es el evento que dispara
+  el navegador con "atrás" y "adelante". Así "atrás" en el teléfono no te saca
+  del sitio: te saca de la sala, y si la partida ya empezó pregunta primero y,
+  si te arrepentís, devuelve la URL a la sala.
 
 ### 10.7 Los componentes, sin componentes
 
