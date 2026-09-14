@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 
 import { separarPruebas } from './filas-de-prueba.mjs';
-import { filasDePartida } from '../src/room.js';
+import { filasDePartida, proximoDestrabe } from '../src/room.js';
 import { TOTAL_SECRETOS, isValidSecret, permutacionSecreta, scoreGuess } from '../src/game.js';
 import { NIVELES, anotarResultado, nuevoCuaderno, proponerIntento } from '../src/bot.js';
 import { TOPE_INTENTOS, fechaDeHoy, finDelDia, numeroDelDia } from '../src/reto.js';
@@ -880,6 +880,68 @@ function formaDelRegistro() {
   );
 }
 
+// ------------------------------------------- la alarma que giraba sola
+
+/**
+ * La alarma de destrabe se programaba en `disconnectedAt + margen` para
+ * cualquier ausente en partida, y pasado ese instante quedaba en el pasado
+ * para siempre: se disparaba, no tenía nada que hacer, se volvía a programar
+ * para "ya", y así sin parar. Con máquinas en la sala jugaba una ronda por
+ * vuelta hasta reventar el estado. Ninguna prueba lo veía porque la alarma
+ * corre en el fondo; esto prueba la función que decide cuándo hay alarma, que
+ * es lo único que se puede probar sin esperar.
+ */
+function laAlarmaNoGira() {
+  console.log('\n— la alarma de destrabe solo se programa cuando hay algo que pasar');
+  const t0 = 1000000;
+  const margen = 500;
+  const base = (extra) => ({
+    phase: 'playing',
+    mode: 'strict',
+    turnoDesde: t0,
+    roundQueue: ['a', 'b'],
+    turnPtr: 0,
+    pending: {},
+    players: [
+      { id: 'a', connected: true, disconnectedAt: null, status: 'playing' },
+      { id: 'b', connected: false, disconnectedAt: t0, status: 'playing' },
+    ],
+    ...extra,
+  });
+
+  igual('por turnos: un ausente al que no le toca no programa nada', proximoDestrabe(base(), margen), null);
+  igual('por turnos: cuando le toca, vence al margen', proximoDestrabe(base({ turnPtr: 1 }), margen), t0 + margen);
+  igual(
+    'la espera se cuenta desde que le tocó, no desde que se fue',
+    proximoDestrabe(base({ turnPtr: 1, turnoDesde: t0 + 3000 }), margen),
+    t0 + 3000 + margen,
+  );
+  igual('fuera de la partida no hay alarma', proximoDestrabe(base({ phase: 'intermission', turnPtr: 1 }), margen), null);
+
+  igual('simultáneo: con alguien presente que falta, no programa nada', proximoDestrabe(base({ mode: 'sim' }), margen), null);
+  igual(
+    'simultáneo: cuando solo faltan ausentes, vence al margen',
+    proximoDestrabe(base({ mode: 'sim', pending: { a: '1234' } }), margen),
+    t0 + margen,
+  );
+  igual(
+    'simultáneo: con todos jugados no hay nada que esperar',
+    proximoDestrabe(base({ mode: 'sim', pending: { a: '1234', b: '5678' } }), margen),
+    null,
+  );
+  const conBot = base({
+    mode: 'sim',
+    roundQueue: ['a', 'b', 'bot-1'],
+    pending: { a: '1234' },
+    players: [
+      { id: 'a', connected: true, disconnectedAt: null, status: 'playing' },
+      { id: 'b', connected: false, disconnectedAt: t0, status: 'playing' },
+      { id: 'bot-1', bot: 'normal', connected: true, disconnectedAt: null, status: 'playing' },
+    ],
+  });
+  igual('la máquina que todavía no jugó no cuenta como ausente', proximoDestrabe(conBot, margen), null);
+}
+
 // ------------------------------------------ el número del día, sin servidor
 
 /**
@@ -1378,6 +1440,7 @@ function laPuertaDelDesafio() {
 console.log(`Probando contra ${BASE}`);
 try {
   formaDelRegistro();
+  laAlarmaNoGira();
   lasFilasQueNoCuentan();
   laPuertaDelDesafio();
   await numeroDelDiaAndaBien();

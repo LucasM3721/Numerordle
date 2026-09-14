@@ -170,6 +170,41 @@ Los 90 segundos se pueden bajar con la variable `DESTRABE_MS` **solo para las
 pruebas** — esperar minuto y medio por caso en CI no es viable, y un caso que no
 se corre no protege de nada. Producción usa el valor real.
 
+### La alarma que giraba sola
+
+Hasta el 13 de septiembre de 2026 la alarma de destrabe se programaba en
+`disconnectedAt + 90 s` para **cualquier** ausente en partida, le tocara jugar o
+no. Pasado ese instante quedaba en el pasado para siempre: la alarma se
+disparaba, `destrabar` no tenía nada que hacer si no era el turno del ausente,
+`nextAlarmAt` devolvía el mismo instante y la alarma volvía a dispararse en el
+acto. **Un objeto girando sin parar mientras el ausente siguiera en la
+partida**, y cada vuelta un request facturable. Con máquinas en la sala era
+peor: en simultáneo cada vuelta cerraba la ronda a la fuerza, las máquinas
+jugaban la siguiente, y el estado crecía —el historial se recorta, pero el
+cuaderno de cada máquina no— hasta que `storage.put` reventó con
+`SQLITE_TOOBIG` en el Worker local.
+
+Se vio en el log de `wrangler dev` durante una corrida de la suite que había
+pasado entera: **la alarma corre en el fondo y ninguna verificación la mira**.
+Es la clase de bug que un CI en verde no ve, y lo que lo delató fue leer el log
+del servidor y no el de las pruebas. Vale como regla: después de una corrida,
+el log del Worker tiene que estar limpio, no solo la suite.
+
+Dos cambios lo cortan. **La espera se cuenta desde que le tocó jugar, no desde
+que se fue** (`turnoDesde`, que se marca al arrancar cada ronda y en cada
+avance de turno): así, después de pasarle un turno, el siguiente vuelve a
+esperar el margen entero en vez de vencer al instante. Y **la alarma se
+programa solo cuando destrabar va a hacer algo** —en modo por turnos, si le toca
+al ausente; en simultáneo, si todos los que faltan están ausentes—, con la
+misma condición que usa `destrabar`, escrita una sola vez en `proximoDestrabe`.
+Cuando no hay nada que pasar, no hay alarma. Las salas guardadas antes del
+cambio arrancan a contar desde que se cargan, que es lo que corta el bucle en
+una que ya venía girando.
+
+La regla general quedó escrita en `nextAlarmAt`: nada de lo que programa la
+alarma puede quedar pendiente igual después de correr, o la próxima cae en el
+pasado y gira.
+
 ## Costo
 
 Cada mensaje que entra por websocket cuenta como request del Durable Object. El
