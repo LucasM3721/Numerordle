@@ -138,21 +138,34 @@ const MARK_LABEL = ['sin marcar', 'no está', 'pica: está, pero en otro lugar',
  * ya tiene la marca elegida la borra, así el que se equivocó no tiene que ir
  * hasta "borrar". El porqué está en "El cuaderno del jugador" en DECISIONES.
  *
+ * El ciclo de antes sigue estando, como una opción más de la paleta: "en
+ * orden". Al que ya le había tomado la mano no se le saca, y elegirlo cuesta
+ * lo mismo que cualquier otra marca.
+ *
  * Se guarda en `localStorage` para que no haya que volver a elegirla en cada
  * partida: es una preferencia de la persona, no un dato de la sala. Arranca en
  * "no está", que es la marca que más se usa —un 0 fijos 0 picas tacha cuatro
  * dígitos de golpe— y la que ciclando era la primera.
  */
-const PINCEL_TEXTO = ['borrar', 'no está', 'pica', 'fijo'];
-const PINCEL_ORDEN = [1, 2, 3, 0];
+const PINCEL_CICLO = 'ciclo';
+const PINCEL_ORDEN = [1, 2, 3, 0, PINCEL_CICLO];
+const PINCEL_TEXTO = { 1: 'no está', 2: 'pica', 3: 'fijo', 0: 'borrar', [PINCEL_CICLO]: 'en orden' };
+const PINCEL_ETIQUETA = {
+  1: MARK_LABEL[1],
+  2: MARK_LABEL[2],
+  3: MARK_LABEL[3],
+  0: 'borrar la marca',
+  [PINCEL_CICLO]: 'en orden: cada toque pasa a la marca siguiente',
+};
 const PINCEL_CLAVE = 'fp:pincel';
 
 let pincel = (() => {
+  const guardado = localStorage.getItem(PINCEL_CLAVE);
+  if (guardado === PINCEL_CICLO) return PINCEL_CICLO;
   // `Number(null)` es 0, que es "borrar": sin el chequeo, la primera vez
   // arrancaba con la goma elegida en vez de con "no está".
-  const guardado = localStorage.getItem(PINCEL_CLAVE);
   const v = guardado === null ? NaN : Number(guardado);
-  return Number.isInteger(v) && v >= 0 && v < MARK_CLASS.length ? v : 1;
+  return PINCEL_ORDEN.includes(v) ? v : 1;
 })();
 
 function elegirPincel(valor) {
@@ -163,8 +176,14 @@ function elegirPincel(valor) {
     /* sin espacio: dura lo que dura la pestaña */
   }
   for (const b of document.querySelectorAll('.pincel button')) {
-    b.setAttribute('aria-pressed', String(Number(b.dataset.marca) === pincel));
+    b.setAttribute('aria-pressed', String(b.dataset.marca === String(pincel)));
   }
+}
+
+/** Qué marca le queda a un dígito que tenía `actual` al tocarlo. */
+function marcaSiguiente(actual) {
+  if (pincel === PINCEL_CICLO) return (actual + 1) % MARK_CLASS.length;
+  return actual === pincel ? 0 : pincel;
 }
 
 /**
@@ -174,14 +193,15 @@ function elegirPincel(valor) {
 function armarPinceles() {
   for (const cont of document.querySelectorAll('.pincel')) {
     for (const valor of PINCEL_ORDEN) {
-      const b = el('button', MARK_CLASS[valor] || 'borrar');
+      const b = el('button', valor === PINCEL_CICLO ? 'ciclo' : MARK_CLASS[valor] || 'borrar');
       b.type = 'button';
       b.dataset.marca = String(valor);
       // La muestra es la marca puesta sobre un dígito de mentira, para que se
       // vea qué va a producir y no solo cómo se llama.
-      if (valor) b.appendChild(el('span', 'muestra', '4'));
+      if (valor === PINCEL_CICLO) b.appendChild(el('span', 'muestra', '↻'));
+      else if (valor) b.appendChild(el('span', 'muestra', '4'));
       b.append(valor ? ` ${PINCEL_TEXTO[valor]}` : PINCEL_TEXTO[valor]);
-      b.setAttribute('aria-label', MARK_LABEL[valor]);
+      b.setAttribute('aria-label', PINCEL_ETIQUETA[valor]);
       b.onclick = () => elegirPincel(valor);
       cont.appendChild(b);
     }
@@ -897,13 +917,13 @@ function applyMark(btn, digit, value) {
   btn.setAttribute('aria-label', `${digit}: ${MARK_LABEL[value]}`);
 }
 
-/** Cada dígito toma la marca de la paleta; si ya la tenía, se borra. */
+/** Cada dígito toma la marca de la paleta (ver `marcaSiguiente`). */
 function digitEl(entry, pos) {
   const digit = entry.guess[pos];
   const btn = el('button', 'dg', digit);
   applyMark(btn, digit, marks.get(entry.n)[pos]);
   btn.onclick = () => {
-    const next = marks.get(entry.n)[pos] === pincel ? 0 : pincel;
+    const next = marcaSiguiente(marks.get(entry.n)[pos]);
     marks.set(entry.n, pos, next);
     applyMark(btn, digit, next);
   };

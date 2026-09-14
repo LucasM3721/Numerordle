@@ -628,9 +628,32 @@ details.card[open] > summary { margin-bottom: 14px; }
  * círculo—, igual que el dígito que va a producir. El elegido va con el borde
  * de la casa y no con su propio color: el color ya dice qué marca es, y hace
  * falta otro canal para decir cuál está activa.
+ *
+ * **Va pegada al borde de abajo de la pantalla** mientras su tarjeta esté a la
+ * vista. Está al final del tablero, y con veinte intentos eso queda a una
+ * pantalla entera del dígito que se quiere marcar: cambiar de marca sería
+ * bajar, tocar y volver a subir, cada vez. `sticky` la deja quieta abajo hasta
+ * que el scroll llega a su lugar natural, y de ahí en más se queda ahí. Lleva
+ * el fondo de la tarjeta y un borde arriba para taparse lo que pasa por
+ * debajo, y los márgenes negativos son el relleno de la tarjeta, para que la
+ * banda vaya de borde a borde y no flote en el medio. El relleno de abajo suma
+ * el margen seguro del teléfono, que es donde el borde de la pantalla no es
+ * el borde de la vista.
  */
-.pincel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
-.pincel .hint { margin: 0 4px 0 0; flex-basis: 100%; }
+.pincel {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 10px -16px 0;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg-card);
+  border-top: 1px solid var(--line);
+}
+.pincel .hint { margin: 0 2px 0 0; }
 .pincel button {
   font: inherit;
   font-size: 0.82rem;
@@ -649,6 +672,7 @@ details.card[open] > summary { margin-bottom: 14px; }
 .pincel button.fijo { color: #86efac; }
 .pincel button.fijo .muestra { box-shadow: inset 0 0 0 1.5px rgba(74, 222, 128, .75); border-radius: 50%; padding: 0 4px; }
 .pincel button.borrar { color: var(--muted); }
+.pincel button.ciclo { color: var(--text); }
 .pincel button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; background: rgba(255, 200, 87, .1); }
 .pincel button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
