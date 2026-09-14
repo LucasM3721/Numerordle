@@ -134,7 +134,12 @@ es mejor que quedarse mudo para siempre.
 
 ## Documentación
 
-- [CLAUDE.md](CLAUDE.md) — comandos, estructura, cómo probar, invariantes.
+- [AGENTS.md](AGENTS.md) — la guía del repo para quien lo agarra de cero, sea
+  persona o agente: comandos, cómo se verifica, invariantes, operación y qué
+  queda por hacer. `CLAUDE.md` solo la importa.
+- [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) — cómo está armado y por qué
+  anda: Workers y Durable Objects explicados para alguien de backend, el
+  protocolo por websocket, la máquina de estados y el cliente sin framework.
 - [docs/DECISIONES.md](docs/DECISIONES.md) — el porqué de cada decisión de diseño
   y las trampas operativas que ya nos comimos.
 
