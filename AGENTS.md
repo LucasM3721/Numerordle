@@ -31,14 +31,22 @@ Producción: **https://numerordle.lucasm3721.workers.dev**. Repo:
 `github.com/LucasM3721/Numerordle`, rama `main`.
 
 **Estado al 13 de septiembre de 2026.** El juego está terminado, en vivo y con
-todo mergeado y desplegado. Último commit el 14 de agosto (`6be0626`). Ese día
-se verificó el repo de punta a punta: `npm run check` pasa y `npm test` contra el
-local da **215 verificaciones en verde** (el número se mueve un poco entre
-corridas: el desafío que juega la suite tiene cuatro verificaciones que solo
-corren si no lo saca en doce). No hay nada a medio hacer en el árbol de trabajo.
+todo mergeado y desplegado. Ese día se verificó el repo de punta a punta:
+`npm run check` pasa y `npm test` contra el local da **223 verificaciones en
+verde** (el número se mueve un poco entre corridas: el desafío que juega la
+suite tiene cuatro verificaciones que solo corren si no lo saca en doce). No hay
+nada a medio hacer en el árbol de trabajo.
+
+Ese mismo día se cerraron tres issues del cliente (#50, #51, #52) y se arregló
+un bug que ninguna prueba veía: **la alarma de destrabe giraba sin parar** en
+cualquier partida con un ausente, porque se programaba en un instante que ya
+había pasado. Está contado en "La alarma que giraba sola" en DECISIONES, y dejó
+una regla: **después de correr la suite, el log de `wrangler dev` tiene que
+estar limpio**, no solo la suite en verde.
 
 **No queda nada por programar del juego en sí.** Lo que falta es que juegue gente
-para calibrar los niveles de la máquina, y cuatro issues chicos (sección 8).
+para calibrar los niveles de la máquina, y un issue que no depende de nosotros
+(sección 8).
 
 ## 2. Arrancar en cinco minutos
 
@@ -133,6 +141,12 @@ las verificaciones sin desplegar nada. Los cambios solo a `docs/`, `README.md`,
 
 Cosas que ahorran tiempo al probar:
 
+- **La suite en verde no alcanza: mirá el log del Worker.** Las alarmas de los
+  Durable Objects corren en el fondo y ninguna verificación las mira. El bucle
+  de la alarma de destrabe se descubrió leyendo `wrangler-dev.log` después de
+  una corrida que había pasado entera (`SQLITE_TOOBIG` en `alarm()`). Después
+  de `npm test`, `Select-String -Path wrangler-dev.log -Pattern 'ERROR|Uncaught'`
+  no tiene que dar nada.
 - **Un CI en verde sobre una carrera no prueba que no haya bug.** Si algo falla
   de a ratos, relanzalo antes de teorizar: dos corridas iguales dicen mucho más
   que una. Pasó con el desafío, que mataba al Worker al contestar 409 sin leer el
@@ -345,14 +359,13 @@ del 5 se puede cerrar el 6.
 
 **Lo primero de cada sesión: `gh issue list`.** Ahí anota Lucas lo que se le
 ocurre entre sesión y sesión. Lo que esté abierto es parte del pendiente tanto
-como esta lista. Al 13 de septiembre de 2026 hay cuatro:
+como esta lista. Al 13 de septiembre de 2026 queda uno abierto (ese mismo día
+se resolvieron #50, #51 y #52: el botón "atrás", las píldoras y la paleta de
+marcas):
 
 | Issue | Qué pide | Dónde se toca |
 | --- | --- | --- |
-| #46 | Abrir el desafío por primera vez devolvía 500 una de cada diez veces. **El síntoma está tapado** en los dos caminos (reintento del GET en `src/index.js`, #45 y #49) y la causa sigue sin conocerse: es un `internal error; reference = …` de la plataforma al crear el Durable Object. Faltan dos cosas: medirlo desde otra red, y preguntar en el foro de Cloudflare con los `reference`. El issue tiene la tabla de mediciones y los scripts para reproducirlo. No se cierra hasta saber la causa | `src/index.js`, "El 500 al crear el objeto" en DECISIONES |
-| #50 | En el teléfono, el botón "atrás" saca de la página en vez de hacer lo mismo que "Salir". Hoy `history.pushState` deja entradas pero no hay `popstate` que las lea | `public/app.js` (navegación) |
-| #51 | Las píldoras de resultado ("2 fijos", "1 pica") tienen que medir lo mismo en todas sus variantes, con el texto centrado | `public/styles.css` (`.mark`) |
-| #52 | Analizar que los cuatro estados de marca de un dígito se elijan de una lista a un costado, en vez de ciclar tocando el número | `public/app.js` (`digitEl`), `styles.css`, y DECISIONES si cambia la regla |
+| #46 | Abrir el desafío por primera vez devolvía 500 una de cada diez veces (13 de agosto). **El síntoma está tapado** en los dos caminos (reintento del GET en `src/index.js`, #45 y #49) y la causa sigue sin conocerse: es un `internal error; reference = …` de la plataforma al crear el Durable Object. El 13 de septiembre se midió de nuevo desde la misma red: 0 de 20. Faltan dos cosas: medirlo desde otra red (el celular con datos), y preguntar en el foro de Cloudflare con los `reference`. El issue tiene la tabla de mediciones y los scripts para reproducirlo. Si vuelve, los logs ahora traen `retryable` y `overloaded`. No se cierra hasta saber la causa | `src/index.js`, "El 500 al crear el objeto" en DECISIONES |
 
 Y lo grande, que no es código:
 
