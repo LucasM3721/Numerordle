@@ -30,15 +30,18 @@ datos.
 Producción: **https://numerordle.lucasm3721.workers.dev**. Repo:
 `github.com/LucasM3721/Numerordle`, rama `main`.
 
-**Estado al 13 de septiembre de 2026.** El juego está terminado, en vivo y con
-todo mergeado y desplegado. Ese día se verificó el repo de punta a punta:
-`npm run check` pasa y `npm test` contra el local da **223 verificaciones en
-verde** (el número se mueve un poco entre corridas: el desafío que juega la
-suite tiene cuatro verificaciones que solo corren si no lo saca en doce). No hay
-nada a medio hacer en el árbol de trabajo.
+**Estado al 14 de septiembre de 2026.** El juego está terminado, en vivo y con
+todo mergeado y desplegado (el PR #53 entró a `main` ese día, por rebase, y
+el deploy automático salió). El repo se verificó de punta a punta: `npm run
+check` pasa y `npm test` contra el local da **223 verificaciones en verde** (el
+número se mueve un poco entre corridas: el desafío que juega la suite tiene
+cuatro verificaciones que solo corren si no lo saca en doce). No hay nada a
+medio hacer en el árbol de trabajo ni ramas sin mergear.
 
-Ese mismo día se cerraron tres issues del cliente (#50, #51, #52) y se arregló
-un bug que ninguna prueba veía: **la alarma de destrabe giraba sin parar** en
+Lo último que entró: la guía y la arquitectura documentadas, tres issues del
+cliente cerrados (#50, #51, #52: el botón "atrás", las píldoras y la paleta de
+marcas, que conserva el ciclo de antes como opción y queda pegada abajo), y un
+bug que ninguna prueba veía: **la alarma de destrabe giraba sin parar** en
 cualquier partida con un ausente, porque se programaba en un instante que ya
 había pasado. Está contado en "La alarma que giraba sola" en DECISIONES, y dejó
 una regla: **después de correr la suite, el log de `wrangler dev` tiene que
@@ -359,9 +362,8 @@ del 5 se puede cerrar el 6.
 
 **Lo primero de cada sesión: `gh issue list`.** Ahí anota Lucas lo que se le
 ocurre entre sesión y sesión. Lo que esté abierto es parte del pendiente tanto
-como esta lista. Al 13 de septiembre de 2026 queda uno abierto (ese mismo día
-se resolvieron #50, #51 y #52: el botón "atrás", las píldoras y la paleta de
-marcas):
+como esta lista. Al 14 de septiembre de 2026 queda uno abierto (#50, #51 y #52
+se cerraron ese día, en `1214928` y `ffb509f`):
 
 | Issue | Qué pide | Dónde se toca |
 | --- | --- | --- |
