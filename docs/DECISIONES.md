@@ -1042,6 +1042,22 @@ Lo que queda en pie es que **fue del momento**: diez fallos concentrados en una
 ventana de tres horas, y en rachas —cuatro seguidos después de cuatro que
 anduvieron— más que dado a dado. Falta medirlo desde otra red.
 
+Se volvió a medir el 13 de septiembre de 2026, un mes después, desde la misma
+red y a ritmo de persona: **0 de 20**. Sigue sin ocurrir, y una tanda que da cero
+no verifica nada; es un punto más a favor de que fue del momento.
+
+Lo que sí dejó esa vuelta es un detalle de la guía de Cloudflare sobre manejo de
+errores que el reintento no cumplía: **muchas excepciones dejan el stub "roto"**,
+y todo lo que se le mande después falla en el acto con la misma excepción. El
+reintento del desafío pedía el stub una vez, afuera del bucle, y lo reusaba en
+las tres vueltas: según de qué clase fuera el fallo, podía no estar reintentando
+nada. Ahora cada vuelta pide un stub nuevo —`get` no hace ningún pedido, así que
+es gratis—, espera un poco más entre una y otra como pide la guía, y anota
+`retryable` y `overloaded`, que son las dos propiedades con las que la
+plataforma dice de qué clase es su excepción y que hasta acá no se miraban. La
+creación de salas ya lo hacía sin querer: `roomFetch` crea el stub adentro de
+cada vuelta.
+
 Lo de la sala, en cambio, ya está contestado, y la pregunta estaba mal hecha: se
 creía que sus cinco vueltas taparían un fallo transitorio y que habría que
 medirlo salteándolas, cuando no tapaban nada. El `0 de 8` de la tabla de arriba

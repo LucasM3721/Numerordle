@@ -123,7 +123,6 @@ export default {
       const fecha = pedida === ayer ? ayer : hoy;
       const accion = request.method === 'POST' ? 'intento' : 'estado';
       const id = env.RETOS.idFromName(`${fecha}-${pid}`);
-      const stub = env.RETOS.get(id);
 
       // El cuerpo se lee **acá** y se reenvía ya materializado, en vez de pasar
       // el request original con su stream sin abrir. Si el objeto contesta sin
@@ -137,7 +136,12 @@ export default {
         hoy: fecha === hoy ? '1' : '0',
         prueba: esPrueba(env, url) ? '1' : '',
       });
-      const pedir = () => stub.fetch(new Request(`https://reto/${accion}?${qs}`, {
+      // El stub se pide de nuevo en cada intento, y no una vez afuera: la guía
+      // de Cloudflare dice que muchas excepciones dejan el stub "roto", y que
+      // todo lo que se le mande después falla en el acto con la misma
+      // excepción. Con un solo stub, los reintentos de abajo podían no
+      // reintentar nada. Es gratis: `get` no hace ningún pedido.
+      const pedir = () => env.RETOS.get(id).fetch(new Request(`https://reto/${accion}?${qs}`, {
         method: request.method,
         headers: { 'content-type': 'application/json' },
         body: cuerpo,
@@ -172,7 +176,13 @@ export default {
           return await pedir();
         } catch (err) {
           ultimo = err;
-          console.log(`el desafío no abrió (intento ${intento + 1}): ${err?.message ?? err}`);
+          // `retryable` y `overloaded` los pone la plataforma en sus propias
+          // excepciones, y son lo único que dice de qué clase es el fallo. Se
+          // anotan para que la próxima medición los tenga.
+          console.log(`el desafío no abrió (intento ${intento + 1}): ${err?.message ?? err} [retryable=${err?.retryable ?? '?'} overloaded=${err?.overloaded ?? '?'}]`);
+          // La guía pide espera creciente entre reintentos; dos son suficientes
+          // para no sumar más de medio segundo al que espera.
+          await new Promise((r) => setTimeout(r, 150 * 2 ** intento));
         }
       }
       // Tres seguidos ya no es la falla de a ratos: que lo diga en castellano y
